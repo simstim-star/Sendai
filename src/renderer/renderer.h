@@ -24,6 +24,12 @@ typedef struct snr_renderer_t {
 	ID3D12Device *device;
 	ID3D12CommandQueue *command_queue;
 
+	ID3D12CommandAllocator *command_allocator;
+	ID3D12GraphicsCommandList *command_list;
+
+	ID3D12RootSignature *root_sig;
+	ID3D12PipelineState *pipeline_state;
+
 	/*****************************
 		Synchronization objects
 	*****************************/
@@ -32,12 +38,6 @@ typedef struct snr_renderer_t {
 	ID3D12Fence *fence;
 	UINT64 fence_value;
 	HANDLE fence_event;
-
-	ID3D12CommandAllocator *command_allocator;
-	ID3D12GraphicsCommandList *command_list;
-
-	ID3D12RootSignature *root_sig;
-	ID3D12PipelineState *pipeline_state;
 
 	/*****************************
 		Resources

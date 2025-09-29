@@ -37,7 +37,6 @@ void snr_init(snr_renderer_t *const renderer, sng_gui_t *const gui) {
 
 	int isDebugFactory = 0;
 #if defined(_DEBUG)
-	const UINT compile_flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 	// Enable the debug layer (requires the Graphics Tools "optional feature").
 	ID3D12Debug1 *debugController = NULL;
 	if (SUCCEEDED(D3D12GetDebugInterface(&IID_ID3D12Debug, (void **)&debugController))) {
@@ -45,8 +44,6 @@ void snr_init(snr_renderer_t *const renderer, sng_gui_t *const gui) {
 		isDebugFactory |= DXGI_CREATE_FACTORY_DEBUG;
 		ID3D12Debug1_Release(debugController);
 	}
-#else
-	const UINT compile_flags = 0;
 #endif
 	IDXGIFactory2 *dxgi_factory = NULL;
 	HRESULT hr = CreateDXGIFactory2(isDebugFactory, &IID_IDXGIFactory2, (void **)&dxgi_factory);
@@ -89,7 +86,11 @@ void snr_init(snr_renderer_t *const renderer, sng_gui_t *const gui) {
 
 	ID3DBlob *vertex_shader = NULL;
 	ID3DBlob *pixel_shader = NULL;
-
+#if defined(_DEBUG)
+	const UINT compile_flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+	const UINT compile_flags = 0;
+#endif
 	const wchar_t *shaders_path = wcscat(renderer->assets_path, L"src/shaders/triangle/triangle.hlsl");
 	hr = D3DCompileFromFile(shaders_path, NULL, NULL, "VSMain", "vs_5_0", compile_flags, 0, &vertex_shader, NULL);
 	exit_if_failed(hr);
@@ -223,12 +224,7 @@ void snr_init(snr_renderer_t *const renderer, sng_gui_t *const gui) {
 
 	sng_init(gui, renderer->width, renderer->height, renderer->device, renderer->command_list);
 
-	ID3D12GraphicsCommandList_Close(renderer->command_list);
-	ID3D12CommandList *cmd_lists[] = {(ID3D12CommandList *)renderer->command_list};
-	ID3D12CommandQueue_ExecuteCommandLists(renderer->command_queue, 1, cmd_lists);
-	signal_and_wait(renderer);
-	ID3D12CommandAllocator_Reset(renderer->command_allocator);
-	ID3D12GraphicsCommandList_Reset(renderer->command_list, renderer->command_allocator, NULL);
+	execute_commands(renderer);
 	IDXGIFactory2_Release(dxgi_factory);
 }
 
@@ -272,7 +268,7 @@ void snr_draw(snr_renderer_t *const renderer) {
 	execute_commands(renderer);
 
 	HRESULT hr = IDXGISwapChain2_Present(renderer->swap_chain, 1, 0);
-	renderer->rtv_index = (renderer->rtv_index + 1) % 2;
+	renderer->rtv_index = (renderer->rtv_index + 1) % FRAME_COUNT;
 	if (hr == DXGI_ERROR_DEVICE_RESET || hr == DXGI_ERROR_DEVICE_REMOVED) {
 		/* to recover from this, you'll need to recreate device and all the resources */
 		MessageBoxW(NULL, L"D3D12 device is lost or removed!", L"Error", 0);
