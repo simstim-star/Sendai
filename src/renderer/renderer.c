@@ -8,26 +8,25 @@
 
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"
-#include "../gui/gui.h"
 #include "../win32/win_path.h"
 #include "../win32/window.h"
 #include "renderer.h"
 
 #include "dxgidebug.h"
+#include "render_types.h"
 
 /****************************************************
 	Forward declaration of private functions
 *****************************************************/
 
 static void signal_and_wait(snr_renderer_t *const renderer);
-static void execute_commands(snr_renderer_t *const renderer);
-static void update_triangle_vertices(snr_renderer_t *const renderer, sng_gui_t const *gui);
+static void update_data(snr_renderer_t *const renderer, size_t data_size);
 
 /****************************************************
 	Public functions
 *****************************************************/
 
-void snr_init(snr_renderer_t *const renderer, sng_gui_t *const gui) {
+void snr_init(snr_renderer_t *const renderer) {
 	renderer->aspect_ratio = (float)(renderer->width) / (float)(renderer->height);
 	renderer->viewport = (D3D12_VIEWPORT){0.0f, 0.0f, (float)(renderer->width), (float)(renderer->height)};
 	renderer->scissor_rect = (D3D12_RECT){0, 0, (LONG)(renderer->width), (LONG)(renderer->height)};
@@ -143,15 +142,14 @@ void snr_init(snr_renderer_t *const renderer, sng_gui_t *const gui) {
 										&IID_ID3D12GraphicsCommandList1, &renderer->command_list);
 	exit_if_failed(hr);
 
+	snr_vertex_t *verts = malloc(3 * sizeof(snr_vertex_t));
 	// Coordinates are in relation to the screen center, left-handed (+z to screen inside, +y up, +x right)
-	const snr_vertex_t triangle_vertices[] = {
-		{{0.0f, 0.25f * renderer->aspect_ratio, 0.0f},
-		 {gui->triangle_vertex_colors[0].r, gui->triangle_vertex_colors[0].g, gui->triangle_vertex_colors[0].b, gui->triangle_vertex_colors[0].a}},
-		{{0.25f, -0.25f * renderer->aspect_ratio, 0.0f},
-		 {gui->triangle_vertex_colors[1].r, gui->triangle_vertex_colors[1].g, gui->triangle_vertex_colors[1].b, gui->triangle_vertex_colors[1].a}},
-		{{-0.25f, -0.25f * renderer->aspect_ratio, 0.0f},
-		 {gui->triangle_vertex_colors[2].r, gui->triangle_vertex_colors[2].g, gui->triangle_vertex_colors[2].b, gui->triangle_vertex_colors[2].a}},
-	};
+	verts[0] = (snr_vertex_t){{0.0f, 0.25f * renderer->aspect_ratio, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+	verts[1] = (snr_vertex_t){{0.25f, -0.25f * renderer->aspect_ratio, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+	verts[2] = (snr_vertex_t){{-0.25f, -0.25f * renderer->aspect_ratio, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+
+	renderer->data = verts;
+
 	const D3D12_HEAP_PROPERTIES heap_property_upload = (D3D12_HEAP_PROPERTIES){
 		.Type = D3D12_HEAP_TYPE_UPLOAD,
 		.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
@@ -159,7 +157,7 @@ void snr_init(snr_renderer_t *const renderer, sng_gui_t *const gui) {
 		.CreationNodeMask = 1,
 		.VisibleNodeMask = 1,
 	};
-	const D3D12_RESOURCE_DESC buffer_resource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(triangle_vertices), D3D12_RESOURCE_FLAG_NONE, 0);
+	const D3D12_RESOURCE_DESC buffer_resource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(snr_vertex_t) * 3, D3D12_RESOURCE_FLAG_NONE, 0);
 
 	// Note: using upload heaps to transfer static data like vert buffers is not
 	// recommended. Every time the GPU needs it, the upload heap will be marshalled
@@ -171,7 +169,7 @@ void snr_init(snr_renderer_t *const renderer, sng_gui_t *const gui) {
 
 	renderer->vertex_buffer_view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(renderer->vertex_buffer);
 	renderer->vertex_buffer_view.StrideInBytes = sizeof(snr_vertex_t);
-	renderer->vertex_buffer_view.SizeInBytes = sizeof(triangle_vertices);
+	renderer->vertex_buffer_view.SizeInBytes = sizeof(snr_vertex_t) * 3;
 
 	renderer->fence_event = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if (renderer->fence_event == NULL) {
@@ -222,15 +220,11 @@ void snr_init(snr_renderer_t *const renderer, sng_gui_t *const gui) {
 	ID3D12Device_CreateRenderTargetView(renderer->device, renderer->rtv_buffers[1], NULL, descriptor_handle);
 	renderer->rtv_handles[1] = descriptor_handle;
 
-	sng_init(gui, renderer->width, renderer->height, renderer->device, renderer->command_list);
-
-	execute_commands(renderer);
 	IDXGIFactory2_Release(dxgi_factory);
 }
 
-void snr_update(snr_renderer_t *const renderer, sng_gui_t *const gui) {
-	sng_update(gui);
-	update_triangle_vertices(renderer, gui);
+void snr_update(snr_renderer_t *const renderer) {
+	update_data(renderer, sizeof(snr_vertex_t) * 3);
 }
 
 void snr_draw(snr_renderer_t *const renderer) {
@@ -265,7 +259,7 @@ void snr_draw(snr_renderer_t *const renderer) {
 	resource_barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 	ID3D12GraphicsCommandList_ResourceBarrier(renderer->command_list, 1, &resource_barrier);
 
-	execute_commands(renderer);
+	snr_execute_commands(renderer);
 
 	HRESULT hr = IDXGISwapChain2_Present(renderer->swap_chain, 1, 0);
 	renderer->rtv_index = (renderer->rtv_index + 1) % FRAME_COUNT;
@@ -278,6 +272,15 @@ void snr_draw(snr_renderer_t *const renderer) {
 		Sleep(10);
 	}
 	exit_if_failed(hr);
+}
+
+void snr_execute_commands(snr_renderer_t *const renderer) {
+	ID3D12GraphicsCommandList_Close(renderer->command_list);
+	ID3D12CommandList *cmd_lists[] = {(ID3D12CommandList *)renderer->command_list};
+	ID3D12CommandQueue_ExecuteCommandLists(renderer->command_queue, 1, cmd_lists);
+	signal_and_wait(renderer);
+	ID3D12CommandAllocator_Reset(renderer->command_allocator);
+	ID3D12GraphicsCommandList_Reset(renderer->command_list, renderer->command_allocator, renderer->pipeline_state);
 }
 
 void snr_destroy(snr_renderer_t *renderer) {
@@ -340,37 +343,12 @@ static void signal_and_wait(snr_renderer_t *const renderer) {
 	}
 }
 
-static void execute_commands(snr_renderer_t *const renderer) {
-	ID3D12GraphicsCommandList_Close(renderer->command_list);
-	ID3D12CommandList *cmd_lists[] = {(ID3D12CommandList *)renderer->command_list};
-	ID3D12CommandQueue_ExecuteCommandLists(renderer->command_queue, 1, cmd_lists);
-	signal_and_wait(renderer);
-	ID3D12CommandAllocator_Reset(renderer->command_allocator);
-	ID3D12GraphicsCommandList_Reset(renderer->command_list, renderer->command_allocator, renderer->pipeline_state);
-}
-
-static void update_triangle_vertices(snr_renderer_t *const renderer, sng_gui_t const *gui) {
-	const snr_vertex_t triangle_vertices[] = {
-		{{0.0f, 0.25f * renderer->aspect_ratio, 0.0f},
-		 {gui->triangle_vertex_colors[0].r, gui->triangle_vertex_colors[0].g, gui->triangle_vertex_colors[0].b, gui->triangle_vertex_colors[0].a}},
-		{{0.25f, -0.25f * renderer->aspect_ratio, 0.0f},
-		 {gui->triangle_vertex_colors[1].r, gui->triangle_vertex_colors[1].g, gui->triangle_vertex_colors[1].b, gui->triangle_vertex_colors[1].a}},
-		{{-0.25f, -0.25f * renderer->aspect_ratio, 0.0f},
-		 {gui->triangle_vertex_colors[2].r, gui->triangle_vertex_colors[2].g, gui->triangle_vertex_colors[2].b, gui->triangle_vertex_colors[2].a}},
-	};
-
-	// We will open the vertexBuffer memory (that is in the GPU) for the CPU to write the triangle data
-	// in it. To do that, we use the Map() function, which enables the CPU to read from or write
-	// to the vertex buffer's memory directly
+static void update_data(snr_renderer_t *const renderer, size_t data_size) {
 	UINT8 *vertex_data_begin = NULL;
 	// We do not intend to read from this resource on the CPU, only write
 	const D3D12_RANGE read_range = {0, 0};
 	HRESULT hr = ID3D12Resource_Map(renderer->vertex_buffer, 0, &read_range, (void **)&vertex_data_begin);
 	exit_if_failed(hr);
-
-	memcpy(vertex_data_begin, triangle_vertices, sizeof(triangle_vertices));
-
-	// While mapped, the GPU cannot access the buffer, so it's important to minimize the time
-	// the buffer is mapped.
+	memcpy(vertex_data_begin, renderer->data, data_size);
 	ID3D12Resource_Unmap(renderer->vertex_buffer, 0, NULL);
 }

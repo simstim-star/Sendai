@@ -1,5 +1,6 @@
 #include "window.h"
 #include "../renderer/renderer.h"
+#include "../gui/gui.h"
 #include "../core/engine.h"
 
 HWND G_HWND = NULL;
@@ -20,7 +21,9 @@ int win32_run(snd_engine_t *const engine, const HINSTANCE hInstance, const int n
 	G_HWND = CreateWindow(wc.lpszClassName, engine->title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
 						  rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, hInstance, &engine->renderer);
 
-	snr_init(&engine->renderer, &engine->gui);
+	snr_init(&engine->renderer);
+	sng_init(&engine->gui, engine->renderer.width, engine->renderer.height, engine->renderer.device, engine->renderer.command_list);
+	snr_execute_commands(&engine->renderer);
 
 	ShowWindow(G_HWND, nCmdShow);
 
@@ -36,7 +39,8 @@ int win32_run(snd_engine_t *const engine, const HINSTANCE hInstance, const int n
 		}
 		sng_input_end(&engine->gui);
 		
-		snr_update(&engine->renderer, &engine->gui);
+		snr_update(&engine->renderer);
+		sng_update_triangle_menu(&engine->gui, engine->renderer.data);
 		snr_draw(&engine->renderer);
 	}
 

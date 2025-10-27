@@ -34,54 +34,36 @@ void sng_init(sng_gui_t *const gui, int width, int height, ID3D12Device *device,
 	}
 }
 
-void sng_update(sng_gui_t *const gui) {
+void sng_update_triangle_menu(sng_gui_t *const gui, snr_vertex_t *const triangle_data) {
 	if (nk_begin(gui->ctx, "Triangle", nk_rect(50, 50, 230, 250),
 				 NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE)) {
-		nk_layout_row_dynamic(gui->ctx, 20, 1);
-		nk_label(gui->ctx, "v1:", NK_TEXT_LEFT);
-		nk_layout_row_dynamic(gui->ctx, 25, 1);
-		struct nk_colorf v_color = color_to_nk(&gui->triangle_vertex_colors[0]);
-		if (nk_combo_begin_color(gui->ctx, nk_rgb_cf(v_color), nk_vec2(nk_widget_width(gui->ctx), 400))) {
-			nk_layout_row_dynamic(gui->ctx, 120, 1);
-			v_color = nk_color_picker(gui->ctx, v_color, NK_RGBA);
+		for (int i = 0; i < 3; ++i) {
+			char label[8];
+			snprintf(label, sizeof(label), "v%d:", i + 1);
+
+			nk_layout_row_dynamic(gui->ctx, 20, 1);
+			nk_label(gui->ctx, label, NK_TEXT_LEFT);
 			nk_layout_row_dynamic(gui->ctx, 25, 1);
-			gui->triangle_vertex_colors[0].r = nk_propertyf(gui->ctx, "#R:", 0, v_color.r, 1.0f, 0.01f, 0.005f);
-			gui->triangle_vertex_colors[0].g = nk_propertyf(gui->ctx, "#G:", 0, v_color.g, 1.0f, 0.01f, 0.005f);
-			gui->triangle_vertex_colors[0].b = nk_propertyf(gui->ctx, "#B:", 0, v_color.b, 1.0f, 0.01f, 0.005f);
-			gui->triangle_vertex_colors[0].a = nk_propertyf(gui->ctx, "#A:", 0, v_color.a, 1.0f, 0.01f, 0.005f);
-			nk_combo_end(gui->ctx);
-		}
-		nk_layout_row_dynamic(gui->ctx, 20, 1);
-		nk_label(gui->ctx, "v2:", NK_TEXT_LEFT);
-		nk_layout_row_dynamic(gui->ctx, 25, 1);
-		struct nk_colorf v_color2 = color_to_nk(&gui->triangle_vertex_colors[1]);
-		if (nk_combo_begin_color(gui->ctx, nk_rgb_cf(v_color2), nk_vec2(nk_widget_width(gui->ctx), 400))) {
-			nk_layout_row_dynamic(gui->ctx, 120, 1);
-			v_color2 = nk_color_picker(gui->ctx, v_color2, NK_RGBA);
-			nk_layout_row_dynamic(gui->ctx, 25, 1);
-			gui->triangle_vertex_colors[1].r = nk_propertyf(gui->ctx, "#R:", 0, v_color2.r, 1.0f, 0.01f, 0.005f);
-			gui->triangle_vertex_colors[1].g = nk_propertyf(gui->ctx, "#G:", 0, v_color2.g, 1.0f, 0.01f, 0.005f);
-			gui->triangle_vertex_colors[1].b = nk_propertyf(gui->ctx, "#B:", 0, v_color2.b, 1.0f, 0.01f, 0.005f);
-			gui->triangle_vertex_colors[1].a = nk_propertyf(gui->ctx, "#A:", 0, v_color2.a, 1.0f, 0.01f, 0.005f);
-			nk_combo_end(gui->ctx);
-		}
-		nk_layout_row_dynamic(gui->ctx, 20, 1);
-		nk_label(gui->ctx, "v3:", NK_TEXT_LEFT);
-		nk_layout_row_dynamic(gui->ctx, 25, 1);
-		struct nk_colorf v_color3 = color_to_nk(&gui->triangle_vertex_colors[2]);
-		if (nk_combo_begin_color(gui->ctx, nk_rgb_cf(v_color3), nk_vec2(nk_widget_width(gui->ctx), 400))) {
-			nk_layout_row_dynamic(gui->ctx, 120, 1);
-			v_color3 = nk_color_picker(gui->ctx, v_color3, NK_RGBA);
-			nk_layout_row_dynamic(gui->ctx, 25, 1);
-			gui->triangle_vertex_colors[2].r = nk_propertyf(gui->ctx, "#R:", 0, v_color3.r, 1.0f, 0.01f, 0.005f);
-			gui->triangle_vertex_colors[2].g = nk_propertyf(gui->ctx, "#G:", 0, v_color3.g, 1.0f, 0.01f, 0.005f);
-			gui->triangle_vertex_colors[2].b = nk_propertyf(gui->ctx, "#B:", 0, v_color3.b, 1.0f, 0.01f, 0.005f);
-			gui->triangle_vertex_colors[2].a = nk_propertyf(gui->ctx, "#A:", 0, v_color3.a, 1.0f, 0.01f, 0.005f);
-			nk_combo_end(gui->ctx);
+
+			struct nk_colorf v_color = color_to_nk(&triangle_data[i].color);
+
+			if (nk_combo_begin_color(gui->ctx, nk_rgb_cf(v_color), nk_vec2(nk_widget_width(gui->ctx), 400))) {
+				nk_layout_row_dynamic(gui->ctx, 120, 1);
+				v_color = nk_color_picker(gui->ctx, v_color, NK_RGBA);
+				nk_layout_row_dynamic(gui->ctx, 25, 1);
+
+				triangle_data[i].color.x = nk_propertyf(gui->ctx, "#R:", 0, v_color.r, 1.0f, 0.01f, 0.005f);
+				triangle_data[i].color.y = nk_propertyf(gui->ctx, "#G:", 0, v_color.g, 1.0f, 0.01f, 0.005f);
+				triangle_data[i].color.z = nk_propertyf(gui->ctx, "#B:", 0, v_color.b, 1.0f, 0.01f, 0.005f);
+				triangle_data[i].color.w = nk_propertyf(gui->ctx, "#A:", 0, v_color.a, 1.0f, 0.01f, 0.005f);
+
+				nk_combo_end(gui->ctx);
+			}
 		}
 	}
 	nk_end(gui->ctx);
 }
+
 
 void sng_input_begin(const sng_gui_t *gui) {
 	nk_input_begin(gui->ctx);

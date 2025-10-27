@@ -11,6 +11,8 @@ typedef struct snr_renderer_t {
 	float aspect_ratio;
 	WCHAR assets_path[512];
 
+	void *data;
+
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissor_rect;
 
@@ -47,8 +49,9 @@ typedef struct snr_renderer_t {
 	D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view;
 } snr_renderer_t;
 
-void snr_init(snr_renderer_t *const renderer, struct sng_gui_t *const gui);
+void snr_init(snr_renderer_t *const renderer);
 void snr_destroy(snr_renderer_t *renderer);
-void snr_update(snr_renderer_t *const renderer, struct sng_gui_t *const gui);
+void snr_update(snr_renderer_t *const renderer);
 void snr_draw(snr_renderer_t *const renderer);
+void snr_execute_commands(snr_renderer_t *const renderer);
 void snr_swapchain_resize(snr_renderer_t *const renderer, int width, int height);
