@@ -8,10 +8,10 @@ int CALLBACK WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	snc_camera_t camera = snc_camera_spawn((XMFLOAT3){0, 75, 150});
 	camera.move_speed = 150.f;
 	return win32_run(
-		&(snd_engine_t){
+		&(SC_engine_t){
 			.title = "Sendai",
 			.renderer =
-				(snr_renderer_t){
+				(SR_renderer_t){
 					.width = 1280,
 					.height = 720,
 				},

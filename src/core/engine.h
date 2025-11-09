@@ -3,10 +3,18 @@
 #include "../renderer/renderer.h"
 #include "../gui/gui.h"
 #include "camera.h"
+#include <stdbool.h>
 
-typedef struct snd_engine_t {
+typedef struct SC_engine_t {
 	CHAR *title;
-	snr_renderer_t renderer;
-	sng_gui_t gui;
+	SR_renderer_t renderer;
+	SGUI_context_t gui;
 	snc_camera_t camera;
-} snd_engine_t;
+	bool is_running;
+	CHAR *curr_window;
+} SC_engine_t;
+
+void SC_init(SC_engine_t *engine);
+void SC_handle_input(SC_engine_t *engine, MSG *msg);
+void SC_update(SC_engine_t *engine);
+void SC_destroy(SC_engine_t *engine);

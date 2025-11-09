@@ -23,10 +23,19 @@
 #include "../../deps/nuklear/nuklear.h"
 #include "../shaders/nuklear/nuklear_d3d12.h"
 
+/****************************************************
+	Forward declaration of private functions
+*****************************************************/
+
 static struct nk_colorf color_to_nk(snr_color_t *color);
 
-void sng_init(sng_gui_t *const gui, int width, int height, ID3D12Device *device, ID3D12GraphicsCommandList *command_list) {
+/****************************************************
+	Public functions
+*****************************************************/
+
+void SGUI_init(SGUI_context_t *const gui, int width, int height, ID3D12Device *device, ID3D12GraphicsCommandList *command_list) {
 	gui->ctx = nk_d3d12_init(device, width, height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, USER_TEXTURES);
+	
 	{
 		struct nk_font_atlas *atlas;
 		nk_d3d12_font_stash_begin(&atlas);
@@ -34,9 +43,24 @@ void sng_init(sng_gui_t *const gui, int width, int height, ID3D12Device *device,
 	}
 }
 
-void sng_update_triangle_menu(sng_gui_t *const gui, snr_vertex_t *const triangle_data) {
+void SGUI_draw_top_bar(SGUI_context_t *gui, const char **curr_window) {
+	const float bar_height = 35.0f;
+
+	if (nk_begin(gui->ctx, "TopBar", nk_rect(0, 0, 800, bar_height), NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
+		nk_layout_row_dynamic(gui->ctx, bar_height - 5, 4);
+
+		if (nk_button_label(gui->ctx, "Home"))
+			*curr_window = "home";
+		else if (nk_button_label(gui->ctx, "Triangle"))
+			*curr_window = "triangle";
+	}
+	nk_end(gui->ctx);
+}
+
+void SGUI_update_triangle_menu(SGUI_context_t *const gui, snr_vertex_t *const triangle_data) {
 	if (nk_begin(gui->ctx, "Triangle", nk_rect(50, 50, 230, 250),
 				 NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE)) {
+		nk_layout_row_dynamic(gui->ctx, 30, 3);
 		for (int i = 0; i < 3; ++i) {
 			char label[8];
 			snprintf(label, sizeof(label), "v%d:", i + 1);
@@ -65,27 +89,27 @@ void sng_update_triangle_menu(sng_gui_t *const gui, snr_vertex_t *const triangle
 }
 
 
-void sng_input_begin(const sng_gui_t *gui) {
+void SGUI_input_begin(const SGUI_context_t *gui) {
 	nk_input_begin(gui->ctx);
 }
 
-void sng_input_end(const sng_gui_t *gui) {
+void SGUI_input_end(const SGUI_context_t *gui) {
 	nk_input_end(gui->ctx);
 }
 
-void sng_draw(ID3D12GraphicsCommandList *command_list) {
+void SGUI_draw(ID3D12GraphicsCommandList *command_list) {
 	nk_d3d12_render(command_list, NK_ANTI_ALIASING_ON);
 }
 
-void sng_resize(const int width, const int height) {
+void SGUI_resize(const int width, const int height) {
 	nk_d3d12_resize(width, height);
 }
 
-int sng_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+int SGUI_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	return nk_d3d12_handle_event(wnd, msg, wparam, lparam);
 }
 
-void sng_destroy() {
+void SGUI_destroy() {
 	nk_d3d12_shutdown();
 }
 

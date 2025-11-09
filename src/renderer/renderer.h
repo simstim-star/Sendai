@@ -5,7 +5,7 @@
 
 #define FRAME_COUNT 2
 
-typedef struct snr_renderer_t {
+typedef struct SR_renderer_t {
 	UINT width;
 	UINT height;
 	float aspect_ratio;
@@ -47,11 +47,11 @@ typedef struct snr_renderer_t {
 
 	ID3D12Resource *vertex_buffer;
 	D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view;
-} snr_renderer_t;
+} SR_renderer_t;
 
-void snr_init(snr_renderer_t *const renderer);
-void snr_destroy(snr_renderer_t *renderer);
-void snr_update(snr_renderer_t *const renderer);
-void snr_draw(snr_renderer_t *const renderer);
-void snr_execute_commands(snr_renderer_t *const renderer);
-void snr_swapchain_resize(snr_renderer_t *const renderer, int width, int height);
+void SR_init(SR_renderer_t *const renderer);
+void SR_destroy(SR_renderer_t *renderer);
+void SR_update(SR_renderer_t *const renderer);
+void SR_draw(SR_renderer_t *const renderer);
+void SR_execute_commands(SR_renderer_t *const renderer);
+void SR_swapchain_resize(SR_renderer_t *const renderer, int width, int height);

@@ -7,7 +7,7 @@ HWND G_HWND = NULL;
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
 
-int win32_run(snd_engine_t *const engine, const HINSTANCE hInstance, const int nCmdShow) {
+int win32_run(SC_engine_t *const engine, const HINSTANCE hInstance, const int nCmdShow) {
 	WNDCLASSEX wc = {0};
 	wc.cbSize = sizeof(WNDCLASSEX);
 	wc.style = CS_DBLCLKS;
@@ -16,40 +16,29 @@ int win32_run(snd_engine_t *const engine, const HINSTANCE hInstance, const int n
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wc.lpszClassName = "SendaiClass";
 	RegisterClassEx(&wc);
+
 	RECT rect = {0, 0, (LONG)(engine->renderer.width), (LONG)(engine->renderer.height)};
 	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
 	G_HWND = CreateWindow(wc.lpszClassName, engine->title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
 						  rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, hInstance, &engine->renderer);
 
-	snr_init(&engine->renderer);
-	sng_init(&engine->gui, engine->renderer.width, engine->renderer.height, engine->renderer.device, engine->renderer.command_list);
-	snr_execute_commands(&engine->renderer);
-
+	SC_init(engine);
 	ShowWindow(G_HWND, nCmdShow);
 
 	MSG msg;
-	BOOL running = TRUE;
-	while (running) {
-		sng_input_begin(&engine->gui);
-		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-			if (msg.message == WM_QUIT) running = FALSE;
-
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-		sng_input_end(&engine->gui);
-		
-		snr_update(&engine->renderer);
-		sng_update_triangle_menu(&engine->gui, engine->renderer.data);
-		snr_draw(&engine->renderer);
+	engine->is_running = true;
+	while (engine->is_running) {
+		SC_handle_input(engine, &msg);
+		SC_update(engine);
+		SR_draw(&engine->renderer);
 	}
 
-	snr_destroy(&engine->renderer);
+	SC_destroy(engine);
 	return (int)(msg.wParam);
 }
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
-	snr_renderer_t *renderer = (snr_renderer_t *)(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+	SR_renderer_t *renderer = (SR_renderer_t *)(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
 	switch (message) {
 	case WM_CREATE: {
@@ -62,8 +51,8 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpar
 		if (renderer && renderer->swap_chain) {
 			int width = LOWORD(lparam);
 			int height = HIWORD(lparam);
-			snr_swapchain_resize(renderer, width, height);
-			sng_resize(width, height);
+			SR_swapchain_resize(renderer, width, height);
+			SGUI_resize(width, height);
 		}
 		return 0;
 
@@ -79,7 +68,7 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpar
 		return 0;
 	}
 
-	if (sng_handle_event(hwnd, message, wparam, lparam)) return 0;
+	if (SGUI_handle_event(hwnd, message, wparam, lparam)) return 0;
 
 	return DefWindowProc(hwnd, message, wparam, lparam);
 }

@@ -6,6 +6,7 @@
 #include <dxgi1_6.h>
 #include <windows.h>
 
+#include "../gui/gui.h"
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"
 #include "../win32/win_path.h"
@@ -19,14 +20,14 @@
 	Forward declaration of private functions
 *****************************************************/
 
-static void signal_and_wait(snr_renderer_t *const renderer);
-static void update_data(snr_renderer_t *const renderer, size_t data_size);
+static void signal_and_wait(SR_renderer_t *const renderer);
+static void update_data(SR_renderer_t *const renderer, size_t data_size);
 
 /****************************************************
 	Public functions
 *****************************************************/
 
-void snr_init(snr_renderer_t *const renderer) {
+void SR_init(SR_renderer_t *const renderer) {
 	renderer->aspect_ratio = (float)(renderer->width) / (float)(renderer->height);
 	renderer->viewport = (D3D12_VIEWPORT){0.0f, 0.0f, (float)(renderer->width), (float)(renderer->height)};
 	renderer->scissor_rect = (D3D12_RECT){0, 0, (LONG)(renderer->width), (LONG)(renderer->height)};
@@ -223,11 +224,11 @@ void snr_init(snr_renderer_t *const renderer) {
 	IDXGIFactory2_Release(dxgi_factory);
 }
 
-void snr_update(snr_renderer_t *const renderer) {
+void SR_update(SR_renderer_t *const renderer) {
 	update_data(renderer, sizeof(snr_vertex_t) * 3);
 }
 
-void snr_draw(snr_renderer_t *const renderer) {
+void SR_draw(SR_renderer_t *const renderer) {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(renderer->command_list, renderer->root_sig);
 	ID3D12GraphicsCommandList_RSSetViewports(renderer->command_list, 1, &renderer->viewport);
 	ID3D12GraphicsCommandList_RSSetScissorRects(renderer->command_list, 1, &renderer->scissor_rect);
@@ -248,7 +249,7 @@ void snr_draw(snr_renderer_t *const renderer) {
 	ID3D12GraphicsCommandList_IASetPrimitiveTopology(renderer->command_list, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	ID3D12GraphicsCommandList_DrawInstanced(renderer->command_list, 3, 1, 0, 0);
 
-	sng_draw(renderer->command_list);
+	SGUI_draw(renderer->command_list);
 
 	// Bring the rtv resource back to present state
 	resource_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -259,7 +260,7 @@ void snr_draw(snr_renderer_t *const renderer) {
 	resource_barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 	ID3D12GraphicsCommandList_ResourceBarrier(renderer->command_list, 1, &resource_barrier);
 
-	snr_execute_commands(renderer);
+	SR_execute_commands(renderer);
 
 	HRESULT hr = IDXGISwapChain2_Present(renderer->swap_chain, 1, 0);
 	renderer->rtv_index = (renderer->rtv_index + 1) % FRAME_COUNT;
@@ -274,7 +275,7 @@ void snr_draw(snr_renderer_t *const renderer) {
 	exit_if_failed(hr);
 }
 
-void snr_execute_commands(snr_renderer_t *const renderer) {
+void SR_execute_commands(SR_renderer_t *const renderer) {
 	ID3D12GraphicsCommandList_Close(renderer->command_list);
 	ID3D12CommandList *cmd_lists[] = {(ID3D12CommandList *)renderer->command_list};
 	ID3D12CommandQueue_ExecuteCommandLists(renderer->command_queue, 1, cmd_lists);
@@ -283,8 +284,8 @@ void snr_execute_commands(snr_renderer_t *const renderer) {
 	ID3D12GraphicsCommandList_Reset(renderer->command_list, renderer->command_allocator, renderer->pipeline_state);
 }
 
-void snr_destroy(snr_renderer_t *renderer) {
-	sng_destroy();
+void SR_destroy(SR_renderer_t *renderer) {
+	SGUI_destroy();
 	for (int i = 0; i < FRAME_COUNT; ++i) {
 		signal_and_wait(renderer);
 		ID3D12Resource_Release(renderer->rtv_buffers[i]);
@@ -308,7 +309,7 @@ void snr_destroy(snr_renderer_t *renderer) {
 #endif
 }
 
-void snr_swapchain_resize(snr_renderer_t *const renderer, int width, int height) {
+void SR_swapchain_resize(SR_renderer_t *const renderer, int width, int height) {
 	for (int i = 0; i < FRAME_COUNT; ++i) {
 		signal_and_wait(renderer);
 		ID3D12Resource_Release(renderer->rtv_buffers[i]);
@@ -334,7 +335,7 @@ void snr_swapchain_resize(snr_renderer_t *const renderer, int width, int height)
 	Implementation of private functions
 *****************************************************/
 
-static void signal_and_wait(snr_renderer_t *const renderer) {
+static void signal_and_wait(SR_renderer_t *const renderer) {
 	HRESULT hr = ID3D12CommandQueue_Signal(renderer->command_queue, renderer->fence, ++renderer->fence_value);
 	exit_if_failed(hr);
 
@@ -343,7 +344,7 @@ static void signal_and_wait(snr_renderer_t *const renderer) {
 	}
 }
 
-static void update_data(snr_renderer_t *const renderer, size_t data_size) {
+static void update_data(SR_renderer_t *const renderer, size_t data_size) {
 	UINT8 *vertex_data_begin = NULL;
 	// We do not intend to read from this resource on the CPU, only write
 	const D3D12_RANGE read_range = {0, 0};
