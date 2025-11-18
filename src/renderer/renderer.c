@@ -20,14 +20,14 @@
 	Forward declaration of private functions
 *****************************************************/
 
-static void signal_and_wait(SR_renderer_t *const renderer);
-static void update_data(SR_renderer_t *const renderer, size_t data_size);
+static void signal_and_wait(SR_Renderer *const renderer);
+static void update_data(SR_Renderer *const renderer, size_t data_size);
 
 /****************************************************
 	Public functions
 *****************************************************/
 
-void SR_init(SR_renderer_t *const renderer) {
+void SR_init(SR_Renderer *const renderer) {
 	renderer->aspect_ratio = (float)(renderer->width) / (float)(renderer->height);
 	renderer->viewport = (D3D12_VIEWPORT){0.0f, 0.0f, (float)(renderer->width), (float)(renderer->height)};
 	renderer->scissor_rect = (D3D12_RECT){0, 0, (LONG)(renderer->width), (LONG)(renderer->height)};
@@ -143,11 +143,11 @@ void SR_init(SR_renderer_t *const renderer) {
 										&IID_ID3D12GraphicsCommandList1, &renderer->command_list);
 	exit_if_failed(hr);
 
-	snr_vertex_t *verts = malloc(3 * sizeof(snr_vertex_t));
+	SR_Vertex *verts = malloc(3 * sizeof(SR_Vertex));
 	// Coordinates are in relation to the screen center, left-handed (+z to screen inside, +y up, +x right)
-	verts[0] = (snr_vertex_t){{0.0f, 0.25f * renderer->aspect_ratio, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
-	verts[1] = (snr_vertex_t){{0.25f, -0.25f * renderer->aspect_ratio, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
-	verts[2] = (snr_vertex_t){{-0.25f, -0.25f * renderer->aspect_ratio, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+	verts[0] = (SR_Vertex){{0.0f, 0.25f * renderer->aspect_ratio, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+	verts[1] = (SR_Vertex){{0.25f, -0.25f * renderer->aspect_ratio, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+	verts[2] = (SR_Vertex){{-0.25f, -0.25f * renderer->aspect_ratio, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
 
 	renderer->data = verts;
 
@@ -158,7 +158,7 @@ void SR_init(SR_renderer_t *const renderer) {
 		.CreationNodeMask = 1,
 		.VisibleNodeMask = 1,
 	};
-	const D3D12_RESOURCE_DESC buffer_resource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(snr_vertex_t) * 3, D3D12_RESOURCE_FLAG_NONE, 0);
+	const D3D12_RESOURCE_DESC buffer_resource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(SR_Vertex) * 3, D3D12_RESOURCE_FLAG_NONE, 0);
 
 	// Note: using upload heaps to transfer static data like vert buffers is not
 	// recommended. Every time the GPU needs it, the upload heap will be marshalled
@@ -169,8 +169,8 @@ void SR_init(SR_renderer_t *const renderer) {
 	exit_if_failed(hr);
 
 	renderer->vertex_buffer_view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(renderer->vertex_buffer);
-	renderer->vertex_buffer_view.StrideInBytes = sizeof(snr_vertex_t);
-	renderer->vertex_buffer_view.SizeInBytes = sizeof(snr_vertex_t) * 3;
+	renderer->vertex_buffer_view.StrideInBytes = sizeof(SR_Vertex);
+	renderer->vertex_buffer_view.SizeInBytes = sizeof(SR_Vertex) * 3;
 
 	renderer->fence_event = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if (renderer->fence_event == NULL) {
@@ -224,11 +224,11 @@ void SR_init(SR_renderer_t *const renderer) {
 	IDXGIFactory2_Release(dxgi_factory);
 }
 
-void SR_update(SR_renderer_t *const renderer) {
-	update_data(renderer, sizeof(snr_vertex_t) * 3);
+void SR_update(SR_Renderer *const renderer) {
+	update_data(renderer, sizeof(SR_Vertex) * 3);
 }
 
-void SR_draw(SR_renderer_t *const renderer) {
+void SR_draw(SR_Renderer *const renderer) {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(renderer->command_list, renderer->root_sig);
 	ID3D12GraphicsCommandList_RSSetViewports(renderer->command_list, 1, &renderer->viewport);
 	ID3D12GraphicsCommandList_RSSetScissorRects(renderer->command_list, 1, &renderer->scissor_rect);
@@ -275,7 +275,7 @@ void SR_draw(SR_renderer_t *const renderer) {
 	exit_if_failed(hr);
 }
 
-void SR_execute_commands(SR_renderer_t *const renderer) {
+void SR_execute_commands(SR_Renderer *const renderer) {
 	ID3D12GraphicsCommandList_Close(renderer->command_list);
 	ID3D12CommandList *cmd_lists[] = {(ID3D12CommandList *)renderer->command_list};
 	ID3D12CommandQueue_ExecuteCommandLists(renderer->command_queue, 1, cmd_lists);
@@ -284,7 +284,7 @@ void SR_execute_commands(SR_renderer_t *const renderer) {
 	ID3D12GraphicsCommandList_Reset(renderer->command_list, renderer->command_allocator, renderer->pipeline_state);
 }
 
-void SR_destroy(SR_renderer_t *renderer) {
+void SR_destroy(SR_Renderer *renderer) {
 	SGUI_destroy();
 	for (int i = 0; i < FRAME_COUNT; ++i) {
 		signal_and_wait(renderer);
@@ -309,7 +309,7 @@ void SR_destroy(SR_renderer_t *renderer) {
 #endif
 }
 
-void SR_swapchain_resize(SR_renderer_t *const renderer, int width, int height) {
+void SR_swapchain_resize(SR_Renderer *const renderer, int width, int height) {
 	for (int i = 0; i < FRAME_COUNT; ++i) {
 		signal_and_wait(renderer);
 		ID3D12Resource_Release(renderer->rtv_buffers[i]);
@@ -335,7 +335,7 @@ void SR_swapchain_resize(SR_renderer_t *const renderer, int width, int height) {
 	Implementation of private functions
 *****************************************************/
 
-static void signal_and_wait(SR_renderer_t *const renderer) {
+static void signal_and_wait(SR_Renderer *const renderer) {
 	HRESULT hr = ID3D12CommandQueue_Signal(renderer->command_queue, renderer->fence, ++renderer->fence_value);
 	exit_if_failed(hr);
 
@@ -344,7 +344,7 @@ static void signal_and_wait(SR_renderer_t *const renderer) {
 	}
 }
 
-static void update_data(SR_renderer_t *const renderer, size_t data_size) {
+static void update_data(SR_Renderer *const renderer, size_t data_size) {
 	UINT8 *vertex_data_begin = NULL;
 	// We do not intend to read from this resource on the CPU, only write
 	const D3D12_RANGE read_range = {0, 0};

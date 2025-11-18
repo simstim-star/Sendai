@@ -7,7 +7,7 @@ HWND G_HWND = NULL;
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
 
-int win32_run(SC_engine_t *const engine, const HINSTANCE hInstance, const int nCmdShow) {
+int win32_run(SC_Engine *const engine, const HINSTANCE hInstance, const int nCmdShow) {
 	WNDCLASSEX wc = {0};
 	wc.cbSize = sizeof(WNDCLASSEX);
 	wc.style = CS_DBLCLKS;
@@ -38,7 +38,7 @@ int win32_run(SC_engine_t *const engine, const HINSTANCE hInstance, const int nC
 }
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
-	SR_renderer_t *renderer = (SR_renderer_t *)(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+	SR_Renderer *renderer = (SR_Renderer *)(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
 	switch (message) {
 	case WM_CREATE: {

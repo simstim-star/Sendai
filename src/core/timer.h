@@ -14,7 +14,7 @@ inline UINT64 seconds_to_ticks(double seconds) {
 }
 
 // Helper class for animation and simulation timing.
-typedef struct snc_step_timer_t {
+typedef struct SC_Step_Timer {
 	// Source timing data uses QueryPerformanceCounter units.
 	LARGE_INTEGER qpc_frequency;
 	LARGE_INTEGER qpc_last_time;
@@ -31,21 +31,21 @@ typedef struct snc_step_timer_t {
 	// Members for configuring fixed timestep mode.
 	bool is_fixed_time_step;
 	UINT64 target_elapsed_ticks;
-} snc_step_timer_t;
+} SC_Step_Timer;
 
-void snc_steptimer_init(snc_step_timer_t *st);
+void SC_steptimer_init(SC_Step_Timer *st);
 
 // After an intentional timing discontinuity (for instance a blocking IO operation)
 // call this to avoid having the fixed timestep logic attempt a set of catch-up
 // Update calls.
-inline void snc_reset_elapsed_time(snc_step_timer_t *st);
+inline void SC_reset_elapsed_time(SC_Step_Timer *st);
 
 typedef void (*LPUPDATEFUNC)(void);
 
 // Update timer state, calling the specified Update function the appropriate number of times.
-void snc_tick_with_update_fn(snc_step_timer_t *st, LPUPDATEFUNC update);
+void SC_tick_with_update_fn(SC_Step_Timer *st, LPUPDATEFUNC update);
 
 // Only updates timer state, but doesn't do anything else
-inline void snc_tick(snc_step_timer_t *st) {
-	snc_tick_with_update_fn(st, NULL);
+inline void SC_tick(SC_Step_Timer *st) {
+	SC_tick_with_update_fn(st, NULL);
 }

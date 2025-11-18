@@ -1,18 +1,18 @@
 #pragma once
 
-typedef struct snr_color_t {
+typedef struct SR_Color {
 	float r, g, b, a;
-} snr_color_t;
+} SR_Color;
 
-typedef struct float3 {
+typedef struct SR_Float3 {
 	float x, y, z;
-} float3;
+} SR_Float3;
 
-typedef struct float4 {
+typedef struct SR_Float4 {
 	float x, y, z, w;
-} float4;
+} SR_Float4;
 
-typedef struct snr_vertex_t {
-	float3 position;
-	float4 color;
-} snr_vertex_t;
+typedef struct SR_Vertex {
+	SR_Float3 position;
+	SR_Float4 color;
+} SR_Vertex;

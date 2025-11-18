@@ -6,7 +6,7 @@
  Private functions
 ******************************************************************/
 
-static void camera_reset(snc_camera_t *camera) {
+static void camera_reset(SC_Camera *camera) {
 	camera->position = camera->initial_position;
 	camera->yaw = XM_PI;
 	camera->pitch = 0.0f;
@@ -17,8 +17,8 @@ static void camera_reset(snc_camera_t *camera) {
  Public functions
 ******************************************************************/
 
-snc_camera_t snc_camera_spawn(XMFLOAT3 position) {
-	return (snc_camera_t){
+SC_Camera SC_camera_spawn(XMFLOAT3 position) {
+	return (SC_Camera){
 		.initial_position = position,
 		.position = position,
 		.yaw = XM_PI,
@@ -30,7 +30,7 @@ snc_camera_t snc_camera_spawn(XMFLOAT3 position) {
 	};
 }
 
-void snc_camera_update(snc_camera_t *camera, float elapsedSeconds) {
+void SC_camera_update(SC_Camera *camera, float elapsedSeconds) {
 	// Calculate the move vector in camera space.
 	XMFLOAT3 move = (XMFLOAT3){0, 0, 0};
 
@@ -72,18 +72,18 @@ void snc_camera_update(snc_camera_t *camera, float elapsedSeconds) {
 	camera->look_direction.z = r * cosf(camera->yaw);
 }
 
-XMMATRIX snc_camera_view_matrix(XMFLOAT3 pos, XMFLOAT3 lookDirection, XMFLOAT3 upDirection) {
+XMMATRIX SC_camera_view_matrix(XMFLOAT3 pos, XMFLOAT3 lookDirection, XMFLOAT3 upDirection) {
 	XMVECTOR EyePosition = XMLoadFloat3(&pos);
 	XMVECTOR EyeDirection = XMLoadFloat3(&lookDirection);
 	XMVECTOR UpDirection = XMLoadFloat3(&upDirection);
 	return XMMatrixLookToRH(&EyePosition, &EyeDirection, &UpDirection);
 }
 
-XMMATRIX snc_camera_projection_matrix(float fov, float aspectRatio, float nearPlane, float farPlane) {
+XMMATRIX SC_camera_projection_matrix(float fov, float aspectRatio, float nearPlane, float farPlane) {
 	return XMMatrixPerspectiveFovRH(fov, aspectRatio, nearPlane, farPlane);
 }
 
-void snc_camera_on_key_down(snc_camera_t *camera, WPARAM key) {
+void SC_camera_on_key_down(SC_Camera *camera, WPARAM key) {
 	switch (key) {
 	case 'W':
 		camera->keys_pressed.w = true;
@@ -115,7 +115,7 @@ void snc_camera_on_key_down(snc_camera_t *camera, WPARAM key) {
 	}
 }
 
-void snc_camera_on_key_up(snc_camera_t *camera, WPARAM key) {
+void SC_camera_on_key_up(SC_Camera *camera, WPARAM key) {
 	switch (key) {
 	case 'W':
 		camera->keys_pressed.w = false;

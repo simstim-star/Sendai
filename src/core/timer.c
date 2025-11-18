@@ -1,6 +1,6 @@
 #include "timer.h"
 
-void snc_steptimer_init(snc_step_timer_t *st) {
+void SC_steptimer_init(SC_Step_Timer *st) {
 	st->elapsed_ticks = 0;
 	st->total_ticks = 0;
 	st->leftover_ticks = 0;
@@ -21,7 +21,7 @@ void snc_steptimer_init(snc_step_timer_t *st) {
 // After an intentional timing discontinuity (for instance a blocking IO operation)
 // call this to avoid having the fixed timestep logic attempt a set of catch-up
 // Update calls.
-void snc_reset_elapsed_time(snc_step_timer_t *st) {
+void SC_reset_elapsed_time(SC_Step_Timer *st) {
 	QueryPerformanceCounter(&st->qpc_last_time);
 
 	st->leftover_ticks = 0;
@@ -31,7 +31,7 @@ void snc_reset_elapsed_time(snc_step_timer_t *st) {
 }
 
 // Update timer state, calling the specified Update function the appropriate number of times.
-void snc_tick_with_update_fn(snc_step_timer_t *st, LPUPDATEFUNC update) {
+void SC_tick_with_update_fn(SC_Step_Timer *st, LPUPDATEFUNC update) {
 	// Query the current time.
 	LARGE_INTEGER current_time;
 	QueryPerformanceCounter(&current_time);

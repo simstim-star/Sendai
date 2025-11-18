@@ -3,7 +3,7 @@
 #include "DirectXMathC.h"
 #include <windows.h>
 
-typedef struct snc_camera_t {
+typedef struct SC_Camera {
 	XMFLOAT3 initial_position;
 	XMFLOAT3 position;
 	float yaw;	 // Relative to the +z axis.
@@ -24,12 +24,12 @@ typedef struct snc_camera_t {
 		bool up;
 		bool down;
 	} keys_pressed;
-} snc_camera_t;
+} SC_Camera;
 
-snc_camera_t snc_camera_spawn(XMFLOAT3 position);
-void snc_camera_update(snc_camera_t *camera, float elapsedSeconds);
-void snc_camera_on_key_down(snc_camera_t *camera, WPARAM key);
-void snc_camera_on_key_up(snc_camera_t *camera, WPARAM key);
+SC_Camera SC_camera_spawn(XMFLOAT3 position);
+void SC_camera_update(SC_Camera *camera, float elapsedSeconds);
+void SC_camera_on_key_down(SC_Camera *camera, WPARAM key);
+void SC_camera_on_key_up(SC_Camera *camera, WPARAM key);
 
-XMMATRIX snc_camera_view_matrix(XMFLOAT3 pos, XMFLOAT3 look_direction, XMFLOAT3 up_direction);
-XMMATRIX snc_camera_projection_matrix(float fov, float aspect_ratio, float near_plane, float far_plane);
+XMMATRIX SC_camera_view_matrix(XMFLOAT3 pos, XMFLOAT3 look_direction, XMFLOAT3 up_direction);
+XMMATRIX SC_camera_projection_matrix(float fov, float aspect_ratio, float near_plane, float far_plane);

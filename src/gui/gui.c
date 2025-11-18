@@ -27,13 +27,13 @@
 	Forward declaration of private functions
 *****************************************************/
 
-static struct nk_colorf color_to_nk(snr_color_t *color);
+static struct nk_colorf color_to_nk(SR_Color *color);
 
 /****************************************************
 	Public functions
 *****************************************************/
 
-void SGUI_init(SGUI_context_t *const gui, int width, int height, ID3D12Device *device, ID3D12GraphicsCommandList *command_list) {
+void SGUI_init(SGUI_Context *const gui, int width, int height, ID3D12Device *device, ID3D12GraphicsCommandList *command_list) {
 	gui->ctx = nk_d3d12_init(device, width, height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, USER_TEXTURES);
 	
 	{
@@ -43,7 +43,7 @@ void SGUI_init(SGUI_context_t *const gui, int width, int height, ID3D12Device *d
 	}
 }
 
-void SGUI_draw_top_bar(SGUI_context_t *gui, const char **curr_window) {
+void SGUI_draw_top_bar(SGUI_Context *gui, const char **curr_window) {
 	const float bar_height = 35.0f;
 
 	if (nk_begin(gui->ctx, "TopBar", nk_rect(0, 0, 800, bar_height), NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
@@ -57,7 +57,7 @@ void SGUI_draw_top_bar(SGUI_context_t *gui, const char **curr_window) {
 	nk_end(gui->ctx);
 }
 
-void SGUI_update_triangle_menu(SGUI_context_t *const gui, snr_vertex_t *const triangle_data) {
+void SGUI_update_triangle_menu(SGUI_Context *const gui, SR_Vertex *const triangle_data) {
 	if (nk_begin(gui->ctx, "Triangle", nk_rect(50, 50, 230, 250),
 				 NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE)) {
 		nk_layout_row_dynamic(gui->ctx, 30, 3);
@@ -89,11 +89,11 @@ void SGUI_update_triangle_menu(SGUI_context_t *const gui, snr_vertex_t *const tr
 }
 
 
-void SGUI_input_begin(const SGUI_context_t *gui) {
+void SGUI_input_begin(const SGUI_Context *gui) {
 	nk_input_begin(gui->ctx);
 }
 
-void SGUI_input_end(const SGUI_context_t *gui) {
+void SGUI_input_end(const SGUI_Context *gui) {
 	nk_input_end(gui->ctx);
 }
 
@@ -113,7 +113,7 @@ void SGUI_destroy() {
 	nk_d3d12_shutdown();
 }
 
-static struct nk_colorf color_to_nk(snr_color_t *color) {
+static struct nk_colorf color_to_nk(SR_Color *color) {
 	return (struct nk_colorf){
 		.r = color->r,
 		.g = color->g,
