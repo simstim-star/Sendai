@@ -10,43 +10,47 @@
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"
 #include "../win32/win_path.h"
-#include "../win32/window.h"
 #include "renderer.h"
 
 #include "dxgidebug.h"
 #include "render_types.h"
 
+#include <stdint.h>
+#include "../core/camera.h"
+
 /****************************************************
 	Forward declaration of private functions
 *****************************************************/
 
-static void signal_and_wait(SR_Renderer *const renderer);
-static void update_data(SR_Renderer *const renderer, size_t data_size);
+static void signal_and_wait(Sendai_Renderer *const renderer);
+static void update_resource(ID3D12Resource *resource, void *data, size_t data_size);
 
 /****************************************************
 	Public functions
 *****************************************************/
 
-void SR_init(SR_Renderer *const renderer) {
-	renderer->aspect_ratio = (float)(renderer->width) / (float)(renderer->height);
+void SendaiRenderer_init(Sendai_Renderer *const renderer, HWND hwnd) {
+	renderer->hwnd = hwnd;
+	renderer->aspect_ratio = (float)(renderer->width) / (renderer->height);
 	renderer->viewport = (D3D12_VIEWPORT){0.0f, 0.0f, (float)(renderer->width), (float)(renderer->height)};
 	renderer->scissor_rect = (D3D12_RECT){0, 0, (LONG)(renderer->width), (LONG)(renderer->height)};
 	win32_curr_path(renderer->assets_path, _countof(renderer->assets_path));
 
 	/* D3D12 setup */
 
-	int isDebugFactory = 0;
+	int is_debug_factory = 0;
 #if defined(_DEBUG)
-	// Enable the debug layer (requires the Graphics Tools "optional feature").
-	ID3D12Debug1 *debugController = NULL;
-	if (SUCCEEDED(D3D12GetDebugInterface(&IID_ID3D12Debug, (void **)&debugController))) {
-		ID3D12Debug_EnableDebugLayer(debugController);
-		isDebugFactory |= DXGI_CREATE_FACTORY_DEBUG;
-		ID3D12Debug1_Release(debugController);
+	ID3D12Debug1 *debug_controller = NULL;
+	if (SUCCEEDED(D3D12GetDebugInterface(&IID_ID3D12Debug, (void **)&debug_controller))) {
+		ID3D12Debug1_EnableDebugLayer(debug_controller);
+		//ID3D12Debug1_SetEnableGPUBasedValidation(debug_controller, 1);
+		is_debug_factory |= DXGI_CREATE_FACTORY_DEBUG;
+		ID3D12Debug1_Release(debug_controller);
 	}
 #endif
+
 	IDXGIFactory2 *dxgi_factory = NULL;
-	HRESULT hr = CreateDXGIFactory2(isDebugFactory, &IID_IDXGIFactory2, (void **)&dxgi_factory);
+	HRESULT hr = CreateDXGIFactory2(is_debug_factory, &IID_IDXGIFactory2, (void **)&dxgi_factory);
 	exit_if_failed(hr);
 
 	hr = D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_11_0, &IID_ID3D12Device, &renderer->device);
@@ -68,8 +72,14 @@ void SR_init(SR_Renderer *const renderer) {
 	hr = ID3D12Device_CreateCommandAllocator(renderer->device, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator, &renderer->command_allocator);
 	exit_if_failed(hr);
 
-	const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {.NumParameters = 0,
-														   .pParameters = NULL,
+	D3D12_ROOT_PARAMETER root_parameters[1];
+	root_parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	root_parameters[0].Descriptor.ShaderRegister = 0;
+	root_parameters[0].Descriptor.RegisterSpace = 0;
+	root_parameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+	const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {.NumParameters = 1,			   
+														   .pParameters = root_parameters,
 														   .NumStaticSamplers = 0,
 														   .pStaticSamplers = NULL,
 														   .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT};
@@ -91,7 +101,7 @@ void SR_init(SR_Renderer *const renderer) {
 #else
 	const UINT compile_flags = 0;
 #endif
-	const wchar_t *shaders_path = wcscat(renderer->assets_path, L"src/shaders/triangle/triangle.hlsl");
+	const wchar_t *shaders_path = wcscat(renderer->assets_path, L"src/shaders/gltf/gltf.hlsl");
 	hr = D3DCompileFromFile(shaders_path, NULL, NULL, "VSMain", "vs_5_0", compile_flags, 0, &vertex_shader, NULL);
 	exit_if_failed(hr);
 	hr = D3DCompileFromFile(shaders_path, NULL, NULL, "PSMain", "ps_5_0", compile_flags, 0, &pixel_shader, NULL);
@@ -99,7 +109,7 @@ void SR_init(SR_Renderer *const renderer) {
 
 	const D3D12_INPUT_ELEMENT_DESC input_element_descs[] = {{.SemanticName = "POSITION",
 															 .SemanticIndex = 0,
-															 .Format = DXGI_FORMAT_R32G32B32_FLOAT,
+															 .Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
 															 .InputSlot = 0,
 															 .AlignedByteOffset = 0,
 															 .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
@@ -108,7 +118,7 @@ void SR_init(SR_Renderer *const renderer) {
 															 .SemanticIndex = 0,
 															 .Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
 															 .InputSlot = 0,
-															 .AlignedByteOffset = 12,
+															 .AlignedByteOffset = 16,
 															 .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
 															 .InstanceDataStepRate = 0}};
 
@@ -143,13 +153,6 @@ void SR_init(SR_Renderer *const renderer) {
 										&IID_ID3D12GraphicsCommandList1, &renderer->command_list);
 	exit_if_failed(hr);
 
-	SR_Vertex *verts = malloc(3 * sizeof(SR_Vertex));
-	// Coordinates are in relation to the screen center, left-handed (+z to screen inside, +y up, +x right)
-	verts[0] = (SR_Vertex){{0.0f, 0.25f * renderer->aspect_ratio, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
-	verts[1] = (SR_Vertex){{0.25f, -0.25f * renderer->aspect_ratio, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
-	verts[2] = (SR_Vertex){{-0.25f, -0.25f * renderer->aspect_ratio, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
-
-	renderer->data = verts;
 
 	const D3D12_HEAP_PROPERTIES heap_property_upload = (D3D12_HEAP_PROPERTIES){
 		.Type = D3D12_HEAP_TYPE_UPLOAD,
@@ -158,7 +161,7 @@ void SR_init(SR_Renderer *const renderer) {
 		.CreationNodeMask = 1,
 		.VisibleNodeMask = 1,
 	};
-	const D3D12_RESOURCE_DESC buffer_resource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(SR_Vertex) * 3, D3D12_RESOURCE_FLAG_NONE, 0);
+	const D3D12_RESOURCE_DESC buffer_resource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(Sendai_Vertex) * 24, D3D12_RESOURCE_FLAG_NONE, 0);
 
 	// Note: using upload heaps to transfer static data like vert buffers is not
 	// recommended. Every time the GPU needs it, the upload heap will be marshalled
@@ -169,8 +172,19 @@ void SR_init(SR_Renderer *const renderer) {
 	exit_if_failed(hr);
 
 	renderer->vertex_buffer_view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(renderer->vertex_buffer);
-	renderer->vertex_buffer_view.StrideInBytes = sizeof(SR_Vertex);
-	renderer->vertex_buffer_view.SizeInBytes = sizeof(SR_Vertex) * 3;
+	renderer->vertex_buffer_view.StrideInBytes = sizeof(Sendai_Vertex);
+	renderer->vertex_buffer_view.SizeInBytes = sizeof(Sendai_Vertex) * 24;
+
+	// Constant buffers must be 256-byte aligned size
+	UINT cb_size = (sizeof(Sendai_ConstantBuffer) + 255) & ~255;
+	const D3D12_RESOURCE_DESC cb_desc = CD3DX12_RESOURCE_DESC_BUFFER(cb_size, D3D12_RESOURCE_FLAG_NONE, 0);
+
+	hr = ID3D12Device_CreateCommittedResource(renderer->device,
+											  &heap_property_upload,
+											  D3D12_HEAP_FLAG_NONE, &cb_desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
+											  &renderer->constant_buffer 
+	);
+	exit_if_failed(hr);
 
 	renderer->fence_event = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if (renderer->fence_event == NULL) {
@@ -204,7 +218,7 @@ void SR_init(SR_Renderer *const renderer) {
 		.AlphaMode = DXGI_ALPHA_MODE_IGNORE,
 		.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH,
 	};
-	hr = IDXGIFactory2_CreateSwapChainForHwnd(dxgi_factory, (IUnknown *)renderer->command_queue, G_HWND, &swap_chain_desc, NULL, NULL,
+	hr = IDXGIFactory2_CreateSwapChainForHwnd(dxgi_factory, (IUnknown *)renderer->command_queue, renderer->hwnd, &swap_chain_desc, NULL, NULL,
 											  &renderer->swap_chain);
 	exit_if_failed(hr);
 
@@ -217,6 +231,7 @@ void SR_init(SR_Renderer *const renderer) {
 	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(renderer->rtv_descriptor_heap, &descriptor_handle);
 	ID3D12Device_CreateRenderTargetView(renderer->device, renderer->rtv_buffers[0], NULL, descriptor_handle);
 	renderer->rtv_handles[0] = descriptor_handle;
+
 	descriptor_handle.ptr += renderer->rtv_desc_increment;
 	ID3D12Device_CreateRenderTargetView(renderer->device, renderer->rtv_buffers[1], NULL, descriptor_handle);
 	renderer->rtv_handles[1] = descriptor_handle;
@@ -224,11 +239,37 @@ void SR_init(SR_Renderer *const renderer) {
 	IDXGIFactory2_Release(dxgi_factory);
 }
 
-void SR_update(SR_Renderer *const renderer) {
-	update_data(renderer, sizeof(SR_Vertex) * 3);
+void SendaiRenderer_indices(Sendai_Renderer *const renderer) {
+	const D3D12_HEAP_PROPERTIES heap_property_upload = (D3D12_HEAP_PROPERTIES){
+		.Type = D3D12_HEAP_TYPE_UPLOAD,
+		.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+		.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+		.CreationNodeMask = 1,
+		.VisibleNodeMask = 1,
+	};
+	D3D12_RESOURCE_DESC ib_desc = CD3DX12_RESOURCE_DESC_BUFFER(renderer->model.index_count * sizeof(uint16_t), D3D12_RESOURCE_FLAG_NONE, 0);
+	HRESULT hr = ID3D12Device_CreateCommittedResource(renderer->device, &heap_property_upload, D3D12_HEAP_FLAG_NONE, &ib_desc, D3D12_RESOURCE_STATE_GENERIC_READ, 
+		NULL, &IID_ID3D12Resource, (void **)(&renderer->index_buffer));
+	exit_if_failed(hr);
+	
+	update_resource(renderer->index_buffer, renderer->model.indices, renderer->model.index_count * sizeof(uint16_t));
+
+	renderer->index_buffer_view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(renderer->index_buffer);
+	renderer->index_buffer_view.Format = DXGI_FORMAT_R16_UINT;
+	renderer->index_buffer_view.SizeInBytes = (UINT)(renderer->model.index_count * sizeof(uint16_t));
 }
 
-void SR_draw(SR_Renderer *const renderer) {
+void SendaiRenderer_update(Sendai_Renderer *const renderer, Sendai_Camera *const camera) {
+	update_resource(renderer->vertex_buffer, renderer->model.vertices, renderer->model.vertex_count * sizeof(Sendai_Vertex));
+
+	XMMATRIX view = Sendai_camera_view_matrix(camera->position, camera->look_direction, camera->up_direction);
+	XMMATRIX proj = Sendai_camera_projection_matrix(XM_PIDIV4, renderer->aspect_ratio, 0.1f, 1000.0f);
+	XMMATRIX mvp = XM_MAT_MULT(view, proj);
+	mvp = XM_MAT_TRANSP(mvp);
+	update_resource(renderer->constant_buffer, &mvp, sizeof(XMMATRIX));
+}
+
+void SendaiRenderer_draw(Sendai_Renderer *const renderer) {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(renderer->command_list, renderer->root_sig);
 	ID3D12GraphicsCommandList_RSSetViewports(renderer->command_list, 1, &renderer->viewport);
 	ID3D12GraphicsCommandList_RSSetScissorRects(renderer->command_list, 1, &renderer->scissor_rect);
@@ -241,15 +282,16 @@ void SR_draw(SR_Renderer *const renderer) {
 		.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET,
 		.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
 	};
-	ID3D12GraphicsCommandList_ResourceBarrier(renderer->command_list, 1, &resource_barrier);
 	const float clearColor[] = {0.0f, 0.2f, 0.4f, 1.0f};
+	ID3D12GraphicsCommandList_ResourceBarrier(renderer->command_list, 1, &resource_barrier);
 	ID3D12GraphicsCommandList_ClearRenderTargetView(renderer->command_list, renderer->rtv_handles[renderer->rtv_index], clearColor, 0, NULL);
 	ID3D12GraphicsCommandList_OMSetRenderTargets(renderer->command_list, 1, &renderer->rtv_handles[renderer->rtv_index], FALSE, NULL);
-	ID3D12GraphicsCommandList_IASetVertexBuffers(renderer->command_list, 0, 1, &renderer->vertex_buffer_view);
 	ID3D12GraphicsCommandList_IASetPrimitiveTopology(renderer->command_list, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	ID3D12GraphicsCommandList_DrawInstanced(renderer->command_list, 3, 1, 0, 0);
-
-	SGUI_draw(renderer->command_list);
+	ID3D12GraphicsCommandList_IASetIndexBuffer(renderer->command_list, &renderer->index_buffer_view);
+	ID3D12GraphicsCommandList_IASetVertexBuffers(renderer->command_list, 0, 1, &renderer->vertex_buffer_view);
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(renderer->command_list, 0, ID3D12Resource_GetGPUVirtualAddress(renderer->constant_buffer));
+	ID3D12GraphicsCommandList_DrawIndexedInstanced(renderer->command_list, renderer->model.index_count, 1, 0, 0, 0);
+	SendaiGui_draw(renderer->command_list);
 
 	// Bring the rtv resource back to present state
 	resource_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -260,32 +302,28 @@ void SR_draw(SR_Renderer *const renderer) {
 	resource_barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 	ID3D12GraphicsCommandList_ResourceBarrier(renderer->command_list, 1, &resource_barrier);
 
-	SR_execute_commands(renderer);
+	SendaiRenderer_execute_commands(renderer);
 
 	HRESULT hr = IDXGISwapChain2_Present(renderer->swap_chain, 1, 0);
 	renderer->rtv_index = (renderer->rtv_index + 1) % FRAME_COUNT;
 	if (hr == DXGI_ERROR_DEVICE_RESET || hr == DXGI_ERROR_DEVICE_REMOVED) {
-		/* to recover from this, you'll need to recreate device and all the resources */
 		MessageBoxW(NULL, L"D3D12 device is lost or removed!", L"Error", 0);
 		return;
-	} else if (hr == DXGI_STATUS_OCCLUDED) {
-		/* window is not visible, so vsync won't work. Let's sleep a bit to reduce CPU usage */
-		Sleep(10);
 	}
 	exit_if_failed(hr);
 }
 
-void SR_execute_commands(SR_Renderer *const renderer) {
+void SendaiRenderer_execute_commands(Sendai_Renderer *const renderer) {
 	ID3D12GraphicsCommandList_Close(renderer->command_list);
-	ID3D12CommandList *cmd_lists[] = {(ID3D12CommandList *)renderer->command_list};
+	ID3D12CommandList *cmd_lists[] = {(ID3D12CommandList*) renderer->command_list};
 	ID3D12CommandQueue_ExecuteCommandLists(renderer->command_queue, 1, cmd_lists);
 	signal_and_wait(renderer);
 	ID3D12CommandAllocator_Reset(renderer->command_allocator);
 	ID3D12GraphicsCommandList_Reset(renderer->command_list, renderer->command_allocator, renderer->pipeline_state);
 }
 
-void SR_destroy(SR_Renderer *renderer) {
-	SGUI_destroy();
+void SendaiRenderer_destroy(Sendai_Renderer *renderer) {
+	SendaiGui_destroy();
 	for (int i = 0; i < FRAME_COUNT; ++i) {
 		signal_and_wait(renderer);
 		ID3D12Resource_Release(renderer->rtv_buffers[i]);
@@ -299,7 +337,11 @@ void SR_destroy(SR_Renderer *renderer) {
 	ID3D12RootSignature_Release(renderer->root_sig);
 	ID3D12PipelineState_Release(renderer->pipeline_state);
 	ID3D12Resource_Release(renderer->vertex_buffer);
+	ID3D12Resource_Release(renderer->index_buffer);
+	ID3D12Resource_Release(renderer->constant_buffer);
 	ID3D12Device_Release(renderer->device);
+	CloseHandle(renderer->fence_event);
+	SendaiGLTF_release(&renderer->model);
 
 #if defined(_DEBUG)
 	IDXGIDebug1 *debugDev = NULL;
@@ -309,11 +351,12 @@ void SR_destroy(SR_Renderer *renderer) {
 #endif
 }
 
-void SR_swapchain_resize(SR_Renderer *const renderer, int width, int height) {
+void SendaiRenderer_swapchain_resize(Sendai_Renderer *const renderer, int width, int height) {
 	for (int i = 0; i < FRAME_COUNT; ++i) {
 		signal_and_wait(renderer);
 		ID3D12Resource_Release(renderer->rtv_buffers[i]);
 	}
+
 	HRESULT hr = IDXGISwapChain1_ResizeBuffers(renderer->swap_chain, 2, width, height, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
 	exit_if_failed(hr);
 	hr = IDXGISwapChain1_GetBuffer(renderer->swap_chain, 0, &IID_ID3D12Resource, &renderer->rtv_buffers[0]);
@@ -335,21 +378,18 @@ void SR_swapchain_resize(SR_Renderer *const renderer, int width, int height) {
 	Implementation of private functions
 *****************************************************/
 
-static void signal_and_wait(SR_Renderer *const renderer) {
+static void signal_and_wait(Sendai_Renderer *const renderer) {
 	HRESULT hr = ID3D12CommandQueue_Signal(renderer->command_queue, renderer->fence, ++renderer->fence_value);
 	exit_if_failed(hr);
-
-	while (ID3D12Fence_GetCompletedValue(renderer->fence) != renderer->fence_value) {
-		SwitchToThread(); /* Allow windows to do other work */
-	}
+	ID3D12Fence_SetEventOnCompletion(renderer->fence, renderer->fence_value, renderer->fence_event);
+	WaitForSingleObject(renderer->fence_event, INFINITE);
 }
 
-static void update_data(SR_Renderer *const renderer, size_t data_size) {
-	UINT8 *vertex_data_begin = NULL;
-	// We do not intend to read from this resource on the CPU, only write
+void update_resource(ID3D12Resource *resource, void *data, size_t data_size) {
+	UINT8 *begin = NULL;
 	const D3D12_RANGE read_range = {0, 0};
-	HRESULT hr = ID3D12Resource_Map(renderer->vertex_buffer, 0, &read_range, (void **)&vertex_data_begin);
+	HRESULT hr = ID3D12Resource_Map(resource, 0, &read_range, (void **)&begin);
 	exit_if_failed(hr);
-	memcpy(vertex_data_begin, renderer->data, data_size);
-	ID3D12Resource_Unmap(renderer->vertex_buffer, 0, NULL);
+	memcpy(begin, data, data_size);
+	ID3D12Resource_Unmap(resource, 0, NULL);
 }

@@ -3,18 +3,27 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 
+#include "../assets/gltf.h"
+
 #define FRAME_COUNT 2
 
-typedef struct SR_Renderer {
-	UINT width;
-	UINT height;
+typedef struct Sendai_Camera Sendai_Camera;
+
+typedef struct Sendai_Renderer {
+	HWND  hwnd;
+	UINT  width;
+	UINT  height;
 	float aspect_ratio;
 	WCHAR assets_path[512];
-
-	void *data;
-
+	
 	D3D12_VIEWPORT viewport;
-	D3D12_RECT scissor_rect;
+	D3D12_RECT     scissor_rect;
+
+    DXGI_MODE_DESC  fullscreen_mode;
+	BOOL		    is_fullscreen;
+	DXGI_MODE_DESC  *display_modes;
+
+	Sendai_Model model;
 
 	IDXGISwapChain1 *swap_chain;
 	ID3D12DescriptorHeap *rtv_descriptor_heap;
@@ -36,22 +45,28 @@ typedef struct SR_Renderer {
 		Synchronization objects
 	*****************************/
 
-	UINT frame_index;
-	ID3D12Fence *fence;
+	UINT   frame_index;
 	UINT64 fence_value;
 	HANDLE fence_event;
+	ID3D12Fence *fence;
 
 	/*****************************
 		Resources
 	*****************************/
 
 	ID3D12Resource *vertex_buffer;
+	ID3D12Resource *index_buffer;
+	ID3D12Resource *constant_buffer;
 	D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view;
-} SR_Renderer;
+	D3D12_INDEX_BUFFER_VIEW index_buffer_view;
 
-void SR_init(SR_Renderer *const renderer);
-void SR_destroy(SR_Renderer *renderer);
-void SR_update(SR_Renderer *const renderer);
-void SR_draw(SR_Renderer *const renderer);
-void SR_execute_commands(SR_Renderer *const renderer);
-void SR_swapchain_resize(SR_Renderer *const renderer, int width, int height);
+	UINT8 *vb_mapped;
+	UINT8 *cb_mapped;
+} Sendai_Renderer;
+
+void SendaiRenderer_init(Sendai_Renderer *const renderer, HWND hwnd);
+void SendaiRenderer_indices(Sendai_Renderer *const renderer);
+void SendaiRenderer_destroy(Sendai_Renderer *renderer);
+void SendaiRenderer_update(Sendai_Renderer *const renderer, Sendai_Camera *const camera);
+void SendaiRenderer_draw(Sendai_Renderer *const renderer);
+void SendaiRenderer_execute_commands(Sendai_Renderer *const renderer);

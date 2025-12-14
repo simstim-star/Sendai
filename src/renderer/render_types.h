@@ -1,18 +1,23 @@
 #pragma once
 
-typedef struct SR_Color {
+#include "DirectXMathC.h"
+
+typedef struct Sendai_Color {
 	float r, g, b, a;
-} SR_Color;
+} Sendai_Color;
 
-typedef struct SR_Float3 {
-	float x, y, z;
-} SR_Float3;
-
-typedef struct SR_Float4 {
+typedef struct Sendai_Float4 {
 	float x, y, z, w;
-} SR_Float4;
+} Sendai_Float4;
 
-typedef struct SR_Vertex {
-	SR_Float3 position;
-	SR_Float4 color;
-} SR_Vertex;
+typedef struct Sendai_Vertex {
+	Sendai_Float4 position;
+	Sendai_Float4 color;
+} Sendai_Vertex;
+
+typedef struct Sendai_ConstantBuffer {
+	XMMATRIX mvp_matrix;
+
+	// Constant buffers must be 256-byte aligned. XMMATRIX is 64 bytes.
+	char padding[192];
+} Sendai_ConstantBuffer;

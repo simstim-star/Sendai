@@ -6,7 +6,7 @@
  Private functions
 ******************************************************************/
 
-static void camera_reset(SC_Camera *camera) {
+static void camera_reset(Sendai_Camera *camera) {
 	camera->position = camera->initial_position;
 	camera->yaw = XM_PI;
 	camera->pitch = 0.0f;
@@ -17,8 +17,8 @@ static void camera_reset(SC_Camera *camera) {
  Public functions
 ******************************************************************/
 
-SC_Camera SC_camera_spawn(XMFLOAT3 position) {
-	return (SC_Camera){
+Sendai_Camera Sendai_camera_spawn(XMFLOAT3 position) {
+	return (Sendai_Camera){
 		.initial_position = position,
 		.position = position,
 		.yaw = XM_PI,
@@ -30,7 +30,7 @@ SC_Camera SC_camera_spawn(XMFLOAT3 position) {
 	};
 }
 
-void SC_camera_update(SC_Camera *camera, float elapsedSeconds) {
+void Sendai_camera_update(Sendai_Camera *camera, float elapsedSeconds) {
 	// Calculate the move vector in camera space.
 	XMFLOAT3 move = (XMFLOAT3){0, 0, 0};
 
@@ -42,9 +42,9 @@ void SC_camera_update(SC_Camera *camera, float elapsedSeconds) {
 	// Avoid normalizing zero vector (which can't be normalized)
 	if (fabs(move.x) > 0.1f && fabs(move.z) > 0.1f) {
 		XMVECTOR moveAsXMVECTOR = XMLoadFloat3(&move);
-		XMVECTOR vector = XMVector3Normalize(&moveAsXMVECTOR);
-		move.x = XMVectorGetX(&vector);
-		move.z = XMVectorGetZ(&vector);
+		XMVECTOR vector = XM_VEC3_NORM(moveAsXMVECTOR);
+		move.x = XM_VECX(vector);
+		move.z = XM_VECZ(vector);
 	}
 
 	float moveInterval = camera->move_speed * elapsedSeconds;
@@ -72,18 +72,18 @@ void SC_camera_update(SC_Camera *camera, float elapsedSeconds) {
 	camera->look_direction.z = r * cosf(camera->yaw);
 }
 
-XMMATRIX SC_camera_view_matrix(XMFLOAT3 pos, XMFLOAT3 lookDirection, XMFLOAT3 upDirection) {
+XMMATRIX Sendai_camera_view_matrix(XMFLOAT3 pos, XMFLOAT3 lookDirection, XMFLOAT3 upDirection) {
 	XMVECTOR EyePosition = XMLoadFloat3(&pos);
 	XMVECTOR EyeDirection = XMLoadFloat3(&lookDirection);
 	XMVECTOR UpDirection = XMLoadFloat3(&upDirection);
-	return XMMatrixLookToRH(&EyePosition, &EyeDirection, &UpDirection);
+	return XM_MAT_LOOK_RH(EyePosition, EyeDirection, UpDirection);
 }
 
-XMMATRIX SC_camera_projection_matrix(float fov, float aspectRatio, float nearPlane, float farPlane) {
+XMMATRIX Sendai_camera_projection_matrix(float fov, float aspectRatio, float nearPlane, float farPlane) {
 	return XMMatrixPerspectiveFovRH(fov, aspectRatio, nearPlane, farPlane);
 }
 
-void SC_camera_on_key_down(SC_Camera *camera, WPARAM key) {
+void Sendai_camera_on_key_down(Sendai_Camera *camera, WPARAM key) {
 	switch (key) {
 	case 'W':
 		camera->keys_pressed.w = true;
@@ -115,7 +115,7 @@ void SC_camera_on_key_down(SC_Camera *camera, WPARAM key) {
 	}
 }
 
-void SC_camera_on_key_up(SC_Camera *camera, WPARAM key) {
+void Sendai_camera_on_key_up(Sendai_Camera *camera, WPARAM key) {
 	switch (key) {
 	case 'W':
 		camera->keys_pressed.w = false;

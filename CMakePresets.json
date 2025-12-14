@@ -12,7 +12,7 @@
         "CMAKE_CXX_COMPILER": "cl.exe"
       },
       "environment": {
-        "CFLAGS": "/fsanitize=address /Wall"
+        "CFLAGS": "/Wall"
       },
       "condition": {
         "type": "equals",

@@ -3,18 +3,22 @@
 #include "../renderer/renderer.h"
 #include "../gui/gui.h"
 #include "camera.h"
-#include <stdbool.h>
+#include "timer.h"
 
-typedef struct SC_Engine {
-	CHAR *title;
-	SR_Renderer renderer;
-	SGUI_Context gui;
-	SC_Camera camera;
-	bool is_running;
-	CHAR *curr_window;
-} SC_Engine;
+typedef struct Sendai {
+	CHAR		 *title;
+	CHAR		 *curr_window;
+	HINSTANCE    hinstance;
+	HWND		 hwnd;
+	BOOL		 is_running;
 
-void SC_init(SC_Engine *engine);
-void SC_handle_input(SC_Engine *engine, MSG *msg);
-void SC_update(SC_Engine *engine);
-void SC_destroy(SC_Engine *engine);
+	SendaiGui_Context gui;
+	Sendai_Camera	  camera;
+	Sendai_Renderer   renderer;
+	Sendai_Step_Timer timer;
+} Sendai;
+
+int Sendai_run();
+void Sendai_handle_input(Sendai *engine, MSG *msg);
+void SendaiGui_update(Sendai *engine);
+void Sendai_destroy(Sendai *engine);
