@@ -1,6 +1,11 @@
+/*
+* Based on https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12MeshShaders/src/DynamicLOD/StepTimer.h
+*/
+
 #include "timer.h"
 
-void SendaiTimer_init(Sendai_Step_Timer *st) {
+void SendaiTimer_init(Sendai_Step_Timer *st)
+{
 	st->elapsed_ticks = 0;
 	st->total_ticks = 0;
 	st->leftover_ticks = 0;
@@ -21,7 +26,8 @@ void SendaiTimer_init(Sendai_Step_Timer *st) {
 // After an intentional timing discontinuity (for instance a blocking IO operation)
 // call this to avoid having the fixed timestep logic attempt a set of catch-up
 // Update calls.
-void Sendai_reset_elapsed_time(Sendai_Step_Timer *st) {
+void Sendai_reset_elapsed_time(Sendai_Step_Timer *st)
+{
 	QueryPerformanceCounter(&st->qpc_last_time);
 
 	st->leftover_ticks = 0;
@@ -31,7 +37,8 @@ void Sendai_reset_elapsed_time(Sendai_Step_Timer *st) {
 }
 
 // Update timer state, calling the specified Update function the appropriate number of times.
-void Sendai_tick_with_update_fn(Sendai_Step_Timer *st, LPUPDATEFUNC update) {
+void Sendai_tick_with_update_fn(Sendai_Step_Timer *st, LPUPDATEFUNC update)
+{
 	// Query the current time.
 	LARGE_INTEGER current_time;
 	QueryPerformanceCounter(&current_time);

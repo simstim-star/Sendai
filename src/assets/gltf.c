@@ -1,55 +1,101 @@
 #define CGLTF_IMPLEMENTATION
-#include "../../deps/cgltf/cgltf.h"
+#include "../../deps/cgltf.h"
 
-#include "gltf.h"
-#include "../renderer/render_types.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "../../deps/stb_image.h"
+
+#include "../../deps/b64.h"
+
 #include "../core/log.h"
+#include "../renderer/render_types.h"
+#include "gltf.h"
 
-bool SendaiGLTF_load(const char *path, Sendai_Model *out_model) {
+/****************************************************
+	Forward declaration of private functions
+*****************************************************/
+
+static int load_image(cgltf_data *data, cgltf_image *img, uint8_t **outPixels, size_t *outSize, int *outW, int *outH, int *outChannels);
+
+/****************************************************
+	Public functions
+*****************************************************/
+
+BOOL SendaiGLTF_load(const char *path, Sendai_Model *out_model)
+{
 	cgltf_options options = {0};
-	cgltf_data *vertex_data = NULL;
-	cgltf_result result = cgltf_parse_file(&options, path, &vertex_data);
+	cgltf_data *data = NULL;
 
+	cgltf_result result = cgltf_parse_file(&options, path, &data);
 	if (result != cgltf_result_success) {
-		Sendai_Log_appendf("cgltf_parse_file failed: %d\n", result); 
+		Sendai_Log_appendf("cgltf_parse_file failed: %d\n", result);
 		return false;
 	}
 
-	result = cgltf_load_buffers(&options, vertex_data, path);
+	result = cgltf_load_buffers(&options, data, path);
 	if (result != cgltf_result_success) {
-		Sendai_Log_appendf("cgltf_load_buffers failed: %d\n", result); 
-		cgltf_free(vertex_data);
+		Sendai_Log_appendf("cgltf_load_buffers failed: %d\n", result);
+		cgltf_free(data);
 		return false;
 	}
 
-	result = cgltf_validate(vertex_data);
-	if (result != cgltf_result_success) {
-		Sendai_Log_appendf("cgltf_validate failed: %d\n", result); 
-		cgltf_free(vertex_data);
+	size_t image_count = data->images_count || 1;
+
+	out_model->textures = (Sendai_Texture *)calloc(image_count, sizeof(Sendai_Texture));
+	out_model->texture_count = image_count;
+
+	for (size_t i = 0; i < image_count; ++i) {
+		uint8_t *pixels = NULL;
+		size_t size = 0;
+		int w = 0, h = 0, channels = 0;
+
+		int loaded = 0;
+		if (i < data->images_count) {
+			loaded = load_image(data, &data->images[i], &pixels, &size, &w, &h, &channels);
+		}
+
+		if (!loaded) {
+			uint8_t *white = (uint8_t *)malloc(4);
+			white[0] = 255;
+			white[1] = 255;
+			white[2] = 255;
+			white[3] = 255;
+
+			out_model->textures[i].pixels = white;
+			out_model->textures[i].width = 1;
+			out_model->textures[i].height = 1;
+		} else {
+			out_model->textures[i].pixels = pixels;
+			out_model->textures[i].width = w;
+			out_model->textures[i].height = h;
+		}
+	}
+
+	if (data->meshes_count == 0) {
+		Sendai_Log_append("No meshes in glTF\n");
+		cgltf_free(data);
 		return false;
 	}
 
-	if (vertex_data->meshes_count == 0) {
-		Sendai_Log_appendf("No meshes in glTF\n"); 
-		cgltf_free(vertex_data);
-		return false;
-	}
-
-	// using single mesh for now...
-	cgltf_mesh *mesh = &vertex_data->meshes[0];
+	cgltf_mesh *mesh = &data->meshes[0];
 	cgltf_primitive *prim = &mesh->primitives[0];
+
 	cgltf_accessor *pos_accessor = NULL;
 	cgltf_accessor *color_accessor = NULL;
-	
+	cgltf_accessor *uv_accessor = NULL;
 
 	for (cgltf_size i = 0; i < prim->attributes_count; i++) {
 		cgltf_attribute *attr = &prim->attributes[i];
-		switch (attr->type) { 
+		switch (attr->type) {
 		case cgltf_attribute_type_position:
 			pos_accessor = attr->vertex_data;
 			break;
 		case cgltf_attribute_type_color:
 			color_accessor = attr->vertex_data;
+			break;
+		case cgltf_attribute_type_texcoord:
+			if (attr->index == 0) {
+				uv_accessor = attr->vertex_data;
+			}
 			break;
 		default:
 			break;
@@ -57,27 +103,33 @@ bool SendaiGLTF_load(const char *path, Sendai_Model *out_model) {
 	}
 
 	if (!pos_accessor) {
-		Sendai_Log_append("Mesh has no POSITION attribute\n"); 
-		cgltf_free(vertex_data);
+		Sendai_Log_append("Mesh has no POSITION attribute\n");
+		cgltf_free(data);
 		return false;
 	}
 
 	size_t vertex_count = pos_accessor->count;
-	Sendai_Vertex *vertices = malloc(sizeof(Sendai_Vertex) * vertex_count);
+	Sendai_Vertex *vertices = (Sendai_Vertex *)malloc(sizeof(Sendai_Vertex) * vertex_count);
+
+	float *pos_buf = (float *)malloc(sizeof(float) * vertex_count * 3);
 	float *color_buf = NULL;
-	float *pos_buf = malloc(sizeof(float) * vertex_count * 3);
+	float *uv_buf = NULL;
+
 	cgltf_accessor_unpack_floats(pos_accessor, pos_buf, pos_accessor->count * 3);
 
 	if (color_accessor) {
-		color_buf = malloc(sizeof(float) * vertex_count * 4);
+		color_buf = (float *)malloc(sizeof(float) * vertex_count * 3);
 		cgltf_accessor_unpack_floats(color_accessor, color_buf, color_accessor->count * 3);
+	}
+
+	if (uv_accessor) {
+		uv_buf = (float *)malloc(sizeof(float) * vertex_count * 2);
+		cgltf_accessor_unpack_floats(uv_accessor, uv_buf, uv_accessor->count * 2);
 	}
 
 	for (size_t i = 0; i < vertex_count; i++) {
 		vertices[i].position.x = pos_buf[i * 3 + 0];
 		vertices[i].position.y = pos_buf[i * 3 + 1];
-		// DirectX is left-handed: +Z extends into the screen, away from the viewer
-		// glTF is right-handed: +Z extends away from the screen, into the viewew
 		vertices[i].position.z = -pos_buf[i * 3 + 2];
 		vertices[i].position.w = 1.0f;
 
@@ -85,25 +137,29 @@ bool SendaiGLTF_load(const char *path, Sendai_Model *out_model) {
 			vertices[i].color.x = color_buf[i * 3 + 0];
 			vertices[i].color.y = color_buf[i * 3 + 1];
 			vertices[i].color.z = color_buf[i * 3 + 2];
-			vertices[i].color.w = 1.0;
+			vertices[i].color.w = 1.0f;
 		} else {
 			vertices[i].color.x = vertices[i].color.y = vertices[i].color.z = vertices[i].color.w = 1.0f;
+		}
+
+		if (uv_buf) {
+			vertices[i].uv.u = uv_buf[i * 2 + 0];
+			vertices[i].uv.v = 1.0f - uv_buf[i * 2 + 1]; /* DX flip */
 		}
 	}
 
 	cgltf_accessor *idx_accessor = prim->indices;
-	size_t index_count = (idx_accessor ? idx_accessor->count : 0);
-	uint16_t *indices = NULL;
-	if (index_count > 0) indices = malloc(sizeof(uint16_t) * index_count);
+	size_t index_count = idx_accessor ? idx_accessor->count : 0;
 
-	if (indices && idx_accessor) {
+	uint16_t *indices = NULL;
+	if (index_count > 0) {
+		indices = (uint16_t *)malloc(sizeof(uint16_t) * index_count);
 		for (size_t i = 0; i < index_count; i++) {
 			uint32_t v;
 			cgltf_accessor_read_uint(idx_accessor, (int)i, &v, 1);
 			indices[i] = (uint16_t)v;
 		}
 	}
-
 
 	out_model->vertices = vertices;
 	out_model->vertex_count = vertex_count;
@@ -112,14 +168,79 @@ bool SendaiGLTF_load(const char *path, Sendai_Model *out_model) {
 
 	free(pos_buf);
 	free(color_buf);
-	cgltf_free(vertex_data);
+	free(uv_buf);
 
-	Sendai_Log_appendf("Succesfully loaded %s\n", path); 
-	
+	cgltf_free(data);
+
+	Sendai_Log_appendf("Successfully loaded %s\n", path);
 	return true;
 }
 
-void SendaiGLTF_release(Sendai_Model *model) {
+void SendaiGLTF_release(Sendai_Model *model)
+{
 	free(model->vertices);
 	free(model->indices);
+}
+
+/****************************************************
+	Implementation of private functions
+*****************************************************/
+
+int load_image(cgltf_data *data, cgltf_image *img, uint8_t **out_pixels, size_t *out_size, int *out_w, int *out_h, int *out_channels)
+{
+	if (!out_pixels || !out_size || !out_w || !out_h || !out_channels) {
+		return 0;
+	}
+
+	*out_pixels = NULL;
+	*out_size = 0;
+	unsigned char *stbi_data = NULL;
+
+	if (img->uri) {
+		BOOL is_data_embedded = strncmp(img->uri, "data:", 5) == 0;
+		if (is_data_embedded) {
+			const char *comma = strchr(img->uri, ',');
+			if (!comma) {
+				return 0;
+			}
+			const char *encoded_b64 = comma + 1;
+			size_t decoded_len = strlen(encoded_b64) * 3 / 4;
+			char *decoded = malloc(decoded_len);
+			b64_decode(encoded_b64, decoded);
+			stbi_data = stbi_load_from_memory(decoded, (int)decoded_len, out_w, out_h, out_channels, 4);
+
+			free(decoded);
+
+			if (!stbi_data) {
+				return 0;
+			}
+		} else {
+			stbi_data = stbi_load(img->uri, out_w, out_h, out_channels, 4);
+			if (!stbi_data) {
+				return 0;
+			}
+		}
+	} else if (img->buffer_view) {
+		cgltf_buffer_view *buffer_view = img->buffer_view;
+		cgltf_buffer *buf = buffer_view->buffer;
+		const uint8_t *data = (const uint8_t *)buf->vertex_data + buffer_view->offset;
+		int channels;
+		unsigned char *stbi_data = stbi_load_from_memory(data, (int)buffer_view->size, out_w, out_h, out_channels, 4);
+		if (stbi_data == NULL) {
+			return 0;
+		}
+	}
+
+	if (stbi_data == NULL) {
+		return 1;
+	}
+	*out_size = (size_t)(*out_w) * (size_t)(*out_h) * 4;
+	*out_pixels = (uint8_t *)malloc(*out_size);
+	if (*out_pixels == NULL) {
+		stbi_image_free(stbi_data);
+		return 1;
+	}
+	memcpy(*out_pixels, stbi_data, *out_size);
+	stbi_image_free(stbi_data);
+	return 1;
 }

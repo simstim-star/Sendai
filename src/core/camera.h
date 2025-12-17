@@ -27,9 +27,9 @@ typedef struct Sendai_Camera {
 } Sendai_Camera;
 
 Sendai_Camera Sendai_camera_spawn(XMFLOAT3 position);
-void Sendai_camera_update(Sendai_Camera *camera, float elapsedSeconds);
+void Sendai_camera_update(Sendai_Camera *camera, float elapsed_seconds);
 void Sendai_camera_on_key_down(Sendai_Camera *camera, WPARAM key);
 void Sendai_camera_on_key_up(Sendai_Camera *camera, WPARAM key);
 
-XMMATRIX Sendai_camera_view_matrix(XMFLOAT3 pos, XMFLOAT3 look_direction, XMFLOAT3 up_direction);
+XMMATRIX Sendai_camera_view_matrix(XMFLOAT3 pos, XMFLOAT3 look, XMFLOAT3 up);
 XMMATRIX Sendai_camera_projection_matrix(float fov, float aspect_ratio, float near_plane, float far_plane);

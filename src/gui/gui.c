@@ -15,14 +15,14 @@
 #define NK_IMPLEMENTATION
 #define NK_D3D12_IMPLEMENTATION
 
-#include <stdio.h>
 #include <d3d12.h>
+#include <stdio.h>
 
 #include "gui.h"
 
-#include "../../deps/nuklear/nuklear.h"
-#include "../shaders/nuklear/nuklear_d3d12.h"
+#include "../../deps/nuklear.h"
 #include "../core/log.h"
+#include "../shaders/nuklear/nuklear_d3d12.h"
 
 /****************************************************
 	Forward declaration of private functions
@@ -34,9 +34,10 @@ static struct nk_colorf color_to_nk(Sendai_Color *color);
 	Public functions
 *****************************************************/
 
-void SendaiGui_init(SendaiGui_Context *const gui, int width, int height, ID3D12Device *device, ID3D12GraphicsCommandList *command_list) {
+void SendaiGui_init(SendaiGui_Context *const gui, int width, int height, ID3D12Device *device, ID3D12GraphicsCommandList *command_list)
+{
 	gui->ctx = nk_d3d12_init(device, width, height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, USER_TEXTURES);
-	
+
 	{
 		struct nk_font_atlas *atlas;
 		nk_d3d12_font_stash_begin(&atlas);
@@ -44,7 +45,8 @@ void SendaiGui_init(SendaiGui_Context *const gui, int width, int height, ID3D12D
 	}
 }
 
-void SendaiGui_draw_top_bar(SendaiGui_Context *gui, const char **curr_window) {
+void SendaiGui_draw_top_bar(SendaiGui_Context *gui, const char **curr_window)
+{
 	const float bar_height = 35.0f;
 
 	if (nk_begin(gui->ctx, "TopBar", nk_rect(0, 0, 800, bar_height), NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
@@ -58,7 +60,8 @@ void SendaiGui_draw_top_bar(SendaiGui_Context *gui, const char **curr_window) {
 	nk_end(gui->ctx);
 }
 
-void SendaiGui_log_window(SendaiGui_Context *const gui) {
+void SendaiGui_log_window(SendaiGui_Context *const gui)
+{
 	struct nk_context *ctx = gui->ctx;
 	const float window_x = 900.0f;
 	const float window_y = 50.0f;
@@ -73,35 +76,42 @@ void SendaiGui_log_window(SendaiGui_Context *const gui) {
 	nk_end(ctx);
 }
 
-void SendaiGui_input_begin(const SendaiGui_Context *gui) {
+void SendaiGui_input_begin(const SendaiGui_Context *gui)
+{
 	nk_input_begin(gui->ctx);
 }
 
-void SendaiGui_input_end(const SendaiGui_Context *gui) {
+void SendaiGui_input_end(const SendaiGui_Context *gui)
+{
 	nk_input_end(gui->ctx);
 }
 
-void SendaiGui_draw(ID3D12GraphicsCommandList *command_list) {
+void SendaiGui_draw(ID3D12GraphicsCommandList *command_list)
+{
 	nk_d3d12_render(command_list, NK_ANTI_ALIASING_ON);
 }
 
-void SendaiGui_resize(const int width, const int height) {
+void SendaiGui_resize(const int width, const int height)
+{
 	nk_d3d12_resize(width, height);
 }
 
-int SendaiGui_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+int SendaiGui_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
+{
 	return nk_d3d12_handle_event(wnd, msg, wparam, lparam);
 }
 
-void SendaiGui_destroy() {
+void SendaiGui_destroy()
+{
 	nk_d3d12_shutdown();
 }
 
-static struct nk_colorf color_to_nk(Sendai_Color *color) {
+static struct nk_colorf color_to_nk(Sendai_Color *color)
+{
 	return (struct nk_colorf){
-		.r = color->r,
-		.g = color->g,
-		.b = color->b,
-		.a = color->a,
+	  .r = color->r,
+	  .g = color->g,
+	  .b = color->b,
+	  .a = color->a,
 	};
 }

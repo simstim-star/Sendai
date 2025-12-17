@@ -1,9 +1,9 @@
 #include <stdio.h>
-#include <stdlib.h> 
 
 #include "error.h"
 
-void exit_if_failed(const HRESULT hr) {
+void exit_if_failed(const HRESULT hr)
+{
 	if (!FAILED(hr)) {
 		return;
 	}

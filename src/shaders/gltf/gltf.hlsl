@@ -1,23 +1,35 @@
-struct PSInput
+cbuffer MVP : register(b0)
 {
-    float4 position : SV_POSITION;
+    float4x4 mvp;
+};
+
+Texture2D albedo : register(t0);
+SamplerState samp : register(s0);
+
+struct VSIn
+{
+    float4 pos : POSITION;
     float4 color : COLOR;
+    float2 uv : TEXCOORD0;
 };
 
-cbuffer ModelViewProjection : register(b0)
+struct PSIn
 {
-    matrix MVP;
+    float4 pos : SV_POSITION;
+    float4 color : COLOR;
+    float2 uv : TEXCOORD0;
 };
 
-PSInput VSMain(float4 position : POSITION, float4 color : COLOR)
+PSIn VSMain(VSIn v)
 {
-    PSInput result;
-    result.position = mul(position, MVP);
-    result.color = color;
-    return result;
+    PSIn o;
+    o.pos = mul(v.pos, mvp);
+    o.color = v.color;
+    o.uv = v.uv;
+    return o;
 }
 
-float4 PSMain(PSInput input) : SV_TARGET
+float4 PSMain(PSIn i) : SV_TARGET
 {
-    return input.color;
+    return albedo.Sample(samp, i.uv) * i.color;
 }

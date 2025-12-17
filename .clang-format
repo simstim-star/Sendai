@@ -2,10 +2,14 @@ BasedOnStyle: LLVM
 IndentWidth: 4
 TabWidth: 4
 UseTab: Always
-ColumnLimit: 155
-BreakBeforeBraces: Attach
-AllowShortIfStatementsOnASingleLine: true
-AllowShortLoopsOnASingleLine: true
+ColumnLimit: 170
+BreakBeforeBraces: Custom
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Inline
 SpaceBeforeParens: ControlStatements
 KeepEmptyLinesAtTheStartOfBlocks: false
+AlignAfterOpenBracket: AlwaysBreak
+BracedInitializerIndentWidth: 2
+BraceWrapping:
+  AfterFunction: true

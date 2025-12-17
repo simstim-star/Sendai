@@ -2,21 +2,21 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
 #include <windows.h>
 
 typedef struct Sendai_Vertex Sendai_Vertex;
+typedef struct Sendai_Texture Sendai_Texture;
 
 typedef struct Sendai_Model {
 	Sendai_Vertex *vertices;
-	size_t vertex_count;
+	UINT vertex_count;
 
-	uint16_t *indices;
+	UINT *indices;
 	UINT index_count;
+
+	Sendai_Texture *textures;
+	UINT texture_count;
 } Sendai_Model;
 
-bool SendaiGLTF_load(const char *path, Sendai_Model *out_model);
+BOOL SendaiGLTF_load(const char *path, Sendai_Model *out_model);
 void SendaiGLTF_release(Sendai_Model *model);
