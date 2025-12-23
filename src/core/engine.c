@@ -77,8 +77,7 @@ void init_window(Sendai *engine)
 	AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
 	engine->hwnd = CreateWindow(
 		wc.lpszClassName, engine->title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, NULL, NULL,
-		engine->hinstance, NULL);
-	SetWindowLongPtr(engine->hwnd, GWLP_USERDATA, (LONG_PTR)engine);
+		engine->hinstance, engine);
 }
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
@@ -86,6 +85,12 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpar
 	Sendai *engine = (Sendai *)(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
 	switch (message) {
+	case WM_CREATE: 
+		{
+			LPCREATESTRUCT p_create_struct = (LPCREATESTRUCT)(lparam);
+			SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)(p_create_struct->lpCreateParams));
+		}
+		return 0;
 	case WM_SIZE:
 		if (engine && engine->renderer.swap_chain) {
 			int width = LOWORD(lparam);
