@@ -9,6 +9,13 @@ set(SRC ${SRC_WIN} ${SRC_CORE} "src/renderer/renderer.c" "src/gui/gui.c" "src/er
 
 add_executable(${PROJECT_NAME} WIN32 ${SRC} "src/core/engine.c" "src/assets/gltf.c"  "src/core/log.c")
 
+
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE
+        UNICODE
+        _UNICODE
+)
+
 find_package(XMathC REQUIRED PATHS "C:/xmathc")
 target_link_libraries(${PROJECT_NAME} PUBLIC d3d12.lib dxguid.lib dxgi.lib D3DCompiler.lib XMathC)
 target_link_options(${PROJECT_NAME} PRIVATE /INCREMENTAL:NO)

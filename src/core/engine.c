@@ -20,7 +20,7 @@ int Sendai_run()
 {
 	Sendai engine;
 
-	engine.title = "Sendai";
+	engine.title = L"Sendai";
 	engine.renderer = (Sendai_Renderer){.width = 1280, .height = 720};
 	engine.camera = Sendai_camera_spawn((XMFLOAT3){0, 0, -10});
 	engine.camera.yaw = 2 * XM_PI; // just to make it start looking at the box. will remove later
@@ -70,7 +70,7 @@ void init_window(Sendai *engine)
 	wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wc.hIconSm = LoadIcon(NULL, IDI_WINLOGO);
-	wc.lpszClassName = "SendaiClass";
+	wc.lpszClassName = L"SendaiClass";
 	RegisterClassEx(&wc);
 
 	RECT rect = {0, 0, (LONG)(engine->renderer.width), (LONG)(engine->renderer.height)};

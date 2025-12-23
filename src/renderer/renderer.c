@@ -412,7 +412,7 @@ void SendaiRenderer_draw(Sendai_Renderer *const renderer)
 	HRESULT hr = IDXGISwapChain2_Present(renderer->swap_chain, 1, 0);
 	renderer->rtv_index = (renderer->rtv_index + 1) % FRAME_COUNT;
 	if (hr == DXGI_ERROR_DEVICE_RESET || hr == DXGI_ERROR_DEVICE_REMOVED) {
-		MessageBoxW(NULL, L"D3D12 device is lost or removed!", L"Error", 0);
+		MessageBox(NULL, L"D3D12 device is lost or removed!", L"Error", 0);
 		return;
 	}
 	exit_if_failed(hr);

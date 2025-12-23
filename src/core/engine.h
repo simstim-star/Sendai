@@ -6,8 +6,8 @@
 #include "timer.h"
 
 typedef struct Sendai {
-	CHAR *title;
-	CHAR *curr_window;
+	WCHAR *title;
+	WCHAR *curr_window;
 	HINSTANCE hinstance;
 	HWND hwnd;
 	BOOL is_running;
