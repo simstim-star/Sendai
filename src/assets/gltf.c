@@ -111,40 +111,30 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Model *out_model)
 	size_t vertex_count = pos_accessor->count;
 	Sendai_Vertex *vertices = (Sendai_Vertex *)malloc(sizeof(Sendai_Vertex) * vertex_count);
 
-	float *pos_buf = (float *)malloc(sizeof(float) * vertex_count * 3);
-	float *color_buf = NULL;
-	float *uv_buf = NULL;
-
-	cgltf_accessor_unpack_floats(pos_accessor, pos_buf, pos_accessor->count * 3);
-
-	if (color_accessor) {
-		color_buf = (float *)malloc(sizeof(float) * vertex_count * 3);
-		cgltf_accessor_unpack_floats(color_accessor, color_buf, color_accessor->count * 3);
-	}
-
-	if (uv_accessor) {
-		uv_buf = (float *)malloc(sizeof(float) * vertex_count * 2);
-		cgltf_accessor_unpack_floats(uv_accessor, uv_buf, uv_accessor->count * 2);
-	}
-
 	for (size_t i = 0; i < vertex_count; i++) {
-		vertices[i].position.x = pos_buf[i * 3 + 0];
-		vertices[i].position.y = pos_buf[i * 3 + 1];
-		vertices[i].position.z = -pos_buf[i * 3 + 2];
-		vertices[i].position.w = 1.0f;
+		float pos[3];
+		cgltf_accessor_read_float(pos_accessor, i, pos, 3);
+		vertices[i].position = (Sendai_Float4){pos[0], pos[1], -pos[2], 1.0f};
 
-		if (color_buf) {
-			vertices[i].color.x = color_buf[i * 3 + 0];
-			vertices[i].color.y = color_buf[i * 3 + 1];
-			vertices[i].color.z = color_buf[i * 3 + 2];
+		if (color_accessor) {
+			float c[4];
+			cgltf_accessor_read_float(color_accessor, i, c, 4);
+			vertices[i].color.x = c[0];
+			vertices[i].color.y = c[1];
+			vertices[i].color.z = c[2];
 			vertices[i].color.w = 1.0f;
 		} else {
-			vertices[i].color.x = vertices[i].color.y = vertices[i].color.z = vertices[i].color.w = 1.0f;
+			vertices[i].color = (Sendai_Float4){1.0f, 1.0f, 1.0f, 1.0f};
 		}
 
-		if (uv_buf) {
-			vertices[i].uv.u = uv_buf[i * 2 + 0];
-			vertices[i].uv.v = 1.0f - uv_buf[i * 2 + 1]; /* DX flip */
+		if (uv_accessor) {
+			float uv[2];
+			cgltf_accessor_read_float(uv_accessor, i, uv, 2);
+			vertices[i].uv.u = uv[0];
+			vertices[i].uv.v = 1.0f - uv[1]; // DX Flip
+		} else {
+			vertices[i].uv.u = 0.0f;
+			vertices[i].uv.v = 0.0f;
 		}
 	}
 
@@ -165,10 +155,6 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Model *out_model)
 	out_model->vertex_count = vertex_count;
 	out_model->indices = indices;
 	out_model->index_count = index_count;
-
-	free(pos_buf);
-	free(color_buf);
-	free(uv_buf);
 
 	cgltf_free(data);
 
