@@ -5,7 +5,7 @@ Also check my ports of the official DirectX12 samples to pure C: https://github.
 And my port of DirectX Match to pure C: https://github.com/simstim-star/DirectXMath-in-C
 
 Currently it is very rudimentary, only allowing very basic gltf loading:
-<img width="1917" height="726" alt="image" src="https://github.com/user-attachments/assets/782f4f6e-a095-41a4-8738-a3cb164425a8" />
+<img width="1919" height="874" alt="image" src="https://github.com/user-attachments/assets/849fe52d-d70b-4d6d-b4d2-449fc46e2821" />
 
 
 ## How to build (MSVC)
