@@ -9,6 +9,8 @@
 
 static void init_window(Sendai *engine);
 LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
+static void engine_update(Sendai *engine);
+static void engine_draw(Sendai *engine);
 static void handle_windows_msg(Sendai *engine, MSG *msg);
 static void gui_update(Sendai *engine);
 
@@ -43,13 +45,7 @@ int Sendai_run()
 	MSG msg;
 	engine.is_running = true;
 	while (engine.is_running) {
-		Sendai_tick(&engine.timer);
-		float delta_time = ticks_to_seconds_FLOAT(engine.timer.elapsed_ticks);
-		Sendai_camera_update(&engine.camera, delta_time);
 		handle_windows_msg(&engine, &msg);
-		gui_update(&engine);
-		SendaiRenderer_update(&engine.renderer, &engine.camera);
-		SendaiRenderer_draw(&engine.renderer);
 	}
 
 	SendaiRenderer_destroy(&engine.renderer);
@@ -101,9 +97,14 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpar
 		return 0;
 
 	case WM_PAINT: {
-		PAINTSTRUCT ps;
-		BeginPaint(hwnd, &ps);
-		EndPaint(hwnd, &ps);
+		if (engine) {
+			engine_draw(engine);
+			engine_update(engine);
+		}
+		// Do I need this? MSFT DX12 examples don't do it
+		//PAINTSTRUCT ps;
+		//BeginPaint(hwnd, &ps);
+		//EndPaint(hwnd, &ps);
 		return 0;
 	}
 
@@ -130,9 +131,21 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpar
 	return DefWindowProc(hwnd, message, wparam, lparam);
 }
 
+void engine_update(Sendai *engine)
+{
+	Sendai_tick(&engine->timer);
+	Sendai_camera_update(&engine->camera, ticks_to_seconds_FLOAT(engine->timer.elapsed_ticks));
+	gui_update(engine);
+}
+
+void engine_draw(Sendai *engine)
+{
+	SendaiRenderer_update(&engine->renderer, &engine->camera);
+	SendaiRenderer_draw(&engine->renderer);
+}
+
 void handle_windows_msg(Sendai *engine, MSG *msg)
 {
-	SendaiGui_input_begin(&engine->gui);
 	while (PeekMessage(msg, NULL, 0, 0, PM_REMOVE)) {
 		if (msg->message == WM_QUIT) {
 			engine->is_running = FALSE;
@@ -141,10 +154,11 @@ void handle_windows_msg(Sendai *engine, MSG *msg)
 		TranslateMessage(msg);
 		DispatchMessage(msg);
 	}
-	SendaiGui_input_end(&engine->gui);
 }
 
 void gui_update(Sendai *engine)
 {
+	SendaiGui_input_begin(&engine->gui);
 	SendaiGui_log_window(&engine->gui);
+	SendaiGui_input_end(&engine->gui);
 }
