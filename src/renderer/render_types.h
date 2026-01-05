@@ -37,3 +37,21 @@ typedef struct Sendai_Texture {
 	int width;
 	int height;
 } Sendai_Texture;
+
+typedef struct Sendai_Mesh {
+	Sendai_Vertex *vertices;
+	UINT vertex_count;
+
+	UINT *indices;
+	UINT index_count;
+
+	Sendai_Texture *textures;
+	UINT texture_count;
+} Sendai_Mesh;
+
+typedef struct Sendai_Model {
+	char* name;
+	UINT id;
+	XMFLOAT3 position;
+	Sendai_Mesh *meshes;
+} Sendai_Model;

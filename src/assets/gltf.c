@@ -20,7 +20,7 @@ static int load_image(cgltf_data *data, cgltf_image *img, uint8_t **outPixels, s
 	Public functions
 *****************************************************/
 
-BOOL SendaiGLTF_load(const char *path, Sendai_Model *out_model)
+BOOL SendaiGLTF_load(const char *path, Sendai_Mesh *out_model)
 {
 	cgltf_options options = {0};
 	cgltf_data *data = NULL;
@@ -162,7 +162,7 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Model *out_model)
 	return true;
 }
 
-void SendaiGLTF_release(Sendai_Model *model)
+void SendaiGLTF_release(Sendai_Mesh *model)
 {
 	free(model->vertices);
 	free(model->indices);

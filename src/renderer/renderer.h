@@ -23,7 +23,7 @@ typedef struct Sendai_Renderer {
 	BOOL is_fullscreen;
 	DXGI_MODE_DESC *display_modes;
 
-	Sendai_Model model;
+	Sendai_Mesh model;
 
 	IDXGISwapChain1 *swap_chain;
 	ID3D12DescriptorHeap *rtv_descriptor_heap;
