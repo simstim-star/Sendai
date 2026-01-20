@@ -34,7 +34,7 @@ static struct nk_colorf color_to_nk(Sendai_Color *color);
 	Public functions
 *****************************************************/
 
-void SendaiGui_init(SendaiGui_Context *const gui, int width, int height, ID3D12Device *device, ID3D12GraphicsCommandList *command_list)
+void SendaiGui_init(SendaiGui_Renderer *const gui, int width, int height, ID3D12Device *device, ID3D12GraphicsCommandList *command_list)
 {
 	gui->ctx = nk_d3d12_init(device, width, height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, USER_TEXTURES);
 
@@ -45,7 +45,7 @@ void SendaiGui_init(SendaiGui_Context *const gui, int width, int height, ID3D12D
 	}
 }
 
-void SendaiGui_draw_top_bar(SendaiGui_Context *gui, const char **curr_window)
+void SendaiGui_draw_top_bar(SendaiGui_Renderer *gui, const char **curr_window)
 {
 	const float bar_height = 35.0f;
 
@@ -60,7 +60,7 @@ void SendaiGui_draw_top_bar(SendaiGui_Context *gui, const char **curr_window)
 	nk_end(gui->ctx);
 }
 
-void SendaiGui_log_window(SendaiGui_Context *const gui)
+void SendaiGui_log_window(SendaiGui_Renderer *const gui)
 {
 	struct nk_context *ctx = gui->ctx;
 	const float window_x = 900.0f;
@@ -76,12 +76,12 @@ void SendaiGui_log_window(SendaiGui_Context *const gui)
 	nk_end(ctx);
 }
 
-void SendaiGui_input_begin(const SendaiGui_Context *gui)
+void SendaiGui_input_begin(const SendaiGui_Renderer *gui)
 {
 	nk_input_begin(gui->ctx);
 }
 
-void SendaiGui_input_end(const SendaiGui_Context *gui)
+void SendaiGui_input_end(const SendaiGui_Renderer *gui)
 {
 	nk_input_end(gui->ctx);
 }

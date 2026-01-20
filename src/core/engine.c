@@ -23,24 +23,26 @@ int Sendai_run()
 	Sendai engine;
 
 	engine.title = L"Sendai";
-	engine.renderer = (Sendai_Renderer){.width = 1280, .height = 720};
+	engine.world_renderer = (Sendai_WorldRenderer){.width = 1280, .height = 720};
 	engine.camera = Sendai_camera_spawn((XMFLOAT3){0, 0, -10});
 	engine.camera.yaw = 2 * XM_PI; // just to make it start looking at the box. will remove later
 
 	init_window(&engine);
-	SendaiRenderer_init(&engine.renderer, engine.hwnd);
-	SendaiGui_init(&engine.gui, engine.renderer.width, engine.renderer.height, engine.renderer.device, engine.renderer.command_list);
+	SendaiRenderer_init(&engine.world_renderer, engine.hwnd);
+	SendaiGui_init(&engine.gui_renderer, engine.world_renderer.width, engine.world_renderer.height, engine.world_renderer.device, engine.world_renderer.command_list);
 	SendaiTimer_init(&engine.timer);
 
-	// SendaiGLTF_load("BoxVertexColors.gltf", &engine.renderer.model);
-	SendaiGLTF_load("BoxTextured.gltf", &engine.renderer.model);
+	SendaiGLTF_load("BoxTextured.gltf", &engine.scene);
 
-	SendaiRenderer_indices(&engine.renderer);
-	SendaiRenderer_upload_texture(&engine.renderer, &engine.renderer.model.textures[0], &engine.renderer.model_gpu_texture, &engine.renderer.model_gpu_srv, 0);
-
-	ShowWindow(engine.renderer.hwnd, SW_MAXIMIZE);
-	SetForegroundWindow(engine.renderer.hwnd);
-	SetFocus(engine.renderer.hwnd);
+	for (int i = 0; i < engine.scene.mesh_count; ++i) {
+		SendaiRenderer_vertices(engine.world_renderer.device, &engine.scene.meshes[i]);
+		SendaiRenderer_indices(engine.world_renderer.device, &engine.scene.meshes[i]);
+		SendaiRenderer_upload_texture(
+			&engine.world_renderer, &engine.scene.meshes[0].textures[0], &engine.world_renderer.model_gpu_texture, &engine.world_renderer.model_gpu_srv, 0);
+	}
+	ShowWindow(engine.world_renderer.hwnd, SW_MAXIMIZE);
+	SetForegroundWindow(engine.world_renderer.hwnd);
+	SetFocus(engine.world_renderer.hwnd);
 
 	MSG msg;
 	engine.is_running = true;
@@ -48,7 +50,7 @@ int Sendai_run()
 		handle_windows_msg(&engine, &msg);
 	}
 
-	SendaiRenderer_destroy(&engine.renderer);
+	SendaiRenderer_destroy(&engine.world_renderer);
 	return (int)(msg.wParam);
 }
 
@@ -69,7 +71,7 @@ void init_window(Sendai *engine)
 	wc.lpszClassName = L"SendaiClass";
 	RegisterClassEx(&wc);
 
-	RECT rect = {0, 0, (LONG)(engine->renderer.width), (LONG)(engine->renderer.height)};
+	RECT rect = {0, 0, (LONG)(engine->world_renderer.width), (LONG)(engine->world_renderer.height)};
 	AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
 	engine->hwnd = CreateWindow(
 		wc.lpszClassName, engine->title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, NULL, NULL,
@@ -88,10 +90,10 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpar
 		}
 		return 0;
 	case WM_SIZE:
-		if (engine && engine->renderer.swap_chain) {
+		if (engine && engine->world_renderer.swap_chain) {
 			int width = LOWORD(lparam);
 			int height = HIWORD(lparam);
-			SendaiRenderer_swapchain_resize(&engine->renderer, width, height);
+			SendaiRenderer_swapchain_resize(&engine->world_renderer, width, height);
 			SendaiGui_resize(width, height);
 		}
 		return 0;
@@ -140,8 +142,8 @@ void engine_update(Sendai *engine)
 
 void engine_draw(Sendai *engine)
 {
-	SendaiRenderer_update(&engine->renderer, &engine->camera);
-	SendaiRenderer_draw(&engine->renderer);
+	SendaiRenderer_update(&engine->world_renderer, &engine->camera, &engine->scene);
+	SendaiRenderer_draw(&engine->world_renderer, &engine->scene);
 }
 
 void handle_windows_msg(Sendai *engine, MSG *msg)
@@ -158,7 +160,7 @@ void handle_windows_msg(Sendai *engine, MSG *msg)
 
 void gui_update(Sendai *engine)
 {
-	SendaiGui_input_begin(&engine->gui);
-	SendaiGui_log_window(&engine->gui);
-	SendaiGui_input_end(&engine->gui);
+	SendaiGui_input_begin(&engine->gui_renderer);
+	SendaiGui_log_window(&engine->gui_renderer);
+	SendaiGui_input_end(&engine->gui_renderer);
 }

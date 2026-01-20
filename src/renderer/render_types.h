@@ -41,9 +41,13 @@ typedef struct Sendai_Texture {
 typedef struct Sendai_Mesh {
 	Sendai_Vertex *vertices;
 	UINT vertex_count;
+	ID3D12Resource *vertex_buffer;
+	D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view;
 
 	UINT *indices;
 	UINT index_count;
+	ID3D12Resource *index_buffer;
+	D3D12_INDEX_BUFFER_VIEW index_buffer_view;
 
 	Sendai_Texture *textures;
 	UINT texture_count;

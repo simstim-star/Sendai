@@ -22,10 +22,10 @@
 	Forward declaration of private functions
 *****************************************************/
 
-static void signal_and_wait(Sendai_Renderer *const renderer);
+static void signal_and_wait(Sendai_WorldRenderer *const renderer);
 static void update_resource(ID3D12Resource *resource, void *data, size_t data_size);
 
-void SendaiRenderer_upload_texture(Sendai_Renderer *renderer, Sendai_Texture *source, ID3D12Resource **out_texture, D3D12_GPU_DESCRIPTOR_HANDLE *out_srv, UINT srv_index)
+void SendaiRenderer_upload_texture(Sendai_WorldRenderer *renderer, Sendai_Texture *source, ID3D12Resource **out_texture, D3D12_GPU_DESCRIPTOR_HANDLE *out_srv, UINT srv_index)
 {
 	D3D12_RESOURCE_DESC tex_desc = {
 	  .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
@@ -101,7 +101,7 @@ void SendaiRenderer_upload_texture(Sendai_Renderer *renderer, Sendai_Texture *so
 	Public functions
 *****************************************************/
 
-void SendaiRenderer_init(Sendai_Renderer *const renderer, HWND hwnd)
+void SendaiRenderer_init(Sendai_WorldRenderer *const renderer, HWND hwnd)
 {
 	renderer->hwnd = hwnd;
 	renderer->aspect_ratio = (float)(renderer->width) / (renderer->height);
@@ -262,21 +262,6 @@ void SendaiRenderer_init(Sendai_Renderer *const renderer, HWND hwnd)
 	  .CreationNodeMask = 1,
 	  .VisibleNodeMask = 1,
 	};
-	const D3D12_RESOURCE_DESC buffer_resource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(Sendai_Vertex) * 24, D3D12_RESOURCE_FLAG_NONE, 0);
-
-	// Note: using upload heaps to transfer static data like vert buffers is not
-	// recommended. Every time the GPU needs it, the upload heap will be marshalled
-	// over. Please read up on Default Heap usage. An upload heap is used here for
-	// code simplicity and because there are very few verts to actually transfer
-	hr = ID3D12Device_CreateCommittedResource(
-		renderer->device, &heap_property_upload, D3D12_HEAP_FLAG_NONE, &buffer_resource, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
-		&renderer->vertex_buffer);
-	exit_if_failed(hr);
-
-	renderer->vertex_buffer_view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(renderer->vertex_buffer);
-	renderer->vertex_buffer_view.StrideInBytes = sizeof(Sendai_Vertex);
-	renderer->vertex_buffer_view.SizeInBytes = sizeof(Sendai_Vertex) * 24;
-
 	// Constant buffers must be 256-byte aligned size
 	UINT cb_size = (sizeof(Sendai_ConstantBuffer) + 255) & ~255;
 	const D3D12_RESOURCE_DESC cb_desc = CD3DX12_RESOURCE_DESC_BUFFER(cb_size, D3D12_RESOURCE_FLAG_NONE, 0);
@@ -337,7 +322,7 @@ void SendaiRenderer_init(Sendai_Renderer *const renderer, HWND hwnd)
 	IDXGIFactory2_Release(dxgi_factory);
 }
 
-void SendaiRenderer_indices(Sendai_Renderer *const renderer)
+void SendaiRenderer_vertices(ID3D12Device *device, Sendai_Mesh *const mesh)
 {
 	const D3D12_HEAP_PROPERTIES heap_property_upload = (D3D12_HEAP_PROPERTIES){
 	  .Type = D3D12_HEAP_TYPE_UPLOAD,
@@ -346,22 +331,49 @@ void SendaiRenderer_indices(Sendai_Renderer *const renderer)
 	  .CreationNodeMask = 1,
 	  .VisibleNodeMask = 1,
 	};
-	D3D12_RESOURCE_DESC ib_desc = CD3DX12_RESOURCE_DESC_BUFFER(renderer->model.index_count * sizeof(uint16_t), D3D12_RESOURCE_FLAG_NONE, 0);
+	const D3D12_RESOURCE_DESC buffer_resource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(Sendai_Vertex) * 24, D3D12_RESOURCE_FLAG_NONE, 0);
+
+	// Note: using upload heaps to transfer static data like vert buffers is not
+	// recommended. Every time the GPU needs it, the upload heap will be marshalled
+	// over. Please read up on Default Heap usage. An upload heap is used here for
+	// code simplicity and because there are very few verts to actually transfer
 	HRESULT hr = ID3D12Device_CreateCommittedResource(
-		renderer->device, &heap_property_upload, D3D12_HEAP_FLAG_NONE, &ib_desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
-		(void **)(&renderer->index_buffer));
+		device, &heap_property_upload, D3D12_HEAP_FLAG_NONE, &buffer_resource, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
+		&mesh->vertex_buffer);
 	exit_if_failed(hr);
 
-	update_resource(renderer->index_buffer, renderer->model.indices, renderer->model.index_count * sizeof(uint16_t));
-
-	renderer->index_buffer_view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(renderer->index_buffer);
-	renderer->index_buffer_view.Format = DXGI_FORMAT_R16_UINT;
-	renderer->index_buffer_view.SizeInBytes = (UINT)(renderer->model.index_count * sizeof(uint16_t));
+	mesh->vertex_buffer_view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(mesh->vertex_buffer);
+	mesh->vertex_buffer_view.StrideInBytes = sizeof(Sendai_Vertex);
+	mesh->vertex_buffer_view.SizeInBytes = sizeof(Sendai_Vertex) * 24;
 }
 
-void SendaiRenderer_update(Sendai_Renderer *const renderer, Sendai_Camera *const camera)
+void SendaiRenderer_indices(ID3D12Device *device, Sendai_Mesh *const mesh)
 {
-	update_resource(renderer->vertex_buffer, renderer->model.vertices, renderer->model.vertex_count * sizeof(Sendai_Vertex));
+	const D3D12_HEAP_PROPERTIES heap_property_upload = (D3D12_HEAP_PROPERTIES){
+	  .Type = D3D12_HEAP_TYPE_UPLOAD,
+	  .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+	  .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+	  .CreationNodeMask = 1,
+	  .VisibleNodeMask = 1,
+	};
+	D3D12_RESOURCE_DESC ib_desc = CD3DX12_RESOURCE_DESC_BUFFER(mesh->index_count * sizeof(uint16_t), D3D12_RESOURCE_FLAG_NONE, 0);
+	HRESULT hr = ID3D12Device_CreateCommittedResource(
+		device, &heap_property_upload, D3D12_HEAP_FLAG_NONE, &ib_desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
+		(void **)(&mesh->index_buffer));
+	exit_if_failed(hr);
+
+	update_resource(mesh->index_buffer, mesh->indices, mesh->index_count * sizeof(uint16_t));
+
+	mesh->index_buffer_view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(mesh->index_buffer);
+	mesh->index_buffer_view.Format = DXGI_FORMAT_R16_UINT;
+	mesh->index_buffer_view.SizeInBytes = (UINT)(mesh->index_count * sizeof(uint16_t));
+}
+
+void SendaiRenderer_update(Sendai_WorldRenderer *const renderer, Sendai_Camera *const camera, Sendai_Scene *scene)
+{
+	for (int i = 0; i < scene->mesh_count; ++i) {
+		update_resource(scene->meshes[i].vertex_buffer, scene->meshes[i].vertices, scene->meshes[i].vertex_count * sizeof(Sendai_Vertex));
+	}
 
 	XMMATRIX view = Sendai_camera_view_matrix(camera->position, camera->look_direction, camera->up_direction);
 	XMMATRIX proj = Sendai_camera_projection_matrix(XM_PIDIV4, renderer->aspect_ratio, 0.1f, 1000.0f);
@@ -370,7 +382,7 @@ void SendaiRenderer_update(Sendai_Renderer *const renderer, Sendai_Camera *const
 	update_resource(renderer->constant_buffer, &mvp, sizeof(XMMATRIX));
 }
 
-void SendaiRenderer_draw(Sendai_Renderer *const renderer)
+void SendaiRenderer_draw(Sendai_WorldRenderer *const renderer, Sendai_Scene *scene)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(renderer->command_list, renderer->root_sig);
 	ID3D12GraphicsCommandList_RSSetViewports(renderer->command_list, 1, &renderer->viewport);
@@ -389,13 +401,15 @@ void SendaiRenderer_draw(Sendai_Renderer *const renderer)
 	ID3D12GraphicsCommandList_ClearRenderTargetView(renderer->command_list, renderer->rtv_handles[renderer->rtv_index], clearColor, 0, NULL);
 	ID3D12GraphicsCommandList_OMSetRenderTargets(renderer->command_list, 1, &renderer->rtv_handles[renderer->rtv_index], FALSE, NULL);
 	ID3D12GraphicsCommandList_IASetPrimitiveTopology(renderer->command_list, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	ID3D12GraphicsCommandList_IASetIndexBuffer(renderer->command_list, &renderer->index_buffer_view);
-	ID3D12GraphicsCommandList_IASetVertexBuffers(renderer->command_list, 0, 1, &renderer->vertex_buffer_view);
 	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(renderer->command_list, 0, ID3D12Resource_GetGPUVirtualAddress(renderer->constant_buffer));
 	ID3D12DescriptorHeap *heaps[] = {renderer->srv_heap};
 	ID3D12GraphicsCommandList_SetDescriptorHeaps(renderer->command_list, 1, heaps);
 	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(renderer->command_list, 1, renderer->model_gpu_srv);
-	ID3D12GraphicsCommandList_DrawIndexedInstanced(renderer->command_list, renderer->model.index_count, 1, 0, 0, 0);
+	for (int i = 0; i < scene->mesh_count; ++i) {
+		ID3D12GraphicsCommandList_IASetVertexBuffers(renderer->command_list, 0, 1, &scene->meshes[i].vertex_buffer_view);
+		ID3D12GraphicsCommandList_IASetIndexBuffer(renderer->command_list, &scene->meshes[i].index_buffer_view);
+		ID3D12GraphicsCommandList_DrawIndexedInstanced(renderer->command_list, scene->meshes[i].index_count, 1, 0, 0, 0);
+	}
 	SendaiGui_draw(renderer->command_list);
 
 	// Bring the rtv resource back to present state
@@ -418,7 +432,7 @@ void SendaiRenderer_draw(Sendai_Renderer *const renderer)
 	exit_if_failed(hr);
 }
 
-void SendaiRenderer_execute_commands(Sendai_Renderer *const renderer)
+void SendaiRenderer_execute_commands(Sendai_WorldRenderer *const renderer)
 {
 	ID3D12GraphicsCommandList_Close(renderer->command_list);
 	ID3D12CommandList *cmd_lists[] = {(ID3D12CommandList *)renderer->command_list};
@@ -428,7 +442,7 @@ void SendaiRenderer_execute_commands(Sendai_Renderer *const renderer)
 	ID3D12GraphicsCommandList_Reset(renderer->command_list, renderer->command_allocator, renderer->pipeline_state);
 }
 
-void SendaiRenderer_destroy(Sendai_Renderer *renderer)
+void SendaiRenderer_destroy(Sendai_WorldRenderer *renderer)
 {
 	SendaiGui_destroy();
 	for (int i = 0; i < FRAME_COUNT; ++i) {
@@ -443,14 +457,11 @@ void SendaiRenderer_destroy(Sendai_Renderer *renderer)
 	ID3D12Fence_Release(renderer->fence);
 	ID3D12RootSignature_Release(renderer->root_sig);
 	ID3D12PipelineState_Release(renderer->pipeline_state);
-	ID3D12Resource_Release(renderer->vertex_buffer);
-	ID3D12Resource_Release(renderer->index_buffer);
 	ID3D12Resource_Release(renderer->constant_buffer);
 	ID3D12Device_Release(renderer->device);
 	ID3D12Device_Release(renderer->srv_heap);
 	ID3D12Device_Release(renderer->model_gpu_texture);
 	CloseHandle(renderer->fence_event);
-	SendaiGLTF_release(&renderer->model);
 
 #if defined(_DEBUG)
 	IDXGIDebug1 *debugDev = NULL;
@@ -460,7 +471,7 @@ void SendaiRenderer_destroy(Sendai_Renderer *renderer)
 #endif
 }
 
-void SendaiRenderer_swapchain_resize(Sendai_Renderer *const renderer, int width, int height)
+void SendaiRenderer_swapchain_resize(Sendai_WorldRenderer *const renderer, int width, int height)
 {
 	for (int i = 0; i < FRAME_COUNT; ++i) {
 		signal_and_wait(renderer);
@@ -488,7 +499,7 @@ void SendaiRenderer_swapchain_resize(Sendai_Renderer *const renderer, int width,
 	Implementation of private functions
 *****************************************************/
 
-static void signal_and_wait(Sendai_Renderer *const renderer)
+static void signal_and_wait(Sendai_WorldRenderer *const renderer)
 {
 	HRESULT hr = ID3D12CommandQueue_Signal(renderer->command_queue, renderer->fence, ++renderer->fence_value);
 	exit_if_failed(hr);

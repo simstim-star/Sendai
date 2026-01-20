@@ -3,21 +3,21 @@
 #include "../renderer/render_types.h"
 #include "windows.h"
 
-typedef struct Sendai_Renderer Sendai_Renderer;
+typedef struct Sendai_WorldRenderer Sendai_WorldRenderer;
 
-typedef struct SendaiGui_Context {
+typedef struct SendaiGui_Renderer {
 	struct nk_context *ctx;
-} SendaiGui_Context;
+} SendaiGui_Renderer;
 
-void SendaiGui_init(SendaiGui_Context *const gui, int width, int height, struct ID3D12Device *device, struct ID3D12GraphicsCommandList *command_list);
+void SendaiGui_init(SendaiGui_Renderer *const gui, int width, int height, struct ID3D12Device *device, struct ID3D12GraphicsCommandList *command_list);
 
-void SendaiGui_input_begin(const SendaiGui_Context *gui);
+void SendaiGui_input_begin(const SendaiGui_Renderer *gui);
 
-void SendaiGui_input_end(const SendaiGui_Context *gui);
+void SendaiGui_input_end(const SendaiGui_Renderer *gui);
 
-void SendaiGui_log_window(SendaiGui_Context *const gui);
+void SendaiGui_log_window(SendaiGui_Renderer *const gui);
 
-void SendaiGui_draw_top_bar(SendaiGui_Context *gui, const char **curr_window);
+void SendaiGui_draw_top_bar(SendaiGui_Renderer *gui, const char **curr_window);
 
 void SendaiGui_draw(struct ID3D12GraphicsCommandList *command_list);
 

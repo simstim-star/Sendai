@@ -4,6 +4,7 @@
 #include "../renderer/renderer.h"
 #include "camera.h"
 #include "timer.h"
+#include "scene.h"
 
 typedef struct Sendai {
 	WCHAR *title;
@@ -12,10 +13,11 @@ typedef struct Sendai {
 	HWND hwnd;
 	BOOL is_running;
 
-	SendaiGui_Context gui;
+	SendaiGui_Renderer gui_renderer;
 	Sendai_Camera camera;
-	Sendai_Renderer renderer;
+	Sendai_WorldRenderer world_renderer;
 	Sendai_Step_Timer timer;
+	Sendai_Scene scene;
 } Sendai;
 
 int Sendai_run();
