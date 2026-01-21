@@ -40,9 +40,14 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene)
 	}
 	out_scene->meshes = malloc(data->meshes_count * sizeof(Sendai_Mesh));
 	out_scene->mesh_count = data->meshes_count;
+	if (data->meshes_count == 0) {
+		Sendai_Log_append("No meshes in glTF\n");
+		cgltf_free(data);
+		return false;
+	}
 	size_t image_count = data->images_count || 1;
 
-	for (int mesh_id = 0; mesh_id < data->meshes_count; mesh_id++) {
+	for (size_t mesh_id = 0; mesh_id < data->meshes_count; mesh_id++) {
 		out_scene->meshes[mesh_id].textures = calloc(image_count, sizeof(Sendai_Texture));
 		out_scene->meshes[mesh_id].texture_count = image_count;
 
@@ -71,12 +76,6 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene)
 				out_scene->meshes[mesh_id].textures[i].width = w;
 				out_scene->meshes[mesh_id].textures[i].height = h;
 			}
-		}
-
-		if (data->meshes_count == 0) {
-			Sendai_Log_append("No meshes in glTF\n");
-			cgltf_free(data);
-			return false;
 		}
 
 		cgltf_mesh *mesh = &data->meshes[0];
