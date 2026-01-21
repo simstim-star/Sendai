@@ -38,8 +38,7 @@ typedef struct Sendai_WorldRenderer {
 	ID3D12CommandAllocator *command_allocator;
 	ID3D12GraphicsCommandList *command_list;
 
-	ID3D12RootSignature *root_sig;
-	ID3D12PipelineState *pipeline_state;
+	ID3D12PipelineState *pipeline_state_scene;
 
 	/*****************************
 		Synchronization objects
@@ -59,9 +58,6 @@ typedef struct Sendai_WorldRenderer {
 
 	UINT srv_descriptor_size;
 	D3D12_GPU_DESCRIPTOR_HANDLE model_gpu_srv;
-
-	UINT8 *vb_mapped;
-	UINT8 *cb_mapped;
 } Sendai_WorldRenderer;
 
 void SendaiRenderer_init(Sendai_WorldRenderer *const renderer, HWND hwnd);

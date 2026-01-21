@@ -20,15 +20,23 @@ static void gui_update(Sendai *engine);
 
 int Sendai_run()
 {
-	Sendai engine;
+	Sendai engine = (Sendai){
+	  .title = L"Sendai",
+	  .world_renderer = (Sendai_WorldRenderer){.width = 1280, .height = 720},
+	  .camera = Sendai_camera_spawn((XMFLOAT3){0, 0, -10}),
+	};
 
-	engine.title = L"Sendai";
-	engine.world_renderer = (Sendai_WorldRenderer){.width = 1280, .height = 720};
-	engine.camera = Sendai_camera_spawn((XMFLOAT3){0, 0, -10});
 	engine.camera.yaw = 2 * XM_PI; // just to make it start looking at the box. will remove later
 
 	init_window(&engine);
 	SendaiRenderer_init(&engine.world_renderer, engine.hwnd);
+
+	Sendai_create_scene_root_sig(engine.world_renderer.device, &engine.scene.root_sign);
+	const WCHAR *shaders_path = wcscat(engine.world_renderer.assets_path, L"src/shaders/gltf/gltf.hlsl");
+	Sendai_compile_scene_vs(shaders_path, &engine.scene.vertex_shader);
+	Sendai_compile_scene_ps(shaders_path, &engine.scene.pixel_shader);
+	Sendai_create_scene_pipeline_state(&engine.world_renderer, &engine.scene);
+
 	SendaiGui_init(&engine.gui_renderer, engine.world_renderer.width, engine.world_renderer.height, engine.world_renderer.device, engine.world_renderer.command_list);
 	SendaiTimer_init(&engine.timer);
 
@@ -70,12 +78,10 @@ void init_window(Sendai *engine)
 	wc.hIconSm = LoadIcon(NULL, IDI_WINLOGO);
 	wc.lpszClassName = L"SendaiClass";
 	RegisterClassEx(&wc);
-
 	RECT rect = {0, 0, (LONG)(engine->world_renderer.width), (LONG)(engine->world_renderer.height)};
 	AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
-	engine->hwnd = CreateWindow(
-		wc.lpszClassName, engine->title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, NULL, NULL,
-		engine->hinstance, engine);
+	engine->hwnd = CreateWindow(wc.lpszClassName, engine->title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 
+		rect.right - rect.left, rect.bottom - rect.top, NULL, NULL,engine->hinstance, engine);
 }
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
@@ -83,11 +89,10 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpar
 	Sendai *engine = (Sendai *)(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
 	switch (message) {
-	case WM_CREATE: 
-		{
-			LPCREATESTRUCT p_create_struct = (LPCREATESTRUCT)(lparam);
-			SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)(p_create_struct->lpCreateParams));
-		}
+	case WM_CREATE: {
+		LPCREATESTRUCT p_create_struct = (LPCREATESTRUCT)(lparam);
+		SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)(p_create_struct->lpCreateParams));
+	}
 		return 0;
 	case WM_SIZE:
 		if (engine && engine->world_renderer.swap_chain) {
@@ -104,9 +109,9 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpar
 			engine_update(engine);
 		}
 		// Do I need this? MSFT DX12 examples don't do it
-		//PAINTSTRUCT ps;
-		//BeginPaint(hwnd, &ps);
-		//EndPaint(hwnd, &ps);
+		// PAINTSTRUCT ps;
+		// BeginPaint(hwnd, &ps);
+		// EndPaint(hwnd, &ps);
 		return 0;
 	}
 
