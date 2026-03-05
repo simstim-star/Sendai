@@ -14,3 +14,9 @@ void exit_if_failed(const HRESULT hr)
 	}
 	exit(EXIT_FAILURE);
 }
+
+void exit_with_msg(const char *msg)
+{
+	fprintf(stderr, "FATAL ERROR: %s\n", msg);
+	exit(EXIT_FAILURE);
+}

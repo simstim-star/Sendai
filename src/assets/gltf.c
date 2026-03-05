@@ -11,6 +11,8 @@
 #include "../renderer/render_types.h"
 #include "gltf.h"
 
+static const uint8_t WHITE_PIXEL[] = {255, 255, 255, 255};
+
 /****************************************************
 	Forward declaration of private functions
 *****************************************************/
@@ -47,8 +49,9 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene)
 	}
 	size_t image_count = data->images_count || 1;
 
+	Sendai_Texture *textures = malloc(data->meshes_count * image_count * sizeof(Sendai_Texture));
 	for (size_t mesh_id = 0; mesh_id < data->meshes_count; mesh_id++) {
-		out_scene->meshes[mesh_id].textures = calloc(image_count, sizeof(Sendai_Texture));
+		out_scene->meshes[mesh_id].textures = &textures[mesh_id];
 		out_scene->meshes[mesh_id].texture_count = image_count;
 
 		for (size_t i = 0; i < image_count; ++i) {
@@ -62,13 +65,7 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene)
 			}
 
 			if (!loaded) {
-				uint8_t *white = (uint8_t *)malloc(4);
-				white[0] = 255;
-				white[1] = 255;
-				white[2] = 255;
-				white[3] = 255;
-
-				out_scene->meshes[mesh_id].textures[i].pixels = white;
+				out_scene->meshes[mesh_id].textures[i].pixels = &WHITE_PIXEL;
 				out_scene->meshes[mesh_id].textures[i].width = 1;
 				out_scene->meshes[mesh_id].textures[i].height = 1;
 			} else {
@@ -111,7 +108,7 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene)
 		}
 
 		size_t vertex_count = pos_accessor->count;
-		Sendai_Vertex *vertices = (Sendai_Vertex *)malloc(sizeof(Sendai_Vertex) * vertex_count);
+		Sendai_Vertex *vertices = malloc(sizeof(Sendai_Vertex) * vertex_count);
 
 		for (size_t i = 0; i < vertex_count; i++) {
 			float pos[3];
@@ -145,7 +142,7 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene)
 
 		uint16_t *indices = NULL;
 		if (index_count > 0) {
-			indices = (uint16_t *)malloc(sizeof(uint16_t) * index_count);
+			indices = malloc(sizeof(uint16_t) * index_count);
 			for (size_t i = 0; i < index_count; i++) {
 				uint32_t v;
 				cgltf_accessor_read_uint(idx_accessor, (int)i, &v, 1);
@@ -224,7 +221,7 @@ int load_image(cgltf_data *data, cgltf_image *img, uint8_t **out_pixels, size_t 
 		return 1;
 	}
 	*out_size = (size_t)(*out_w) * (size_t)(*out_h) * 4;
-	*out_pixels = (uint8_t *)malloc(*out_size);
+	*out_pixels = malloc(*out_size);
 	if (*out_pixels == NULL) {
 		stbi_image_free(stbi_data);
 		return 1;
