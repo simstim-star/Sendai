@@ -60,12 +60,12 @@ typedef struct R_World {
 	D3D12_GPU_DESCRIPTOR_HANDLE ModelGpuSrv;
 } R_World;
 
-void R_Init(R_World *const renderer, HWND hwnd);
-void R_Vertices(ID3D12Device *device, R_Mesh *const mesh);
-void R_Indices(ID3D12Device *device, R_Mesh *const mesh);
-void R_UploadTexture(R_World *renderer, R_Texture *source, ID3D12Resource **out_texture, D3D12_GPU_DESCRIPTOR_HANDLE *out_srv, UINT srv_index);
-void R_Destroy(R_World *renderer);
-void R_Update(R_World *const renderer, R_Camera *const camera, SendaiScene *scene);
-void R_Draw(R_World *const renderer, SendaiScene *scene);
-void R_ExecuteCommands(R_World *const renderer);
-void R_SwapchainResize(R_World *const renderer, int width, int height);
+void R_Init(R_World *const Renderer, HWND hWnd);
+void R_Vertices(ID3D12Device *Device, R_Mesh *const mesh);
+void R_Indices(ID3D12Device *Device, R_Mesh *const mesh);
+void R_UploadTexture(R_World *Renderer, R_Texture *Source, ID3D12Resource **OutTexture, D3D12_GPU_DESCRIPTOR_HANDLE *OutSrv, UINT SrvIndex);
+void R_Destroy(R_World *Renderer);
+void R_Update(R_World *const Renderer, R_Camera *const Camera, SendaiScene *Scene);
+void R_Draw(R_World *const Renderer, SendaiScene *Scene);
+void R_ExecuteCommands(R_World *const Renderer);
+void R_SwapchainResize(R_World *const Renderer, int Width, int Height);

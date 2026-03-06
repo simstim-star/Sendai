@@ -4,59 +4,59 @@
 
 #include "timer.h"
 
-void SendaiTimer_init(Sendai_Step_Timer *st)
+void S_TimerInit(S_StepTimer *StepTimer)
 {
-	st->elapsed_ticks = 0;
-	st->total_ticks = 0;
-	st->leftover_ticks = 0;
-	st->frame_count = 0;
-	st->frames_per_second = 0;
-	st->frames_this_second = 0;
-	st->qpc_second_counter = 0;
-	st->is_fixed_time_step = false;
-	st->target_elapsed_ticks = TICKS_PER_SECOND / 60;
+	StepTimer->ElapsedTicks = 0;
+	StepTimer->TotalTicks = 0;
+	StepTimer->LeftoverTicks = 0;
+	StepTimer->FrameCount = 0;
+	StepTimer->FramesPerSecond = 0;
+	StepTimer->FramesThisSecond = 0;
+	StepTimer->QPCSecondCounter = 0;
+	StepTimer->bFixedTimeStep = false;
+	StepTimer->TargetElapsedTicks = TICKS_PER_SECOND / 60;
 
-	QueryPerformanceFrequency(&st->qpc_frequency);
-	QueryPerformanceCounter(&st->qpc_last_time);
+	QueryPerformanceFrequency(&StepTimer->QPCFrequency);
+	QueryPerformanceCounter(&StepTimer->QPCLastTime);
 
 	// Initialize max delta to 1/10 of a second.
-	st->qpc_max_delta = st->qpc_frequency.QuadPart / 10;
+	StepTimer->QPCMaxDelta = StepTimer->QPCFrequency.QuadPart / 10;
 }
 
 // After an intentional timing discontinuity (for instance a blocking IO operation)
 // call this to avoid having the fixed timestep logic attempt a set of catch-up
 // Update calls.
-void Sendai_reset_elapsed_time(Sendai_Step_Timer *st)
+void S_ResetElapsedTime(S_StepTimer *StepTimer)
 {
-	QueryPerformanceCounter(&st->qpc_last_time);
+	QueryPerformanceCounter(&StepTimer->QPCLastTime);
 
-	st->leftover_ticks = 0;
-	st->frames_per_second = 0;
-	st->frames_this_second = 0;
-	st->qpc_second_counter = 0;
+	StepTimer->LeftoverTicks = 0;
+	StepTimer->FramesPerSecond = 0;
+	StepTimer->FramesThisSecond = 0;
+	StepTimer->QPCSecondCounter = 0;
 }
 
 // Update timer state, calling the specified Update function the appropriate number of times.
-void Sendai_tick_with_update_fn(Sendai_Step_Timer *st, LPUPDATEFUNC update)
+void S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC Update)
 {
 	// Query the current time.
-	LARGE_INTEGER current_time;
-	QueryPerformanceCounter(&current_time);
+	LARGE_INTEGER CurrentTime;
+	QueryPerformanceCounter(&CurrentTime);
 	// Update delta since last call
-	UINT64 delta = current_time.QuadPart - st->qpc_last_time.QuadPart;
-	st->qpc_last_time = current_time;
-	st->qpc_second_counter += delta;
+	UINT64 Delta = CurrentTime.QuadPart - StepTimer->QPCLastTime.QuadPart;
+	StepTimer->QPCLastTime = CurrentTime;
+	StepTimer->QPCSecondCounter += Delta;
 	// Clamp excessively large time deltas (e.g. after paused in the debugger).
-	if (delta > st->qpc_max_delta) {
-		delta = st->qpc_max_delta;
+	if (Delta > StepTimer->QPCMaxDelta) {
+		Delta = StepTimer->QPCMaxDelta;
 	}
 	// Convert QPC units into a canonical tick format. This cannot overflow due to the previous clamp.
-	delta *= TICKS_PER_SECOND;
-	delta /= st->qpc_frequency.QuadPart;
+	Delta *= TICKS_PER_SECOND;
+	Delta /= StepTimer->QPCFrequency.QuadPart;
 
-	UINT32 last_frame_count = st->frame_count;
+	UINT32 last_frame_count = StepTimer->FrameCount;
 
-	if (st->is_fixed_time_step) {
+	if (StepTimer->bFixedTimeStep) {
 		// Fixed timestep update logic
 
 		// If the app is running very close to the target elapsed time (within 1/4 of a millisecond) just clamp
@@ -65,46 +65,46 @@ void Sendai_tick_with_update_fn(Sendai_Step_Timer *st, LPUPDATEFUNC update)
 		// fixed update, running with vsync enabled on a 59.94 NTSC display, would eventually
 		// accumulate enough tiny errors that it would drop a frame. It is better to just round
 		// small deviations down to zero to leave things running smoothly.
-		if (abs((int)(delta - st->target_elapsed_ticks)) < TICKS_PER_SECOND / 4000) {
-			delta = st->target_elapsed_ticks;
+		if (abs((int)(Delta - StepTimer->TargetElapsedTicks)) < TICKS_PER_SECOND / 4000) {
+			Delta = StepTimer->TargetElapsedTicks;
 		}
 		// Add to the leftover. If the accumulated leftover passes a certain target, we will need to take some actions to
 		// ensure that the time step is still fixed.
-		st->leftover_ticks += delta;
+		StepTimer->LeftoverTicks += Delta;
 
 		// This will be done every time the leftover reaches the target. In case it has reached the target exaclty, it will do what
 		// is expected: just step with the target. If it surpases, we will still step with target, but we will also register a leftover
 		// that will propagate to the next tick (this leftover will be the difference timeDelta - target)
-		while (st->leftover_ticks >= st->target_elapsed_ticks) {
-			st->elapsed_ticks = st->target_elapsed_ticks;
-			st->total_ticks += st->target_elapsed_ticks;
-			st->leftover_ticks -= st->target_elapsed_ticks; // will be zero if st->leftOverTicks == st->targetElapsedTicks
-			st->frame_count++;
+		while (StepTimer->LeftoverTicks >= StepTimer->TargetElapsedTicks) {
+			StepTimer->ElapsedTicks = StepTimer->TargetElapsedTicks;
+			StepTimer->TotalTicks += StepTimer->TargetElapsedTicks;
+			StepTimer->LeftoverTicks -= StepTimer->TargetElapsedTicks; // will be zero if st->leftOverTicks == st->targetElapsedTicks
+			StepTimer->FrameCount++;
 
-			if (update) {
-				update();
+			if (Update) {
+				Update();
 			}
 		}
 	} else {
 		// Variable timestep update logic.
-		st->elapsed_ticks = delta;
-		st->total_ticks += delta;
-		st->leftover_ticks = 0;
-		st->frame_count++;
+		StepTimer->ElapsedTicks = Delta;
+		StepTimer->TotalTicks += Delta;
+		StepTimer->LeftoverTicks = 0;
+		StepTimer->FrameCount++;
 
-		if (update) {
-			update();
+		if (Update) {
+			Update();
 		}
 	}
 
 	// Track the current framerate.
-	if (st->frame_count != last_frame_count) {
-		st->frames_this_second++;
+	if (StepTimer->FrameCount != last_frame_count) {
+		StepTimer->FramesThisSecond++;
 	}
 
-	if (st->qpc_second_counter >= (UINT64)(st->qpc_frequency.QuadPart)) {
-		st->frames_per_second = st->frames_this_second;
-		st->frames_this_second = 0;
-		st->qpc_second_counter %= st->qpc_frequency.QuadPart;
+	if (StepTimer->QPCSecondCounter >= (UINT64)(StepTimer->QPCFrequency.QuadPart)) {
+		StepTimer->FramesPerSecond = StepTimer->FramesThisSecond;
+		StepTimer->FramesThisSecond = 0;
+		StepTimer->QPCSecondCounter %= StepTimer->QPCFrequency.QuadPart;
 	}
 }

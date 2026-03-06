@@ -24,7 +24,7 @@ int Sendai_run()
 	  .Title = L"Sendai",
 	  .WorldRenderer = {.Width = 1280, .Height = 720},
 	  .Camera = R_CameraSpawn((XMFLOAT3){0, 0, -10}),
-	  .Scene.SceneArena = SendaiArena_init(GIGABYTES(2)),
+	  .Scene.SceneArena = S_ArenaInit(GIGABYTES(2)),
 	  .bRunning = true
 	};
 
@@ -40,7 +40,7 @@ int Sendai_run()
 	CreateScenePipelineState(&Engine.WorldRenderer, &Engine.Scene);
 
 	UI_Init(&Engine.UI, Engine.WorldRenderer.Width, Engine.WorldRenderer.Height, Engine.WorldRenderer.Device, Engine.WorldRenderer.CommandList);
-	SendaiTimer_init(&Engine.Timer);
+	S_TimerInit(&Engine.Timer);
 
 
 	PWSTR file = SelectGLTFPath();
@@ -76,7 +76,7 @@ int Sendai_run()
 	}
 
 	R_Destroy(&Engine.WorldRenderer);
-	SendaiArena_release(&Engine.Scene.SceneArena);
+	S_ArenaRelease(&Engine.Scene.SceneArena);
 	return (int)(msg.wParam);
 }
 
@@ -147,8 +147,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
 	return DefWindowProc(hwnd, message, wparam, lparam);
 }
 static void EngineUpdate(Sendai *engine) {
-    Sendai_tick(&engine->Timer);
-    R_CameraUpdate(&engine->Camera, ticks_to_seconds_FLOAT(engine->Timer.elapsed_ticks));
+    S_Tick(&engine->Timer);
+    R_CameraUpdate(&engine->Camera, TicksToSeconds_FLOAT(engine->Timer.ElapsedTicks));
     GuiUpdate(engine);
 }
 

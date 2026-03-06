@@ -7,4 +7,4 @@
 	Retrieves the path of the executable file of the current process with a last slash ('\\') appended in the end.
 	Example: C:\\path\\to\\my\\executable.exe\\
 *******************************************************************************************************************/
-void win32_curr_path(_Out_writes_(path_size) WCHAR *const path, UINT path_size);
+void Win32CurrPath(_Out_writes_(PathSize) WCHAR *const Path, UINT PathSize);

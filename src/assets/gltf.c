@@ -60,7 +60,7 @@ BOOL SendaiGLTF_load(PCWSTR Path, SendaiScene *OutScene)
 		return FALSE;
 	}
 
-	OutScene->Meshes = SendaiArena_alloc(&OutScene->SceneArena, Data->meshes_count * sizeof(R_Mesh));
+	OutScene->Meshes = S_ArenaAlloc(&OutScene->SceneArena, Data->meshes_count * sizeof(R_Mesh));
 	OutScene->MeshCount = Data->meshes_count;
 	if (Data->meshes_count == 0) {
 		S_LogAppend("No meshes in glTF\n");
@@ -69,7 +69,7 @@ BOOL SendaiGLTF_load(PCWSTR Path, SendaiScene *OutScene)
 	}
 	size_t ImagesCount = Data->images_count || 1;
 
-	R_Texture *Textures = SendaiArena_alloc(&OutScene->SceneArena, Data->meshes_count * ImagesCount * sizeof(R_Texture));
+	R_Texture *Textures = S_ArenaAlloc(&OutScene->SceneArena, Data->meshes_count * ImagesCount * sizeof(R_Texture));
 	for (size_t MeshId = 0; MeshId < Data->meshes_count; MeshId++) {
 		OutScene->Meshes[MeshId].Textures = &Textures[MeshId];
 		OutScene->Meshes[MeshId].TextureCount = ImagesCount;
@@ -131,7 +131,7 @@ BOOL SendaiGLTF_load(PCWSTR Path, SendaiScene *OutScene)
 		}
 
 		size_t VertexCount = PositionAccessor->count;
-		R_Vertex *Vertices = SendaiArena_alloc(&OutScene->SceneArena, sizeof(R_Vertex) * VertexCount);
+		R_Vertex *Vertices = S_ArenaAlloc(&OutScene->SceneArena, sizeof(R_Vertex) * VertexCount);
 
 		for (size_t i = 0; i < VertexCount; i++) {
 			float pos[3];
@@ -165,7 +165,7 @@ BOOL SendaiGLTF_load(PCWSTR Path, SendaiScene *OutScene)
 
 		uint16_t *Indices = NULL;
 		if (IndexCount > 0) {
-			Indices = SendaiArena_alloc(&OutScene->SceneArena, sizeof(uint16_t) * IndexCount);
+			Indices = S_ArenaAlloc(&OutScene->SceneArena, sizeof(uint16_t) * IndexCount);
 			for (size_t i = 0; i < IndexCount; i++) {
 				uint32_t Index;
 				cgltf_accessor_read_uint(IndicesAccessor, (int)i, &Index, 1);

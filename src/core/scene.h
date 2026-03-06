@@ -18,7 +18,7 @@ typedef struct SendaiScene {
 	ID3DBlob *PS;
 	ID3D12RootSignature *RootSign;
 
-	SendaiArena SceneArena;
+	S_Arena SceneArena;
 } SendaiScene;
 
 void CreateSceneRootSig(ID3D12Device *device, ID3D12RootSignature **root_sign);
