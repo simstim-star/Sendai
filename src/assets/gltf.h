@@ -9,5 +9,4 @@ typedef struct Sendai_Texture Sendai_Texture;
 typedef struct Sendai_Mesh Sendai_Mesh;
 typedef struct Sendai_Scene Sendai_Scene;
 
-
-BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene);
+BOOL SendaiGLTF_load(PCWSTR path, Sendai_Scene *out_scene);
