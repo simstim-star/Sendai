@@ -238,7 +238,7 @@ void SendaiRenderer_vertices(ID3D12Device *device, Sendai_Mesh *const mesh)
 	  .CreationNodeMask = 1,
 	  .VisibleNodeMask = 1,
 	};
-	const D3D12_RESOURCE_DESC buffer_resource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(Sendai_Vertex) * 24, D3D12_RESOURCE_FLAG_NONE, 0);
+	const D3D12_RESOURCE_DESC buffer_resource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(Sendai_Vertex) * 2400000, D3D12_RESOURCE_FLAG_NONE, 0);
 
 	// Note: using upload heaps to transfer static data like vert buffers is not
 	// recommended. Every time the GPU needs it, the upload heap will be marshalled

@@ -7,7 +7,7 @@ set(SRC_CORE "src/core/camera.c" "src/core/timer.c")
 set(SRC_WIN "src/win32/win_main.c" "src/win32/win_path.c")
 set(SRC ${SRC_WIN} ${SRC_CORE} "src/renderer/renderer.c" "src/gui/gui.c" "src/error/error.c" "src/core/engine.c" "src/core/log.h" "src/core/log.c" "src/core/scene.c")
 
-add_executable(${PROJECT_NAME} WIN32 ${SRC} "src/core/engine.c" "src/assets/gltf.c"  "src/core/log.c" "src/core/scene.c")
+add_executable(${PROJECT_NAME} WIN32 ${SRC} "src/core/engine.c" "src/assets/gltf.c"  "src/core/log.c" "src/core/scene.c" "src/core/arena.c")
 
 
 target_compile_definitions(${PROJECT_NAME}

@@ -11,4 +11,3 @@ typedef struct Sendai_Scene Sendai_Scene;
 
 
 BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene);
-void SendaiGLTF_release(Sendai_Mesh *model);

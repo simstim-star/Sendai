@@ -24,6 +24,7 @@ int Sendai_run()
 	  .title = L"Sendai",
 	  .world_renderer = (Sendai_WorldRenderer){.width = 1280, .height = 720},
 	  .camera = Sendai_camera_spawn((XMFLOAT3){0, 0, -10}),
+	  .scene.scene_arena = SendaiArena_init(GIGABYTES(2)),
 	};
 
 	engine.camera.yaw = 2 * XM_PI; // just to make it start looking at the box. will remove later
@@ -41,6 +42,7 @@ int Sendai_run()
 	SendaiTimer_init(&engine.timer);
 
 	SendaiGLTF_load("BoxTextured.gltf", &engine.scene);
+	//SendaiGLTF_load("SheenDamask/SheenDamask.gltf", &engine.scene);
 
 	for (int i = 0; i < engine.scene.mesh_count; ++i) {
 		SendaiRenderer_vertices(engine.world_renderer.device, &engine.scene.meshes[i]);

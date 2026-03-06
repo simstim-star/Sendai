@@ -40,7 +40,8 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene)
 		cgltf_free(data);
 		return false;
 	}
-	out_scene->meshes = malloc(data->meshes_count * sizeof(Sendai_Mesh));
+
+	out_scene->meshes = SendaiArena_alloc(&out_scene->scene_arena, data->meshes_count * sizeof(Sendai_Mesh));
 	out_scene->mesh_count = data->meshes_count;
 	if (data->meshes_count == 0) {
 		Sendai_Log_append("No meshes in glTF\n");
@@ -49,7 +50,7 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene)
 	}
 	size_t image_count = data->images_count || 1;
 
-	Sendai_Texture *textures = malloc(data->meshes_count * image_count * sizeof(Sendai_Texture));
+	Sendai_Texture *textures = SendaiArena_alloc(&out_scene->scene_arena, data->meshes_count * image_count * sizeof(Sendai_Texture));
 	for (size_t mesh_id = 0; mesh_id < data->meshes_count; mesh_id++) {
 		out_scene->meshes[mesh_id].textures = &textures[mesh_id];
 		out_scene->meshes[mesh_id].texture_count = image_count;
@@ -108,7 +109,7 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene)
 		}
 
 		size_t vertex_count = pos_accessor->count;
-		Sendai_Vertex *vertices = malloc(sizeof(Sendai_Vertex) * vertex_count);
+		Sendai_Vertex *vertices = SendaiArena_alloc(&out_scene->scene_arena, sizeof(Sendai_Vertex) * vertex_count);
 
 		for (size_t i = 0; i < vertex_count; i++) {
 			float pos[3];
@@ -142,7 +143,7 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene)
 
 		uint16_t *indices = NULL;
 		if (index_count > 0) {
-			indices = malloc(sizeof(uint16_t) * index_count);
+			indices = SendaiArena_alloc(&out_scene->scene_arena, sizeof(uint16_t) * index_count);
 			for (size_t i = 0; i < index_count; i++) {
 				uint32_t v;
 				cgltf_accessor_read_uint(idx_accessor, (int)i, &v, 1);
@@ -160,12 +161,6 @@ BOOL SendaiGLTF_load(const char *path, Sendai_Scene *out_scene)
 
 	Sendai_Log_appendf("Successfully loaded %s\n", path);
 	return true;
-}
-
-void SendaiGLTF_release(Sendai_Mesh *model)
-{
-	free(model->vertices);
-	free(model->indices);
 }
 
 /****************************************************

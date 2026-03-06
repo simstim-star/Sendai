@@ -3,6 +3,8 @@
 #include <windows.h>
 #include <d3dcommon.h>
 
+#include "arena.h"
+
 typedef struct Sendai_Mesh Sendai_Mesh;
 typedef struct Sendai_WorldRenderer Sendai_WorldRenderer;
 typedef struct Sendai_Mesh Sendai_Mesh;
@@ -16,6 +18,8 @@ typedef struct Sendai_Scene {
 	ID3DBlob *vertex_shader;
 	ID3DBlob *pixel_shader;
 	ID3D12RootSignature *root_sign;
+
+	SendaiArena scene_arena;
 } Sendai_Scene;
 
 void Sendai_create_scene_root_sig(ID3D12Device *device, ID3D12RootSignature **root_sign);
