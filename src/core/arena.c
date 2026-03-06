@@ -6,60 +6,60 @@
 #include <stdio.h>
 #include <windows.h>
 
-SendaiArena SendaiArena_init(size_t reserve_size)
+S_Arena S_ArenaInit(size_t ReserveSize)
 {
-	SendaiArena arena = {0};
-	arena.base = VirtualAlloc(NULL, reserve_size, MEM_RESERVE, PAGE_READWRITE);
+	S_Arena Arena = {0};
+	Arena.Base = VirtualAlloc(NULL, ReserveSize, MEM_RESERVE, PAGE_READWRITE);
 
-	if (!arena.base) {
-		exit_with_msg("[ARENA] Failed to reserve virtual memory");
+	if (!Arena.Base) {
+		ExitWithMessage("[ARENA] Failed to reserve virtual memory");
 	}
 
-	arena.size_reserved = reserve_size;
-	arena.size_committed = 0;
-	arena.offset = 0;
+	Arena.SizeReserved = ReserveSize;
+	Arena.SizeCommitted = 0;
+	Arena.Offset = 0;
 
-	return arena;
+	return Arena;
 }
 
-void *SendaiArena_alloc(SendaiArena *arena, size_t size)
+void *S_ArenaAlloc(S_Arena *Arena, size_t Size)
 {
-	size_t align_mask = 7;
-	size_t pos = (arena->offset + align_mask) & ~align_mask;
-	size_t end = pos + size;
+	size_t AlignMask = 7;
+	size_t Position = (Arena->Offset + AlignMask) & ~AlignMask;
+	size_t End = Position + Size;
 
-	if (end > arena->size_reserved) {
-		exit_with_msg("[ARENA] Arena overflow: Out of reserved virtual address space");
+	if (End > Arena->SizeReserved) {
+		ExitWithMessage("[ARENA] Arena overflow: Out of reserved virtual address space");
 		return NULL;
 	}
 
-	if (end > arena->size_committed) {
-		size_t to_commit = end - arena->size_committed;
-		if (!VirtualAlloc(arena->base + arena->size_committed, to_commit, MEM_COMMIT, PAGE_READWRITE)) {
-			exit_with_msg("[ARENA] Failed to commit physical memory");
+	if (End > Arena->SizeCommitted) {
+		size_t ToCommit = End - Arena->SizeCommitted;
+		if (!VirtualAlloc(Arena->Base + Arena->SizeCommitted, ToCommit, MEM_COMMIT, PAGE_READWRITE)) {
+			ExitWithMessage("[ARENA] Failed to commit physical memory");
 			return NULL;
 		}
-		arena->size_committed = end;
+		Arena->SizeCommitted = End;
 	}
-	arena->offset = end;
-	return arena->base + pos;
+	Arena->Offset = End;
+	return Arena->Base + Position;
 }
 
-void SendaiArena_reset(SendaiArena *arena)
+void S_ArenaReset(S_Arena *Arena)
 {
-	arena->offset = 0;
-	if (arena->size_committed > 0) {
-		VirtualAlloc(arena->base, arena->size_committed, MEM_RESET, PAGE_READWRITE);
+	Arena->Offset = 0;
+	if (Arena->SizeCommitted > 0) {
+		VirtualAlloc(Arena->Base, Arena->SizeCommitted, MEM_RESET, PAGE_READWRITE);
 	}
 }
 
-void SendaiArena_release(SendaiArena *arena)
+void S_ArenaRelease(S_Arena *Arena)
 {
-	if (arena->base) {
-		VirtualFree(arena->base, 0, MEM_RELEASE);
+	if (Arena->Base) {
+		VirtualFree(Arena->Base, 0, MEM_RELEASE);
 	}
-	arena->base = NULL;
-	arena->offset = 0;
-	arena->size_committed = 0;
-	arena->size_reserved = 0;
+	Arena->Base = NULL;
+	Arena->Offset = 0;
+	Arena->SizeCommitted = 0;
+	Arena->SizeReserved = 0;
 }

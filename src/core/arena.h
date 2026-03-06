@@ -7,13 +7,13 @@
 #define GIGABYTES(val) (MEGABYTES(val) * 1024ULL)
 
 typedef struct SendaiArena{
-	UINT8 *base;		   // Start of reserved address space
-	size_t size_reserved;  // Total size of address space
-	size_t size_committed; // Currently committed memory
-	size_t offset;		   // Current allocation position
-} SendaiArena;
+	UINT8 *Base;		   // Start of reserved address space
+	size_t SizeReserved;  // Total size of address space
+	size_t SizeCommitted; // Currently committed memory
+	size_t Offset;		   // Current allocation position
+} S_Arena;
 
-SendaiArena SendaiArena_init(size_t reserve_size);
-void *SendaiArena_alloc(SendaiArena *arena, size_t size);
-void SendaiArena_reset(SendaiArena *arena);
-void SendaiArena_release(SendaiArena *arena);
+S_Arena S_ArenaInit(size_t ReserveSize);
+void *S_ArenaAlloc(S_Arena *Arena, size_t Size);
+void S_ArenaReset(S_Arena *Arena);
+void S_ArenaRelease(S_Arena *Arena);
