@@ -1,12 +1,12 @@
 #pragma once
 
-typedef struct Sendai_Log {
-	char buffer[10000];
-	int len;
-	int max;
-} Sendai_Log;
+typedef struct S_Log {
+	char Buffer[10000];
+	int Len;
+	int Max;
+} S_Log;
 
-extern Sendai_Log SENDAI_LOG;
+extern S_Log SENDAI_LOG;
 
-void Sendai_Log_append(const char *text);
-void Sendai_Log_appendf(const char *format, ...);
+void S_LogAppend(const char *Text);
+void S_LogAppendf(const char *Format, ...);

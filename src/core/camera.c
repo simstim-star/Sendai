@@ -6,51 +6,51 @@
  Private functions
 ******************************************************************/
 
-static void camera_reset(Sendai_Camera *camera)
+static void CameraReset(R_Camera *camera)
 {
-	camera->position = camera->initial_position;
-	camera->yaw = XM_PI;
-	camera->pitch = 0.0f;
-	camera->look_direction = (XMFLOAT3){0, 0, -1};
+	camera->Position = camera->InitialPosition;
+	camera->Yaw = XM_PI;
+	camera->Pitch = 0.0f;
+	camera->LookDirection = (XMFLOAT3){0, 0, -1};
 }
 
 /*****************************************************************
  Public functions
 ******************************************************************/
 
-Sendai_Camera Sendai_camera_spawn(XMFLOAT3 position)
+R_Camera R_CameraSpawn(XMFLOAT3 Position)
 {
-	return (Sendai_Camera){
-	  .initial_position = position,
-	  .position = position,
-	  .yaw = XM_PI,
-	  .pitch = 0.0f,
-	  .look_direction = {0, 0, -1},
-	  .up_direction = {0, 1, 0},
-	  .move_speed = {5.0f},
-	  .turn_speed = XM_PIDIV4,
+	return (R_Camera){
+	  .InitialPosition = Position,
+	  .Position = Position,
+	  .Yaw = XM_PI,
+	  .Pitch = 0.0f,
+	  .LookDirection = {0, 0, -1},
+	  .UpDirection = {0, 1, 0},
+	  .MoveSpeed = {5.0f},
+	  .TurnSpeed = XM_PIDIV4,
 	};
 }
 
-void Sendai_camera_update(Sendai_Camera *camera, float elapsed_seconds)
+void R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 {
-	float rotate_delta = camera->turn_speed * elapsed_seconds;
+	float RotateDelta = Camera->TurnSpeed * ElapsedSeconds;
 
-	if (camera->keys_pressed.left) {
-		camera->yaw += rotate_delta;
+	if (Camera->KeysPressed.Left) {
+		Camera->Yaw += RotateDelta;
 	}
-	if (camera->keys_pressed.right) {
-		camera->yaw -= rotate_delta;
+	if (Camera->KeysPressed.Right) {
+		Camera->Yaw -= RotateDelta;
 	}
-	if (camera->keys_pressed.up) {
-		camera->pitch += rotate_delta;
+	if (Camera->KeysPressed.Up) {
+		Camera->Pitch += RotateDelta;
 	}
-	if (camera->keys_pressed.down) {
-		camera->pitch -= rotate_delta;
+	if (Camera->KeysPressed.Down) {
+		Camera->Pitch -= RotateDelta;
 	}
 
-	camera->pitch = min(camera->pitch, XM_PIDIV4);
-	camera->pitch = max(-XM_PIDIV4, camera->pitch);
+	Camera->Pitch = min(Camera->Pitch, XM_PIDIV4);
+	Camera->Pitch = max(-XM_PIDIV4, Camera->Pitch);
 
 	/* 
 		Determine the look direction (check notes/xyz_from_yaw_pitch.png)
@@ -58,128 +58,128 @@ void Sendai_camera_update(Sendai_Camera *camera, float elapsed_seconds)
          y = sin(pitch)
          z = cos(pitch) * cos(yaw)
 	*/
-	float look_b = cosf(camera->pitch);
-	camera->look_direction.x = look_b * sinf(camera->yaw);
-	camera->look_direction.y = sinf(camera->pitch);
-	camera->look_direction.z = look_b * cosf(camera->yaw);
+	float look_b = cosf(Camera->Pitch);
+	Camera->LookDirection.x = look_b * sinf(Camera->Yaw);
+	Camera->LookDirection.y = sinf(Camera->Pitch);
+	Camera->LookDirection.z = look_b * cosf(Camera->Yaw);
 
-	XMVECTOR forward = XMLoadFloat3(&camera->look_direction);
-	XMVECTOR up = XMLoadFloat3(&camera->up_direction);
-	XMVECTOR right = XM_VEC3_CROSS(forward, up);
+	XMVECTOR Forward = XMLoadFloat3(&Camera->LookDirection);
+	XMVECTOR Up = XMLoadFloat3(&Camera->UpDirection);
+	XMVECTOR Right = XM_VEC3_CROSS(Forward, Up);
 
 
-	XMVECTOR movement = XMVectorZero();
+	XMVECTOR Movement = XMVectorZero();
 
 	// Process input, which can be [-1,0,1] and will be applied to the direction we want to move
 	{
-		float right_input = 0.f;
-		if (camera->keys_pressed.a) {
-			right_input -= 1.0f;
+		float RightInput = 0.f;
+		if (Camera->KeysPressed.A) {
+			RightInput -= 1.0f;
 		}
-		if (camera->keys_pressed.d) {
-			right_input += 1.0f;
-		}
-
-		float forward_input = 0.f;
-		if (camera->keys_pressed.w) {
-			forward_input += 1.0f;
-		}
-		if (camera->keys_pressed.s) {
-			forward_input -= 1.0f;
+		if (Camera->KeysPressed.D) {
+			RightInput += 1.0f;
 		}
 
-		XMVECTOR right_scaled_by_input = XM_VEC_SCALE(right, right_input);
-		XMVECTOR forward_scaled_by_input = XM_VEC_SCALE(forward, forward_input);
-		movement = XM_VEC_ADD(movement, right_scaled_by_input);
-		movement = XM_VEC_ADD(movement, forward_scaled_by_input);
+		float ForwardInput = 0.f;
+		if (Camera->KeysPressed.W) {
+			ForwardInput += 1.0f;
+		}
+		if (Camera->KeysPressed.S) {
+			ForwardInput -= 1.0f;
+		}
+
+		XMVECTOR RightScaledByInput = XM_VEC_SCALE(Right, RightInput);
+		XMVECTOR ForwardScaledByInput = XM_VEC_SCALE(Forward, ForwardInput);
+		Movement = XM_VEC_ADD(Movement, RightScaledByInput);
+		Movement = XM_VEC_ADD(Movement, ForwardScaledByInput);
 	}
 
-	XMVECTOR zero = XMVectorZero();
-	if (!XM_VEC3_EQ(movement, zero)) {
-		movement = XM_VEC3_NORM(movement);
-		movement = XM_VEC_SCALE(movement, camera->move_speed * elapsed_seconds);
+	XMVECTOR Zero = XMVectorZero();
+	if (!XM_VEC3_EQ(Movement, Zero)) {
+		Movement = XM_VEC3_NORM(Movement);
+		Movement = XM_VEC_SCALE(Movement, Camera->MoveSpeed * ElapsedSeconds);
 
-		XMFLOAT3 delta;
-		XMStoreFloat3(&delta, &movement);
+		XMFLOAT3 Delta;
+		XMStoreFloat3(&Delta, &Movement);
 
-		camera->position.x += delta.x;
-		camera->position.y += delta.y;
-		camera->position.z += delta.z;
+		Camera->Position.x += Delta.x;
+		Camera->Position.y += Delta.y;
+		Camera->Position.z += Delta.z;
 	}
 }
 
-XMMATRIX Sendai_camera_view_matrix(XMFLOAT3 pos, XMFLOAT3 look, XMFLOAT3 up)
+XMMATRIX R_CameraViewMatrix(XMFLOAT3 pos, XMFLOAT3 look, XMFLOAT3 up)
 {
-	XMVECTOR eye_position = XMLoadFloat3(&pos);
-	XMVECTOR eye_direction = XMLoadFloat3(&look);
-	XMVECTOR up_direction = XMLoadFloat3(&up);
-	return XM_MAT_LOOK_RH(eye_position, eye_direction, up_direction);
+	XMVECTOR EyePosition = XMLoadFloat3(&pos);
+	XMVECTOR EyeDirection = XMLoadFloat3(&look);
+	XMVECTOR UpDirection = XMLoadFloat3(&up);
+	return XM_MAT_LOOK_RH(EyePosition, EyeDirection, UpDirection);
 }
 
-XMMATRIX Sendai_camera_projection_matrix(float fov, float aspect_ratio, float near_plane, float far_plane)
+XMMATRIX R_CameraProjectionMatrix(float FOV, float AspectRatio, float NearPlane, float FarPlane)
 {
-	return XMMatrixPerspectiveFovRH(fov, aspect_ratio, near_plane, far_plane);
+	return XMMatrixPerspectiveFovRH(FOV, AspectRatio, NearPlane, FarPlane);
 }
 
-void Sendai_camera_on_key_down(Sendai_Camera *camera, WPARAM key)
+void R_CameraOnKeyDown(R_Camera *Camera, WPARAM Key)
 {
-	switch (key) {
+	switch (Key) {
 	case 'W':
-		camera->keys_pressed.w = true;
+		Camera->KeysPressed.W = true;
 		break;
 	case 'A':
-		camera->keys_pressed.a = true;
+		Camera->KeysPressed.A = true;
 		break;
 	case 'S':
-		camera->keys_pressed.s = true;
+		Camera->KeysPressed.S = true;
 		break;
 	case 'D':
-		camera->keys_pressed.d = true;
+		Camera->KeysPressed.D = true;
 		break;
 	case VK_LEFT:
-		camera->keys_pressed.left = true;
+		Camera->KeysPressed.Left = true;
 		break;
 	case VK_RIGHT:
-		camera->keys_pressed.right = true;
+		Camera->KeysPressed.Right = true;
 		break;
 	case VK_UP:
-		camera->keys_pressed.up = true;
+		Camera->KeysPressed.Up = true;
 		break;
 	case VK_DOWN:
-		camera->keys_pressed.down = true;
+		Camera->KeysPressed.Down = true;
 		break;
 	case VK_ESCAPE:
-		camera_reset(camera);
+		CameraReset(Camera);
 		break;
 	}
 }
 
-void Sendai_camera_on_key_up(Sendai_Camera *camera, WPARAM key)
+void R_CameraOnKeyUp(R_Camera *Camera, WPARAM Key)
 {
-	switch (key) {
+	switch (Key) {
 	case 'W':
-		camera->keys_pressed.w = false;
+		Camera->KeysPressed.W = false;
 		break;
 	case 'A':
-		camera->keys_pressed.a = false;
+		Camera->KeysPressed.A = false;
 		break;
 	case 'S':
-		camera->keys_pressed.s = false;
+		Camera->KeysPressed.S = false;
 		break;
 	case 'D':
-		camera->keys_pressed.d = false;
+		Camera->KeysPressed.D = false;
 		break;
 	case VK_LEFT:
-		camera->keys_pressed.left = false;
+		Camera->KeysPressed.Left = false;
 		break;
 	case VK_RIGHT:
-		camera->keys_pressed.right = false;
+		Camera->KeysPressed.Right = false;
 		break;
 	case VK_UP:
-		camera->keys_pressed.up = false;
+		Camera->KeysPressed.Up = false;
 		break;
 	case VK_DOWN:
-		camera->keys_pressed.down = false;
+		Camera->KeysPressed.Down = false;
 		break;
 	}
 }

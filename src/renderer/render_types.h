@@ -4,58 +4,58 @@
 
 #include <d3d12.h>
 
-typedef struct Sendai_Color {
-	float r, g, b, a;
-} Sendai_Color;
+typedef struct R_Color {
+	float R, G, B, A;
+} R_Color;
 
-typedef struct Sendai_Float2 {
-	float x, y;
-} Sendai_Float2;
+typedef struct R_Float2 {
+	float X, Y;
+} R_Float2;
 
-typedef struct Sendai_Float4 {
-	float x, y, z, w;
-} Sendai_Float4;
+typedef struct R_Float4 {
+	float X, Y, Z, W;
+} R_Float4;
 
-typedef struct Sendai_Vertex {
-	Sendai_Float4 position;
-	Sendai_Float4 color;
+typedef struct R_Vertex {
+	R_Float4 Position;
+	R_Float4 Color;
 	struct {
-		float u;
-		float v;
-	} uv;
-} Sendai_Vertex;
+		float U;
+		float V;
+	} UV;
+} R_Vertex;
 
-typedef struct Sendai_ConstantBuffer {
-	XMMATRIX mvp_matrix;
+typedef struct R_ConstantBuffer {
+	XMMATRIX MVP;
 
 	// Constant buffers must be 256-byte aligned. XMMATRIX is 64 bytes.
-	char padding[192];
-} Sendai_ConstantBuffer;
+	char Padding[192];
+} R_ConstantBuffer;
 
-typedef struct Sendai_Texture {
-	uint8_t *pixels; // RGBA8
-	int width;
-	int height;
-} Sendai_Texture;
+typedef struct R_Texture {
+	uint8_t *Pixels; // RGBA8
+	int Width;
+	int Height;
+} R_Texture;
 
-typedef struct Sendai_Mesh {
-	Sendai_Vertex *vertices;
-	UINT vertex_count;
-	ID3D12Resource *vertex_buffer;
-	D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view;
+typedef struct R_Mesh {
+	R_Vertex *Vertices;
+	UINT VertexCount;
+	ID3D12Resource *VertexBuffer;
+	D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
 
-	UINT *indices;
-	UINT index_count;
-	ID3D12Resource *index_buffer;
-	D3D12_INDEX_BUFFER_VIEW index_buffer_view;
+	UINT *Indices;
+	UINT IndexCount;
+	ID3D12Resource *IndexBuffer;
+	D3D12_INDEX_BUFFER_VIEW IndexBufferView;
 
-	Sendai_Texture *textures;
-	UINT texture_count;
-} Sendai_Mesh;
+	R_Texture *Textures;
+	UINT TextureCount;
+} R_Mesh;
 
-typedef struct Sendai_Model {
-	char* name;
-	UINT id;
-	XMFLOAT3 position;
-	Sendai_Mesh *meshes;
-} Sendai_Model;
+typedef struct R_Model {
+	char* Name;
+	UINT Id;
+	XMFLOAT3 Position;
+	R_Mesh *Meshes;
+} R_Model;

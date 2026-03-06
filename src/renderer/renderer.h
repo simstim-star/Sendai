@@ -8,64 +8,64 @@
 
 #define FRAME_COUNT 2
 
-typedef struct Sendai_Camera Sendai_Camera;
+typedef struct R_Camera R_Camera;
 
-typedef struct Sendai_WorldRenderer {
-	HWND hwnd;
-	UINT width;
-	UINT height;
-	float aspect_ratio;
-	WCHAR assets_path[512];
+typedef struct R_World {
+	HWND hWnd;
+	UINT Width;
+	UINT Height;
+	float AspectRatio;
+	WCHAR AssetsPath[512];
 
-	D3D12_VIEWPORT viewport;
-	D3D12_RECT scissor_rect;
+	D3D12_VIEWPORT Viewport;
+	D3D12_RECT ScissorRect;
 
-	DXGI_MODE_DESC fullscreen_mode;
-	BOOL is_fullscreen;
-	DXGI_MODE_DESC *display_modes;
+	DXGI_MODE_DESC FullscreenMode;
+	BOOL bFullscreen;
+	DXGI_MODE_DESC *DisplayModes;
 
-	IDXGISwapChain1 *swap_chain;
-	ID3D12DescriptorHeap *rtv_descriptor_heap;
-	ID3D12DescriptorHeap *srv_heap;
-	D3D12_CPU_DESCRIPTOR_HANDLE rtv_handles[FRAME_COUNT];
-	ID3D12Resource *rtv_buffers[FRAME_COUNT];
-	UINT rtv_desc_increment;
-	UINT rtv_index;
+	IDXGISwapChain1 *SwapChain;
+	ID3D12DescriptorHeap *RtvDescriptorHeap;
+	ID3D12DescriptorHeap *SrvHeap;
+	D3D12_CPU_DESCRIPTOR_HANDLE RtvHandles[FRAME_COUNT];
+	ID3D12Resource *RtvBuffers[FRAME_COUNT];
+	UINT RtvDescIncrement;
+	UINT RtvIndex;
 
-	ID3D12Device *device;
-	ID3D12CommandQueue *command_queue;
+	ID3D12Device *Device;
+	ID3D12CommandQueue *CommandQueue;
 
-	ID3D12CommandAllocator *command_allocator;
-	ID3D12GraphicsCommandList *command_list;
+	ID3D12CommandAllocator *CommandAllocator;
+	ID3D12GraphicsCommandList *CommandList;
 
-	ID3D12PipelineState *pipeline_state_scene;
+	ID3D12PipelineState *PipelineStateScene;
 
 	/*****************************
 		Synchronization objects
 	*****************************/
 
-	UINT frame_index;
-	UINT64 fence_value;
-	HANDLE fence_event;
-	ID3D12Fence *fence;
+	UINT FrameIndex;
+	UINT64 FenceValue;
+	HANDLE FenceEvent;
+	ID3D12Fence *Fence;
 
 	/*****************************
 		Resources
 	*****************************/
 
-	ID3D12Resource *constant_buffer;
-	ID3D12Resource *model_gpu_texture;
+	ID3D12Resource *ConstantBuffer;
+	ID3D12Resource *ModelGpuTexture;
 
-	UINT srv_descriptor_size;
-	D3D12_GPU_DESCRIPTOR_HANDLE model_gpu_srv;
-} Sendai_WorldRenderer;
+	UINT SrvDescriptorSize;
+	D3D12_GPU_DESCRIPTOR_HANDLE ModelGpuSrv;
+} R_World;
 
-void SendaiRenderer_init(Sendai_WorldRenderer *const renderer, HWND hwnd);
-void SendaiRenderer_vertices(ID3D12Device *device, Sendai_Mesh *const mesh);
-void SendaiRenderer_indices(ID3D12Device *device, Sendai_Mesh *const mesh);
-void SendaiRenderer_upload_texture(Sendai_WorldRenderer *renderer, Sendai_Texture *source, ID3D12Resource **out_texture, D3D12_GPU_DESCRIPTOR_HANDLE *out_srv, UINT srv_index);
-void SendaiRenderer_destroy(Sendai_WorldRenderer *renderer);
-void SendaiRenderer_update(Sendai_WorldRenderer *const renderer, Sendai_Camera *const camera, Sendai_Scene *scene);
-void SendaiRenderer_draw(Sendai_WorldRenderer *const renderer, Sendai_Scene *scene);
-void SendaiRenderer_execute_commands(Sendai_WorldRenderer *const renderer);
-void SendaiRenderer_swapchain_resize(Sendai_WorldRenderer *const renderer, int width, int height);
+void R_Init(R_World *const renderer, HWND hwnd);
+void R_Vertices(ID3D12Device *device, R_Mesh *const mesh);
+void R_Indices(ID3D12Device *device, R_Mesh *const mesh);
+void R_UploadTexture(R_World *renderer, R_Texture *source, ID3D12Resource **out_texture, D3D12_GPU_DESCRIPTOR_HANDLE *out_srv, UINT srv_index);
+void R_Destroy(R_World *renderer);
+void R_Update(R_World *const renderer, R_Camera *const camera, SendaiScene *scene);
+void R_Draw(R_World *const renderer, SendaiScene *scene);
+void R_ExecuteCommands(R_World *const renderer);
+void R_SwapchainResize(R_World *const renderer, int width, int height);

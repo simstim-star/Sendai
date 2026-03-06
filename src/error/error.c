@@ -2,7 +2,7 @@
 
 #include "error.h"
 
-void exit_if_failed(const HRESULT hr)
+void ExitIfFailed(const HRESULT hr)
 {
 	if (!FAILED(hr)) {
 		return;

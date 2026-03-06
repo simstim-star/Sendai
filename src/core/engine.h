@@ -1,23 +1,23 @@
 #pragma once
 
-#include "../gui/gui.h"
+#include "../ui/ui.h"
 #include "../renderer/renderer.h"
 #include "camera.h"
 #include "timer.h"
 #include "scene.h"
 
 typedef struct Sendai {
-	WCHAR *title;
-	WCHAR *curr_window;
-	HINSTANCE hinstance;
-	HWND hwnd;
-	BOOL is_running;
+	WCHAR *Title;
+	WCHAR *Window;
+	HINSTANCE hInstance;
+	HWND hWnd;
+	BOOL bRunning;
 
-	SendaiGui_Renderer gui_renderer;
-	Sendai_Camera camera;
-	Sendai_WorldRenderer world_renderer;
-	Sendai_Step_Timer timer;
-	Sendai_Scene scene;
+	UI_Renderer UI;
+	R_Camera Camera;
+	R_World WorldRenderer;
+	Sendai_Step_Timer Timer;
+	SendaiScene Scene;
 } Sendai;
 
 int Sendai_run();

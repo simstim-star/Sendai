@@ -37,7 +37,7 @@ static void AppendFileNameToPath(_In_z_ WCHAR *BasePath, _In_z_ char *FileName, 
 	Public functions
 *****************************************************/
 
-BOOL SendaiGLTF_load(PCWSTR Path, Sendai_Scene *OutScene)
+BOOL SendaiGLTF_load(PCWSTR Path, SendaiScene *OutScene)
 {
 	void *FileData = NULL;
 	LONG Size = LoadGLTFFile(Path, &FileData);
@@ -60,19 +60,19 @@ BOOL SendaiGLTF_load(PCWSTR Path, Sendai_Scene *OutScene)
 		return FALSE;
 	}
 
-	OutScene->meshes = SendaiArena_alloc(&OutScene->scene_arena, Data->meshes_count * sizeof(Sendai_Mesh));
-	OutScene->mesh_count = Data->meshes_count;
+	OutScene->Meshes = SendaiArena_alloc(&OutScene->SceneArena, Data->meshes_count * sizeof(R_Mesh));
+	OutScene->MeshCount = Data->meshes_count;
 	if (Data->meshes_count == 0) {
-		Sendai_Log_append("No meshes in glTF\n");
+		S_LogAppend("No meshes in glTF\n");
 		cgltf_free(Data);
 		return false;
 	}
 	size_t ImagesCount = Data->images_count || 1;
 
-	Sendai_Texture *Textures = SendaiArena_alloc(&OutScene->scene_arena, Data->meshes_count * ImagesCount * sizeof(Sendai_Texture));
+	R_Texture *Textures = SendaiArena_alloc(&OutScene->SceneArena, Data->meshes_count * ImagesCount * sizeof(R_Texture));
 	for (size_t MeshId = 0; MeshId < Data->meshes_count; MeshId++) {
-		OutScene->meshes[MeshId].textures = &Textures[MeshId];
-		OutScene->meshes[MeshId].texture_count = ImagesCount;
+		OutScene->Meshes[MeshId].Textures = &Textures[MeshId];
+		OutScene->Meshes[MeshId].TextureCount = ImagesCount;
 
 		for (size_t i = 0; i < ImagesCount; ++i) {
 			uint8_t *Pixels = NULL;
@@ -88,13 +88,13 @@ BOOL SendaiGLTF_load(PCWSTR Path, Sendai_Scene *OutScene)
 			}
 
 			if (!Loaded) {
-				OutScene->meshes[MeshId].textures[i].pixels = &WHITE_PIXEL;
-				OutScene->meshes[MeshId].textures[i].width = 1;
-				OutScene->meshes[MeshId].textures[i].height = 1;
+				OutScene->Meshes[MeshId].Textures[i].Pixels = &WHITE_PIXEL;
+				OutScene->Meshes[MeshId].Textures[i].Width = 1;
+				OutScene->Meshes[MeshId].Textures[i].Height = 1;
 			} else {
-				OutScene->meshes[MeshId].textures[i].pixels = Pixels;
-				OutScene->meshes[MeshId].textures[i].width = W;
-				OutScene->meshes[MeshId].textures[i].height = H;
+				OutScene->Meshes[MeshId].Textures[i].Pixels = Pixels;
+				OutScene->Meshes[MeshId].Textures[i].Width = W;
+				OutScene->Meshes[MeshId].Textures[i].Height = H;
 			}
 		}
 
@@ -125,38 +125,38 @@ BOOL SendaiGLTF_load(PCWSTR Path, Sendai_Scene *OutScene)
 		}
 
 		if (!PositionAccessor) {
-			Sendai_Log_append("Mesh has no POSITION attribute\n");
+			S_LogAppend("Mesh has no POSITION attribute\n");
 			cgltf_free(Data);
 			return false;
 		}
 
 		size_t VertexCount = PositionAccessor->count;
-		Sendai_Vertex *Vertices = SendaiArena_alloc(&OutScene->scene_arena, sizeof(Sendai_Vertex) * VertexCount);
+		R_Vertex *Vertices = SendaiArena_alloc(&OutScene->SceneArena, sizeof(R_Vertex) * VertexCount);
 
 		for (size_t i = 0; i < VertexCount; i++) {
 			float pos[3];
 			cgltf_accessor_read_float(PositionAccessor, i, pos, 3);
-			Vertices[i].position = (Sendai_Float4){pos[0], pos[1], -pos[2], 1.0f};
+			Vertices[i].Position = (R_Float4){pos[0], pos[1], -pos[2], 1.0f};
 
 			if (ColorAccessor) {
 				float c[4];
 				cgltf_accessor_read_float(ColorAccessor, i, c, 4);
-				Vertices[i].color.x = c[0];
-				Vertices[i].color.y = c[1];
-				Vertices[i].color.z = c[2];
-				Vertices[i].color.w = 1.0f;
+				Vertices[i].Color.X = c[0];
+				Vertices[i].Color.Y = c[1];
+				Vertices[i].Color.Z = c[2];
+				Vertices[i].Color.W = 1.0f;
 			} else {
-				Vertices[i].color = (Sendai_Float4){1.0f, 1.0f, 1.0f, 1.0f};
+				Vertices[i].Color = (R_Float4){1.0f, 1.0f, 1.0f, 1.0f};
 			}
 
 			if (UVAccessor) {
 				float UV[2];
 				cgltf_accessor_read_float(UVAccessor, i, UV, 2);
-				Vertices[i].uv.u = UV[0];
-				Vertices[i].uv.v = 1.0f - UV[1]; // DX Flip
+				Vertices[i].UV.U = UV[0];
+				Vertices[i].UV.V = 1.0f - UV[1]; // DX Flip
 			} else {
-				Vertices[i].uv.u = 0.0f;
-				Vertices[i].uv.v = 0.0f;
+				Vertices[i].UV.U = 0.0f;
+				Vertices[i].UV.V = 0.0f;
 			}
 		}
 
@@ -165,7 +165,7 @@ BOOL SendaiGLTF_load(PCWSTR Path, Sendai_Scene *OutScene)
 
 		uint16_t *Indices = NULL;
 		if (IndexCount > 0) {
-			Indices = SendaiArena_alloc(&OutScene->scene_arena, sizeof(uint16_t) * IndexCount);
+			Indices = SendaiArena_alloc(&OutScene->SceneArena, sizeof(uint16_t) * IndexCount);
 			for (size_t i = 0; i < IndexCount; i++) {
 				uint32_t Index;
 				cgltf_accessor_read_uint(IndicesAccessor, (int)i, &Index, 1);
@@ -173,15 +173,15 @@ BOOL SendaiGLTF_load(PCWSTR Path, Sendai_Scene *OutScene)
 			}
 		}
 
-		OutScene->meshes[MeshId].vertices = Vertices;
-		OutScene->meshes[MeshId].vertex_count = VertexCount;
-		OutScene->meshes[MeshId].indices = Indices;
-		OutScene->meshes[MeshId].index_count = IndexCount;
+		OutScene->Meshes[MeshId].Vertices = Vertices;
+		OutScene->Meshes[MeshId].VertexCount = VertexCount;
+		OutScene->Meshes[MeshId].Indices = Indices;
+		OutScene->Meshes[MeshId].IndexCount = IndexCount;
 	}
 
 	cgltf_free(Data);
 
-	Sendai_Log_appendf(L"Successfully loaded %s\n", Path);
+	S_LogAppendf(L"Successfully loaded %s\n", Path);
 	return true;
 }
 

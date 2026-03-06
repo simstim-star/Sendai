@@ -4,9 +4,9 @@
 
 #include <windows.h>
 
-typedef struct Sendai_Vertex Sendai_Vertex;
-typedef struct Sendai_Texture Sendai_Texture;
-typedef struct Sendai_Mesh Sendai_Mesh;
-typedef struct Sendai_Scene Sendai_Scene;
+typedef struct R_Vertex R_Vertex;
+typedef struct R_Texture R_Texture;
+typedef struct R_Mesh R_Mesh;
+typedef struct SendaiScene SendaiScene;
 
-BOOL SendaiGLTF_load(PCWSTR path, Sendai_Scene *out_scene);
+BOOL SendaiGLTF_load(PCWSTR path, SendaiScene *out_scene);

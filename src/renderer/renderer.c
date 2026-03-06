@@ -8,7 +8,7 @@
 
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"
-#include "../gui/gui.h"
+#include "../ui/ui.h"
 #include "../win32/win_path.h"
 #include "renderer.h"
 
@@ -22,15 +22,15 @@
 	Forward declaration of private functions
 *****************************************************/
 
-static void signal_and_wait(Sendai_WorldRenderer *const renderer);
+static void signal_and_wait(R_World *const renderer);
 static void update_resource(ID3D12Resource *resource, void *data, size_t data_size);
 
-void SendaiRenderer_upload_texture(Sendai_WorldRenderer *renderer, Sendai_Texture *source, ID3D12Resource **out_texture, D3D12_GPU_DESCRIPTOR_HANDLE *out_srv, UINT srv_index)
+void R_UploadTexture(R_World *renderer, R_Texture *source, ID3D12Resource **out_texture, D3D12_GPU_DESCRIPTOR_HANDLE *out_srv, UINT srv_index)
 {
 	D3D12_RESOURCE_DESC tex_desc = {
 	  .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-	  .Width = source->width,
-	  .Height = source->height,
+	  .Width = source->Width,
+	  .Height = source->Height,
 	  .DepthOrArraySize = 1,
 	  .MipLevels = 1,
 	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -41,32 +41,32 @@ void SendaiRenderer_upload_texture(Sendai_WorldRenderer *renderer, Sendai_Textur
 
 	D3D12_HEAP_PROPERTIES heap_default = { .Type = D3D12_HEAP_TYPE_DEFAULT };
 	HRESULT hr = ID3D12Device_CreateCommittedResource(
-		renderer->device, &heap_default, D3D12_HEAP_FLAG_NONE, &tex_desc, D3D12_RESOURCE_STATE_COPY_DEST, NULL, &IID_ID3D12Resource, out_texture);
-	exit_if_failed(hr);
+		renderer->Device, &heap_default, D3D12_HEAP_FLAG_NONE, &tex_desc, D3D12_RESOURCE_STATE_COPY_DEST, NULL, &IID_ID3D12Resource, out_texture);
+	ExitIfFailed(hr);
 
 	UINT64 upload_size = 0;
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
 	UINT num_rows;
 	UINT64 row_size, total_bytes;
-	ID3D12Device_GetCopyableFootprints(renderer->device, &tex_desc, 0, 1, 0, &footprint, &num_rows, &row_size, &upload_size);
+	ID3D12Device_GetCopyableFootprints(renderer->Device, &tex_desc, 0, 1, 0, &footprint, &num_rows, &row_size, &upload_size);
 	D3D12_RESOURCE_DESC upload_desc = CD3DX12_RESOURCE_DESC_BUFFER(upload_size, D3D12_RESOURCE_FLAG_NONE, 0);
 	D3D12_HEAP_PROPERTIES heap_upload = {.Type = D3D12_HEAP_TYPE_UPLOAD};
 	ID3D12Resource *upload = NULL;
 	hr = ID3D12Device_CreateCommittedResource(
-		renderer->device, &heap_upload, D3D12_HEAP_FLAG_NONE, &upload_desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &upload);
-	exit_if_failed(hr);
+		renderer->Device, &heap_upload, D3D12_HEAP_FLAG_NONE, &upload_desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &upload);
+	ExitIfFailed(hr);
 
 	UINT8 *mapped = NULL;
 	D3D12_RANGE range = {0, 0};
 	ID3D12Resource_Map(upload, 0, &range, (void **)&mapped);
 	for (UINT y = 0; y < num_rows; ++y) {
-		memcpy(mapped + footprint.Offset + y * footprint.Footprint.RowPitch, source->pixels + y * source->width * 4, source->width * 4);
+		memcpy(mapped + footprint.Offset + y * footprint.Footprint.RowPitch, source->Pixels + y * source->Width * 4, source->Width * 4);
 	}
 	ID3D12Resource_Unmap(upload, 0, NULL);
 
 	D3D12_TEXTURE_COPY_LOCATION dst_location = {.pResource = *out_texture, .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = 0};
 	D3D12_TEXTURE_COPY_LOCATION src_location = {.pResource = upload, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = footprint};
-	ID3D12GraphicsCommandList_CopyTextureRegion(renderer->command_list, &dst_location, 0, 0, 0, &src_location, NULL);
+	ID3D12GraphicsCommandList_CopyTextureRegion(renderer->CommandList, &dst_location, 0, 0, 0, &src_location, NULL);
 	D3D12_RESOURCE_BARRIER barrier = {
 	  .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
 	  .Transition = {
@@ -75,7 +75,7 @@ void SendaiRenderer_upload_texture(Sendai_WorldRenderer *renderer, Sendai_Textur
 		.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
 		.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 	  }};
-	ID3D12GraphicsCommandList_ResourceBarrier(renderer->command_list, 1, &barrier);
+	ID3D12GraphicsCommandList_ResourceBarrier(renderer->CommandList, 1, &barrier);
 	D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {
 	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
 	  .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
@@ -84,16 +84,16 @@ void SendaiRenderer_upload_texture(Sendai_WorldRenderer *renderer, Sendai_Textur
 	};
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu_desc_handle;
-	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(renderer->srv_heap, &cpu_desc_handle);
-	cpu_desc_handle.ptr += srv_index * renderer->srv_descriptor_size;
-	ID3D12Device_CreateShaderResourceView(renderer->device, *out_texture, &srv_desc, cpu_desc_handle);
+	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(renderer->SrvHeap, &cpu_desc_handle);
+	cpu_desc_handle.ptr += srv_index * renderer->SrvDescriptorSize;
+	ID3D12Device_CreateShaderResourceView(renderer->Device, *out_texture, &srv_desc, cpu_desc_handle);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE gpu_desc_handle;
-	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(renderer->srv_heap, &gpu_desc_handle);
+	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(renderer->SrvHeap, &gpu_desc_handle);
 	*out_srv = gpu_desc_handle;
-	out_srv->ptr += srv_index * renderer->srv_descriptor_size;
+	out_srv->ptr += srv_index * renderer->SrvDescriptorSize;
 
-	SendaiRenderer_execute_commands(renderer);
+	R_ExecuteCommands(renderer);
 	ID3D12Resource_Release(upload);
 }
 
@@ -101,13 +101,13 @@ void SendaiRenderer_upload_texture(Sendai_WorldRenderer *renderer, Sendai_Textur
 	Public functions
 *****************************************************/
 
-void SendaiRenderer_init(Sendai_WorldRenderer *const renderer, HWND hwnd)
+void R_Init(R_World *const renderer, HWND hwnd)
 {
-	renderer->hwnd = hwnd;
-	renderer->aspect_ratio = (float)(renderer->width) / (renderer->height);
-	renderer->viewport = (D3D12_VIEWPORT){0.0f, 0.0f, (float)(renderer->width), (float)(renderer->height)};
-	renderer->scissor_rect = (D3D12_RECT){0, 0, (LONG)(renderer->width), (LONG)(renderer->height)};
-	win32_curr_path(renderer->assets_path, _countof(renderer->assets_path));
+	renderer->hWnd = hwnd;
+	renderer->AspectRatio = (float)(renderer->Width) / (renderer->Height);
+	renderer->Viewport = (D3D12_VIEWPORT){0.0f, 0.0f, (float)(renderer->Width), (float)(renderer->Height)};
+	renderer->ScissorRect = (D3D12_RECT){0, 0, (LONG)(renderer->Width), (LONG)(renderer->Height)};
+	win32_curr_path(renderer->AssetsPath, _countof(renderer->AssetsPath));
 
 	/* D3D12 setup */
 
@@ -124,10 +124,10 @@ void SendaiRenderer_init(Sendai_WorldRenderer *const renderer, HWND hwnd)
 
 	IDXGIFactory2 *dxgi_factory = NULL;
 	HRESULT hr = CreateDXGIFactory2(is_debug_factory, &IID_IDXGIFactory2, (void **)&dxgi_factory);
-	exit_if_failed(hr);
+	ExitIfFailed(hr);
 
-	hr = D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_11_0, &IID_ID3D12Device, &renderer->device);
-	exit_if_failed(hr);
+	hr = D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_11_0, &IID_ID3D12Device, &renderer->Device);
+	ExitIfFailed(hr);
 
 	D3D12_COMMAND_QUEUE_DESC command_queue_desc = {
 	  .Type = D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -135,15 +135,15 @@ void SendaiRenderer_init(Sendai_WorldRenderer *const renderer, HWND hwnd)
 	  .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
 	  .NodeMask = 0,
 	};
-	hr = ID3D12Device_CreateCommandQueue(renderer->device, &command_queue_desc, &IID_ID3D12CommandQueue, &renderer->command_queue);
-	exit_if_failed(hr);
+	hr = ID3D12Device_CreateCommandQueue(renderer->Device, &command_queue_desc, &IID_ID3D12CommandQueue, &renderer->CommandQueue);
+	ExitIfFailed(hr);
 
-	renderer->fence_value = 0;
-	hr = ID3D12Device_CreateFence(renderer->device, renderer->fence_value, D3D12_FENCE_FLAG_NONE, &IID_ID3D12Fence, &renderer->fence);
-	exit_if_failed(hr);
+	renderer->FenceValue = 0;
+	hr = ID3D12Device_CreateFence(renderer->Device, renderer->FenceValue, D3D12_FENCE_FLAG_NONE, &IID_ID3D12Fence, &renderer->Fence);
+	ExitIfFailed(hr);
 
-	hr = ID3D12Device_CreateCommandAllocator(renderer->device, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator, &renderer->command_allocator);
-	exit_if_failed(hr);
+	hr = ID3D12Device_CreateCommandAllocator(renderer->Device, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator, &renderer->CommandAllocator);
+	ExitIfFailed(hr);
 
 	D3D12_DESCRIPTOR_HEAP_DESC srv_heap_desc = {
 	  .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
@@ -152,15 +152,15 @@ void SendaiRenderer_init(Sendai_WorldRenderer *const renderer, HWND hwnd)
 	  .NodeMask = 0,
 	};
 
-	hr = ID3D12Device_CreateDescriptorHeap(renderer->device, &srv_heap_desc, &IID_ID3D12DescriptorHeap, &renderer->srv_heap);
-	exit_if_failed(hr);
+	hr = ID3D12Device_CreateDescriptorHeap(renderer->Device, &srv_heap_desc, &IID_ID3D12DescriptorHeap, &renderer->SrvHeap);
+	ExitIfFailed(hr);
 
-	renderer->srv_descriptor_size = ID3D12Device_GetDescriptorHandleIncrementSize(renderer->device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	renderer->SrvDescriptorSize = ID3D12Device_GetDescriptorHandleIncrementSize(renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	hr = ID3D12Device_CreateCommandList(
-		renderer->device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, renderer->command_allocator, renderer->pipeline_state_scene, &IID_ID3D12GraphicsCommandList1,
-		&renderer->command_list);
-	exit_if_failed(hr);
+		renderer->Device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, renderer->CommandAllocator, renderer->PipelineStateScene, &IID_ID3D12GraphicsCommandList1,
+		&renderer->CommandList);
+	ExitIfFailed(hr);
 
 	const D3D12_HEAP_PROPERTIES heap_property_upload = (D3D12_HEAP_PROPERTIES){
 	  .Type = D3D12_HEAP_TYPE_UPLOAD,
@@ -170,18 +170,18 @@ void SendaiRenderer_init(Sendai_WorldRenderer *const renderer, HWND hwnd)
 	  .VisibleNodeMask = 1,
 	};
 	// Constant buffers must be 256-byte aligned size
-	UINT cb_size = (sizeof(Sendai_ConstantBuffer) + 255) & ~255;
+	UINT cb_size = (sizeof(R_ConstantBuffer) + 255) & ~255;
 	const D3D12_RESOURCE_DESC cb_desc = CD3DX12_RESOURCE_DESC_BUFFER(cb_size, D3D12_RESOURCE_FLAG_NONE, 0);
 
 	hr = ID3D12Device_CreateCommittedResource(
-		renderer->device, &heap_property_upload, D3D12_HEAP_FLAG_NONE, &cb_desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
-		&renderer->constant_buffer);
-	exit_if_failed(hr);
+		renderer->Device, &heap_property_upload, D3D12_HEAP_FLAG_NONE, &cb_desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
+		&renderer->ConstantBuffer);
+	ExitIfFailed(hr);
 
-	renderer->fence_event = CreateEvent(NULL, FALSE, FALSE, NULL);
-	if (renderer->fence_event == NULL) {
+	renderer->FenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	if (renderer->FenceEvent == NULL) {
 		hr = HRESULT_FROM_WIN32(GetLastError());
-		exit_if_failed(hr);
+		ExitIfFailed(hr);
 	}
 
 	D3D12_DESCRIPTOR_HEAP_DESC rtv_desc_heap_desc = {
@@ -190,14 +190,14 @@ void SendaiRenderer_init(Sendai_WorldRenderer *const renderer, HWND hwnd)
 	  .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
 	  .NodeMask = 0,
 	};
-	hr = ID3D12Device_CreateDescriptorHeap(renderer->device, &rtv_desc_heap_desc, &IID_ID3D12DescriptorHeap, &renderer->rtv_descriptor_heap);
-	exit_if_failed(hr);
+	hr = ID3D12Device_CreateDescriptorHeap(renderer->Device, &rtv_desc_heap_desc, &IID_ID3D12DescriptorHeap, &renderer->RtvDescriptorHeap);
+	ExitIfFailed(hr);
 
-	renderer->rtv_desc_increment = ID3D12Device_GetDescriptorHandleIncrementSize(renderer->device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	renderer->RtvDescIncrement = ID3D12Device_GetDescriptorHandleIncrementSize(renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 	DXGI_SWAP_CHAIN_DESC1 swap_chain_desc = {
-	  .Width = renderer->width,
-	  .Height = renderer->height,
+	  .Width = renderer->Width,
+	  .Height = renderer->Height,
 	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
 	  .Stereo = 0,
 	  .SampleDesc.Count = 1,
@@ -209,27 +209,27 @@ void SendaiRenderer_init(Sendai_WorldRenderer *const renderer, HWND hwnd)
 	  .AlphaMode = DXGI_ALPHA_MODE_IGNORE,
 	  .Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH,
 	};
-	hr = IDXGIFactory2_CreateSwapChainForHwnd(dxgi_factory, (IUnknown *)renderer->command_queue, renderer->hwnd, &swap_chain_desc, NULL, NULL, &renderer->swap_chain);
-	exit_if_failed(hr);
+	hr = IDXGIFactory2_CreateSwapChainForHwnd(dxgi_factory, (IUnknown *)renderer->CommandQueue, renderer->hWnd, &swap_chain_desc, NULL, NULL, &renderer->SwapChain);
+	ExitIfFailed(hr);
 
-	hr = IDXGISwapChain1_GetBuffer(renderer->swap_chain, 0, &IID_ID3D12Resource, &renderer->rtv_buffers[0]);
-	exit_if_failed(hr);
-	hr = IDXGISwapChain1_GetBuffer(renderer->swap_chain, 1, &IID_ID3D12Resource, &renderer->rtv_buffers[1]);
-	exit_if_failed(hr);
+	hr = IDXGISwapChain1_GetBuffer(renderer->SwapChain, 0, &IID_ID3D12Resource, &renderer->RtvBuffers[0]);
+	ExitIfFailed(hr);
+	hr = IDXGISwapChain1_GetBuffer(renderer->SwapChain, 1, &IID_ID3D12Resource, &renderer->RtvBuffers[1]);
+	ExitIfFailed(hr);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptor_handle;
-	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(renderer->rtv_descriptor_heap, &descriptor_handle);
-	ID3D12Device_CreateRenderTargetView(renderer->device, renderer->rtv_buffers[0], NULL, descriptor_handle);
-	renderer->rtv_handles[0] = descriptor_handle;
+	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(renderer->RtvDescriptorHeap, &descriptor_handle);
+	ID3D12Device_CreateRenderTargetView(renderer->Device, renderer->RtvBuffers[0], NULL, descriptor_handle);
+	renderer->RtvHandles[0] = descriptor_handle;
 
-	descriptor_handle.ptr += renderer->rtv_desc_increment;
-	ID3D12Device_CreateRenderTargetView(renderer->device, renderer->rtv_buffers[1], NULL, descriptor_handle);
-	renderer->rtv_handles[1] = descriptor_handle;
+	descriptor_handle.ptr += renderer->RtvDescIncrement;
+	ID3D12Device_CreateRenderTargetView(renderer->Device, renderer->RtvBuffers[1], NULL, descriptor_handle);
+	renderer->RtvHandles[1] = descriptor_handle;
 
 	IDXGIFactory2_Release(dxgi_factory);
 }
 
-void SendaiRenderer_vertices(ID3D12Device *device, Sendai_Mesh *const mesh)
+void R_Vertices(ID3D12Device *device, R_Mesh *const mesh)
 {
 	const D3D12_HEAP_PROPERTIES heap_property_upload = (D3D12_HEAP_PROPERTIES){
 	  .Type = D3D12_HEAP_TYPE_UPLOAD,
@@ -238,7 +238,7 @@ void SendaiRenderer_vertices(ID3D12Device *device, Sendai_Mesh *const mesh)
 	  .CreationNodeMask = 1,
 	  .VisibleNodeMask = 1,
 	};
-	const D3D12_RESOURCE_DESC buffer_resource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(Sendai_Vertex) * 2400000, D3D12_RESOURCE_FLAG_NONE, 0);
+	const D3D12_RESOURCE_DESC buffer_resource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(R_Vertex) * 2400000, D3D12_RESOURCE_FLAG_NONE, 0);
 
 	// Note: using upload heaps to transfer static data like vert buffers is not
 	// recommended. Every time the GPU needs it, the upload heap will be marshalled
@@ -246,15 +246,15 @@ void SendaiRenderer_vertices(ID3D12Device *device, Sendai_Mesh *const mesh)
 	// code simplicity and because there are very few verts to actually transfer
 	HRESULT hr = ID3D12Device_CreateCommittedResource(
 		device, &heap_property_upload, D3D12_HEAP_FLAG_NONE, &buffer_resource, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
-		&mesh->vertex_buffer);
-	exit_if_failed(hr);
+		&mesh->VertexBuffer);
+	ExitIfFailed(hr);
 
-	mesh->vertex_buffer_view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(mesh->vertex_buffer);
-	mesh->vertex_buffer_view.StrideInBytes = sizeof(Sendai_Vertex);
-	mesh->vertex_buffer_view.SizeInBytes = sizeof(Sendai_Vertex) * 24;
+	mesh->VertexBufferView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(mesh->VertexBuffer);
+	mesh->VertexBufferView.StrideInBytes = sizeof(R_Vertex);
+	mesh->VertexBufferView.SizeInBytes = sizeof(R_Vertex) * 24;
 }
 
-void SendaiRenderer_indices(ID3D12Device *device, Sendai_Mesh *const mesh)
+void R_Indices(ID3D12Device *device, R_Mesh *const mesh)
 {
 	const D3D12_HEAP_PROPERTIES heap_property_upload = (D3D12_HEAP_PROPERTIES){
 	  .Type = D3D12_HEAP_TYPE_UPLOAD,
@@ -263,111 +263,111 @@ void SendaiRenderer_indices(ID3D12Device *device, Sendai_Mesh *const mesh)
 	  .CreationNodeMask = 1,
 	  .VisibleNodeMask = 1,
 	};
-	D3D12_RESOURCE_DESC ib_desc = CD3DX12_RESOURCE_DESC_BUFFER(mesh->index_count * sizeof(uint16_t), D3D12_RESOURCE_FLAG_NONE, 0);
+	D3D12_RESOURCE_DESC ib_desc = CD3DX12_RESOURCE_DESC_BUFFER(mesh->IndexCount * sizeof(uint16_t), D3D12_RESOURCE_FLAG_NONE, 0);
 	HRESULT hr = ID3D12Device_CreateCommittedResource(
 		device, &heap_property_upload, D3D12_HEAP_FLAG_NONE, &ib_desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
-		(void **)(&mesh->index_buffer));
-	exit_if_failed(hr);
+		(void **)(&mesh->IndexBuffer));
+	ExitIfFailed(hr);
 
-	update_resource(mesh->index_buffer, mesh->indices, mesh->index_count * sizeof(uint16_t));
+	update_resource(mesh->IndexBuffer, mesh->Indices, mesh->IndexCount * sizeof(uint16_t));
 
-	mesh->index_buffer_view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(mesh->index_buffer);
-	mesh->index_buffer_view.Format = DXGI_FORMAT_R16_UINT;
-	mesh->index_buffer_view.SizeInBytes = (UINT)(mesh->index_count * sizeof(uint16_t));
+	mesh->IndexBufferView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(mesh->IndexBuffer);
+	mesh->IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
+	mesh->IndexBufferView.SizeInBytes = (UINT)(mesh->IndexCount * sizeof(uint16_t));
 }
 
-void SendaiRenderer_update(Sendai_WorldRenderer *const renderer, Sendai_Camera *const camera, Sendai_Scene *scene)
+void R_Update(R_World *const renderer, R_Camera *const camera, SendaiScene *scene)
 {
-	for (int i = 0; i < scene->mesh_count; ++i) {
-		update_resource(scene->meshes[i].vertex_buffer, scene->meshes[i].vertices, scene->meshes[i].vertex_count * sizeof(Sendai_Vertex));
+	for (int i = 0; i < scene->MeshCount; ++i) {
+		update_resource(scene->Meshes[i].VertexBuffer, scene->Meshes[i].Vertices, scene->Meshes[i].VertexCount * sizeof(R_Vertex));
 	}
 
-	XMMATRIX view = Sendai_camera_view_matrix(camera->position, camera->look_direction, camera->up_direction);
-	XMMATRIX proj = Sendai_camera_projection_matrix(XM_PIDIV4, renderer->aspect_ratio, 0.1f, 1000.0f);
+	XMMATRIX view = R_CameraViewMatrix(camera->Position, camera->LookDirection, camera->UpDirection);
+	XMMATRIX proj = R_CameraProjectionMatrix(XM_PIDIV4, renderer->AspectRatio, 0.1f, 1000.0f);
 	XMMATRIX mvp = XM_MAT_MULT(view, proj);
 	mvp = XM_MAT_TRANSP(mvp);
-	update_resource(renderer->constant_buffer, &mvp, sizeof(XMMATRIX));
+	update_resource(renderer->ConstantBuffer, &mvp, sizeof(XMMATRIX));
 }
 
-void SendaiRenderer_draw(Sendai_WorldRenderer *const renderer, Sendai_Scene *scene)
+void R_Draw(R_World *const renderer, SendaiScene *scene)
 {
-	ID3D12GraphicsCommandList_SetGraphicsRootSignature(renderer->command_list, scene->root_sign);
-	ID3D12GraphicsCommandList_RSSetViewports(renderer->command_list, 1, &renderer->viewport);
-	ID3D12GraphicsCommandList_RSSetScissorRects(renderer->command_list, 1, &renderer->scissor_rect);
+	ID3D12GraphicsCommandList_SetGraphicsRootSignature(renderer->CommandList, scene->RootSign);
+	ID3D12GraphicsCommandList_RSSetViewports(renderer->CommandList, 1, &renderer->Viewport);
+	ID3D12GraphicsCommandList_RSSetScissorRects(renderer->CommandList, 1, &renderer->ScissorRect);
 
 	D3D12_RESOURCE_BARRIER resource_barrier = {
 	  .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-	  .Transition.pResource = renderer->rtv_buffers[renderer->rtv_index],
+	  .Transition.pResource = renderer->RtvBuffers[renderer->RtvIndex],
 	  .Transition.Subresource = 0,
 	  .Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT,
 	  .Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET,
 	  .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
 	};
 	const float clearColor[] = {0.0f, 0.2f, 0.4f, 1.0f};
-	ID3D12GraphicsCommandList_ResourceBarrier(renderer->command_list, 1, &resource_barrier);
-	ID3D12GraphicsCommandList_ClearRenderTargetView(renderer->command_list, renderer->rtv_handles[renderer->rtv_index], clearColor, 0, NULL);
-	ID3D12GraphicsCommandList_OMSetRenderTargets(renderer->command_list, 1, &renderer->rtv_handles[renderer->rtv_index], FALSE, NULL);
-	ID3D12GraphicsCommandList_IASetPrimitiveTopology(renderer->command_list, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(renderer->command_list, 0, ID3D12Resource_GetGPUVirtualAddress(renderer->constant_buffer));
-	ID3D12DescriptorHeap *heaps[] = {renderer->srv_heap};
-	ID3D12GraphicsCommandList_SetDescriptorHeaps(renderer->command_list, 1, heaps);
-	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(renderer->command_list, 1, renderer->model_gpu_srv);
-	for (int i = 0; i < scene->mesh_count; ++i) {
-		ID3D12GraphicsCommandList_IASetVertexBuffers(renderer->command_list, 0, 1, &scene->meshes[i].vertex_buffer_view);
-		ID3D12GraphicsCommandList_IASetIndexBuffer(renderer->command_list, &scene->meshes[i].index_buffer_view);
-		ID3D12GraphicsCommandList_DrawIndexedInstanced(renderer->command_list, scene->meshes[i].index_count, 1, 0, 0, 0);
+	ID3D12GraphicsCommandList_ResourceBarrier(renderer->CommandList, 1, &resource_barrier);
+	ID3D12GraphicsCommandList_ClearRenderTargetView(renderer->CommandList, renderer->RtvHandles[renderer->RtvIndex], clearColor, 0, NULL);
+	ID3D12GraphicsCommandList_OMSetRenderTargets(renderer->CommandList, 1, &renderer->RtvHandles[renderer->RtvIndex], FALSE, NULL);
+	ID3D12GraphicsCommandList_IASetPrimitiveTopology(renderer->CommandList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(renderer->CommandList, 0, ID3D12Resource_GetGPUVirtualAddress(renderer->ConstantBuffer));
+	ID3D12DescriptorHeap *heaps[] = {renderer->SrvHeap};
+	ID3D12GraphicsCommandList_SetDescriptorHeaps(renderer->CommandList, 1, heaps);
+	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(renderer->CommandList, 1, renderer->ModelGpuSrv);
+	for (int i = 0; i < scene->MeshCount; ++i) {
+		ID3D12GraphicsCommandList_IASetVertexBuffers(renderer->CommandList, 0, 1, &scene->Meshes[i].VertexBufferView);
+		ID3D12GraphicsCommandList_IASetIndexBuffer(renderer->CommandList, &scene->Meshes[i].IndexBufferView);
+		ID3D12GraphicsCommandList_DrawIndexedInstanced(renderer->CommandList, scene->Meshes[i].IndexCount, 1, 0, 0, 0);
 	}
-	SendaiGui_draw(renderer->command_list);
+	UI_Draw(renderer->CommandList);
 
 	// Bring the rtv resource back to present state
 	resource_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	resource_barrier.Transition.pResource = renderer->rtv_buffers[renderer->rtv_index];
+	resource_barrier.Transition.pResource = renderer->RtvBuffers[renderer->RtvIndex];
 	resource_barrier.Transition.Subresource = 0;
 	resource_barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	resource_barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	resource_barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	ID3D12GraphicsCommandList_ResourceBarrier(renderer->command_list, 1, &resource_barrier);
+	ID3D12GraphicsCommandList_ResourceBarrier(renderer->CommandList, 1, &resource_barrier);
 
-	SendaiRenderer_execute_commands(renderer);
+	R_ExecuteCommands(renderer);
 
-	HRESULT hr = IDXGISwapChain2_Present(renderer->swap_chain, 1, 0);
-	renderer->rtv_index = (renderer->rtv_index + 1) % FRAME_COUNT;
+	HRESULT hr = IDXGISwapChain2_Present(renderer->SwapChain, 1, 0);
+	renderer->RtvIndex = (renderer->RtvIndex + 1) % FRAME_COUNT;
 	if (hr == DXGI_ERROR_DEVICE_RESET || hr == DXGI_ERROR_DEVICE_REMOVED) {
 		MessageBox(NULL, L"D3D12 device is lost or removed!", L"Error", 0);
 		return;
 	}
-	exit_if_failed(hr);
+	ExitIfFailed(hr);
 }
 
-void SendaiRenderer_execute_commands(Sendai_WorldRenderer *const renderer)
+void R_ExecuteCommands(R_World *const renderer)
 {
-	ID3D12GraphicsCommandList_Close(renderer->command_list);
-	ID3D12CommandList *cmd_lists[] = {(ID3D12CommandList *)renderer->command_list};
-	ID3D12CommandQueue_ExecuteCommandLists(renderer->command_queue, 1, cmd_lists);
+	ID3D12GraphicsCommandList_Close(renderer->CommandList);
+	ID3D12CommandList *cmd_lists[] = {(ID3D12CommandList *)renderer->CommandList};
+	ID3D12CommandQueue_ExecuteCommandLists(renderer->CommandQueue, 1, cmd_lists);
 	signal_and_wait(renderer);
-	ID3D12CommandAllocator_Reset(renderer->command_allocator);
-	ID3D12GraphicsCommandList_Reset(renderer->command_list, renderer->command_allocator, renderer->pipeline_state_scene);
+	ID3D12CommandAllocator_Reset(renderer->CommandAllocator);
+	ID3D12GraphicsCommandList_Reset(renderer->CommandList, renderer->CommandAllocator, renderer->PipelineStateScene);
 }
 
-void SendaiRenderer_destroy(Sendai_WorldRenderer *renderer)
+void R_Destroy(R_World *renderer)
 {
-	SendaiGui_destroy();
+	UI_Destroy();
 	for (int i = 0; i < FRAME_COUNT; ++i) {
 		signal_and_wait(renderer);
-		ID3D12Resource_Release(renderer->rtv_buffers[i]);
+		ID3D12Resource_Release(renderer->RtvBuffers[i]);
 	}
-	ID3D12DescriptorHeap_Release(renderer->rtv_descriptor_heap);
-	IDXGISwapChain1_Release(renderer->swap_chain);
-	ID3D12GraphicsCommandList_Release(renderer->command_list);
-	ID3D12CommandAllocator_Release(renderer->command_allocator);
-	ID3D12CommandQueue_Release(renderer->command_queue);
-	ID3D12Fence_Release(renderer->fence);
-	ID3D12PipelineState_Release(renderer->pipeline_state_scene);
-	ID3D12Resource_Release(renderer->constant_buffer);
-	ID3D12Device_Release(renderer->device);
-	ID3D12Device_Release(renderer->srv_heap);
-	ID3D12Device_Release(renderer->model_gpu_texture);
-	CloseHandle(renderer->fence_event);
+	ID3D12DescriptorHeap_Release(renderer->RtvDescriptorHeap);
+	IDXGISwapChain1_Release(renderer->SwapChain);
+	ID3D12GraphicsCommandList_Release(renderer->CommandList);
+	ID3D12CommandAllocator_Release(renderer->CommandAllocator);
+	ID3D12CommandQueue_Release(renderer->CommandQueue);
+	ID3D12Fence_Release(renderer->Fence);
+	ID3D12PipelineState_Release(renderer->PipelineStateScene);
+	ID3D12Resource_Release(renderer->ConstantBuffer);
+	ID3D12Device_Release(renderer->Device);
+	ID3D12Device_Release(renderer->SrvHeap);
+	ID3D12Device_Release(renderer->ModelGpuTexture);
+	CloseHandle(renderer->FenceEvent);
 
 #if defined(_DEBUG)
 	IDXGIDebug1 *debugDev = NULL;
@@ -377,40 +377,40 @@ void SendaiRenderer_destroy(Sendai_WorldRenderer *renderer)
 #endif
 }
 
-void SendaiRenderer_swapchain_resize(Sendai_WorldRenderer *const renderer, int width, int height)
+void R_SwapchainResize(R_World *const renderer, int width, int height)
 {
 	for (int i = 0; i < FRAME_COUNT; ++i) {
 		signal_and_wait(renderer);
-		ID3D12Resource_Release(renderer->rtv_buffers[i]);
+		ID3D12Resource_Release(renderer->RtvBuffers[i]);
 	}
 
-	HRESULT hr = IDXGISwapChain1_ResizeBuffers(renderer->swap_chain, 2, width, height, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
-	exit_if_failed(hr);
-	hr = IDXGISwapChain1_GetBuffer(renderer->swap_chain, 0, &IID_ID3D12Resource, &renderer->rtv_buffers[0]);
-	exit_if_failed(hr);
-	hr = IDXGISwapChain1_GetBuffer(renderer->swap_chain, 1, &IID_ID3D12Resource, &renderer->rtv_buffers[1]);
-	exit_if_failed(hr);
+	HRESULT hr = IDXGISwapChain1_ResizeBuffers(renderer->SwapChain, 2, width, height, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+	ExitIfFailed(hr);
+	hr = IDXGISwapChain1_GetBuffer(renderer->SwapChain, 0, &IID_ID3D12Resource, &renderer->RtvBuffers[0]);
+	ExitIfFailed(hr);
+	hr = IDXGISwapChain1_GetBuffer(renderer->SwapChain, 1, &IID_ID3D12Resource, &renderer->RtvBuffers[1]);
+	ExitIfFailed(hr);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptor_handle;
-	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(renderer->rtv_descriptor_heap, &descriptor_handle);
-	ID3D12Device_CreateRenderTargetView(renderer->device, renderer->rtv_buffers[0], NULL, descriptor_handle);
-	renderer->rtv_handles[0] = descriptor_handle;
-	descriptor_handle.ptr += renderer->rtv_desc_increment;
-	ID3D12Device_CreateRenderTargetView(renderer->device, renderer->rtv_buffers[1], NULL, descriptor_handle);
-	renderer->rtv_handles[1] = descriptor_handle;
-	renderer->rtv_index = 0;
+	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(renderer->RtvDescriptorHeap, &descriptor_handle);
+	ID3D12Device_CreateRenderTargetView(renderer->Device, renderer->RtvBuffers[0], NULL, descriptor_handle);
+	renderer->RtvHandles[0] = descriptor_handle;
+	descriptor_handle.ptr += renderer->RtvDescIncrement;
+	ID3D12Device_CreateRenderTargetView(renderer->Device, renderer->RtvBuffers[1], NULL, descriptor_handle);
+	renderer->RtvHandles[1] = descriptor_handle;
+	renderer->RtvIndex = 0;
 }
 
 /****************************************************
 	Implementation of private functions
 *****************************************************/
 
-static void signal_and_wait(Sendai_WorldRenderer *const renderer)
+static void signal_and_wait(R_World *const renderer)
 {
-	HRESULT hr = ID3D12CommandQueue_Signal(renderer->command_queue, renderer->fence, ++renderer->fence_value);
-	exit_if_failed(hr);
-	ID3D12Fence_SetEventOnCompletion(renderer->fence, renderer->fence_value, renderer->fence_event);
-	WaitForSingleObject(renderer->fence_event, INFINITE);
+	HRESULT hr = ID3D12CommandQueue_Signal(renderer->CommandQueue, renderer->Fence, ++renderer->FenceValue);
+	ExitIfFailed(hr);
+	ID3D12Fence_SetEventOnCompletion(renderer->Fence, renderer->FenceValue, renderer->FenceEvent);
+	WaitForSingleObject(renderer->FenceEvent, INFINITE);
 }
 
 void update_resource(ID3D12Resource *resource, void *data, size_t data_size)
@@ -418,7 +418,7 @@ void update_resource(ID3D12Resource *resource, void *data, size_t data_size)
 	UINT8 *begin = NULL;
 	const D3D12_RANGE read_range = {0, 0};
 	HRESULT hr = ID3D12Resource_Map(resource, 0, &read_range, (void **)&begin);
-	exit_if_failed(hr);
+	ExitIfFailed(hr);
 	memcpy(begin, data, data_size);
 	ID3D12Resource_Unmap(resource, 0, NULL);
 }

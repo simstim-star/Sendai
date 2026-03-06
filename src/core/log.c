@@ -4,54 +4,54 @@
 #include <stdio.h>
 #include <string.h>
 
-Sendai_Log SENDAI_LOG = {.buffer = {0}, .len = 0, .max = sizeof(SENDAI_LOG.buffer)};
+S_Log SENDAI_LOG = {.Buffer = {0}, .Len = 0, .Max = sizeof(SENDAI_LOG.Buffer)};
 
-void Sendai_Log_append(const char *text)
+void S_LogAppend(const char *Text)
 {
-	if (text == NULL) {
+	if (Text == NULL) {
 		return;
 	}
 
-	size_t text_len = strlen(text);
-	size_t remainin_space = SENDAI_LOG.max - SENDAI_LOG.len;
+	size_t TextLen = strlen(Text);
+	size_t RemainingSpace = SENDAI_LOG.Max - SENDAI_LOG.Len;
 
-	if (text_len + 1 > remainin_space) {
-		text_len = remainin_space - 1;
-		if (text_len <= 0) {
+	if (TextLen + 1 > RemainingSpace) {
+		TextLen = RemainingSpace - 1;
+		if (TextLen <= 0) {
 			return;
 		}
 	}
 
-	strncat(SENDAI_LOG.buffer, text, text_len);
-	SENDAI_LOG.len += text_len;
-	SENDAI_LOG.buffer[SENDAI_LOG.len] = '\0';
+	strncat(SENDAI_LOG.Buffer, Text, TextLen);
+	SENDAI_LOG.Len += TextLen;
+	SENDAI_LOG.Buffer[SENDAI_LOG.Len] = '\0';
 }
 
-void Sendai_Log_appendf(const char *format, ...)
+void S_LogAppendf(const char *Format, ...)
 {
-	if (format == NULL) {
+	if (Format == NULL) {
 		return;
 	}
 
-	int remaining_space = SENDAI_LOG.max - SENDAI_LOG.len;
+	int RemainingSpace = SENDAI_LOG.Max - SENDAI_LOG.Len;
 
-	if (remaining_space <= 1) {
+	if (RemainingSpace <= 1) {
 		return;
 	}
 
-	va_list args;
-	va_start(args, format);
-	int chars_would_write = vsnprintf(SENDAI_LOG.buffer + SENDAI_LOG.len, remaining_space, format, args);
-	va_end(args);
+	va_list Args;
+	va_start(Args, Format);
+	int CharsWouldWrite = vsnprintf(SENDAI_LOG.Buffer + SENDAI_LOG.Len, RemainingSpace, Format, Args);
+	va_end(Args);
 
-	if (chars_would_write < 0)
+	if (CharsWouldWrite < 0)
 		return;
 
-	if (chars_would_write < remaining_space) {
-		SENDAI_LOG.len += chars_would_write;
+	if (CharsWouldWrite < RemainingSpace) {
+		SENDAI_LOG.Len += CharsWouldWrite;
 	} else {
-		SENDAI_LOG.len += remaining_space - 1;
+		SENDAI_LOG.Len += RemainingSpace - 1;
 	}
 
-	SENDAI_LOG.buffer[SENDAI_LOG.len] = '\0';
+	SENDAI_LOG.Buffer[SENDAI_LOG.Len] = '\0';
 }
