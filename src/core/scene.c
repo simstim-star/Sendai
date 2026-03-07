@@ -60,7 +60,7 @@ void CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 	ExitIfFailed(hr);
 }
 
-BOOL CompileSceneVS(const WCHAR *FilePath, ID3DBlob **VS)
+BOOL CompileSceneVS(PCWSTR FilePath, ID3DBlob **VS)
 {
 #if defined(_DEBUG)
 	const UINT CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
@@ -74,7 +74,7 @@ BOOL CompileSceneVS(const WCHAR *FilePath, ID3DBlob **VS)
 	return TRUE;
 }
 
-BOOL CompileScenePS(const WCHAR *FilePath, ID3DBlob **PS)
+BOOL CompileScenePS(PCWSTR FilePath, ID3DBlob **PS)
 {
 #if defined(_DEBUG)
 	const UINT CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;

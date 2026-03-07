@@ -25,78 +25,6 @@
 static void SignalAndWait(R_World *const Renderer);
 static void UpdateRendererResource(ID3D12Resource *Resource, void *Data, size_t DataSize);
 
-void R_UploadTexture(R_World *Renderer, R_Texture *Source, ID3D12Resource **OutTexture, D3D12_GPU_DESCRIPTOR_HANDLE *OutSrv, UINT SrvIndex)
-{
-	D3D12_RESOURCE_DESC TexDesc = {
-	  .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-	  .Width = Source->Width,
-	  .Height = Source->Height,
-	  .DepthOrArraySize = 1,
-	  .MipLevels = 1,
-	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
-	  .SampleDesc = {1, 0},
-	  .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
-	  .Flags = D3D12_RESOURCE_FLAG_NONE
-	};
-
-	D3D12_HEAP_PROPERTIES HeapDefault = { .Type = D3D12_HEAP_TYPE_DEFAULT };
-	HRESULT hr = ID3D12Device_CreateCommittedResource(
-		Renderer->Device, &HeapDefault, D3D12_HEAP_FLAG_NONE, &TexDesc, D3D12_RESOURCE_STATE_COPY_DEST, NULL, &IID_ID3D12Resource, OutTexture);
-	ExitIfFailed(hr);
-
-	UINT64 UploadSize = 0;
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT Footprint;
-	UINT NumRows;
-	UINT64 RowSize, TotalBytes;
-	ID3D12Device_GetCopyableFootprints(Renderer->Device, &TexDesc, 0, 1, 0, &Footprint, &NumRows, &RowSize, &UploadSize);
-	D3D12_RESOURCE_DESC UploadDesc = CD3DX12_RESOURCE_DESC_BUFFER(UploadSize, D3D12_RESOURCE_FLAG_NONE, 0);
-	D3D12_HEAP_PROPERTIES HeapUpload = {.Type = D3D12_HEAP_TYPE_UPLOAD};
-	ID3D12Resource *Upload = NULL;
-	hr = ID3D12Device_CreateCommittedResource(
-		Renderer->Device, &HeapUpload, D3D12_HEAP_FLAG_NONE, &UploadDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Upload);
-	ExitIfFailed(hr);
-
-	UINT8 *Mapped = NULL;
-	D3D12_RANGE Range = {0, 0};
-	ID3D12Resource_Map(Upload, 0, &Range, (void **)&Mapped);
-	for (UINT y = 0; y < NumRows; ++y) {
-		memcpy(Mapped + Footprint.Offset + y * Footprint.Footprint.RowPitch, Source->Pixels + y * Source->Width * 4, Source->Width * 4);
-	}
-	ID3D12Resource_Unmap(Upload, 0, NULL);
-
-	D3D12_TEXTURE_COPY_LOCATION DstLocation = {.pResource = *OutTexture, .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = 0};
-	D3D12_TEXTURE_COPY_LOCATION SrcLocation = {.pResource = Upload, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = Footprint};
-	ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->CommandList, &DstLocation, 0, 0, 0, &SrcLocation, NULL);
-	D3D12_RESOURCE_BARRIER Barrier = {
-	  .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-	  .Transition = {
-		.pResource = *OutTexture,
-		.Subresource = 0,
-		.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
-		.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-	  }};
-	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &Barrier);
-	D3D12_SHADER_RESOURCE_VIEW_DESC SrvDesc = {
-	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
-	  .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
-	  .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-	  .Texture2D.MipLevels = 1,
-	};
-
-	D3D12_CPU_DESCRIPTOR_HANDLE CpuDescHandle;
-	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->SrvHeap, &CpuDescHandle);
-	CpuDescHandle.ptr += SrvIndex * Renderer->SrvDescriptorSize;
-	ID3D12Device_CreateShaderResourceView(Renderer->Device, *OutTexture, &SrvDesc, CpuDescHandle);
-
-	D3D12_GPU_DESCRIPTOR_HANDLE GpuDescHandle;
-	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->SrvHeap, &GpuDescHandle);
-	*OutSrv = GpuDescHandle;
-	OutSrv->ptr += SrvIndex * Renderer->SrvDescriptorSize;
-
-	R_ExecuteCommands(Renderer);
-	ID3D12Resource_Release(Upload);
-}
-
 /****************************************************
 	Public functions
 *****************************************************/
@@ -227,6 +155,77 @@ void R_Init(R_World *const Renderer, HWND hWnd)
 	Renderer->RtvHandles[1] = DescriptorHandle;
 
 	IDXGIFactory2_Release(Factory);
+}
+
+void R_UploadTexture(R_World *Renderer, R_Texture *Source, ID3D12Resource **OutTexture, D3D12_GPU_DESCRIPTOR_HANDLE *OutSrv, UINT SrvIndex)
+{
+	D3D12_RESOURCE_DESC TexDesc = {
+	  .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+	  .Width = Source->Width,
+	  .Height = Source->Height,
+	  .DepthOrArraySize = 1,
+	  .MipLevels = 1,
+	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+	  .SampleDesc = {1, 0},
+	  .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
+	  .Flags = D3D12_RESOURCE_FLAG_NONE};
+
+	D3D12_HEAP_PROPERTIES HeapDefault = {.Type = D3D12_HEAP_TYPE_DEFAULT};
+	HRESULT hr = ID3D12Device_CreateCommittedResource(
+		Renderer->Device, &HeapDefault, D3D12_HEAP_FLAG_NONE, &TexDesc, D3D12_RESOURCE_STATE_COPY_DEST, NULL, &IID_ID3D12Resource, OutTexture);
+	ExitIfFailed(hr);
+
+	UINT64 UploadSize = 0;
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT Footprint;
+	UINT NumRows;
+	UINT64 RowSize, TotalBytes;
+	ID3D12Device_GetCopyableFootprints(Renderer->Device, &TexDesc, 0, 1, 0, &Footprint, &NumRows, &RowSize, &UploadSize);
+	D3D12_RESOURCE_DESC UploadDesc = CD3DX12_RESOURCE_DESC_BUFFER(UploadSize, D3D12_RESOURCE_FLAG_NONE, 0);
+	D3D12_HEAP_PROPERTIES HeapUpload = {.Type = D3D12_HEAP_TYPE_UPLOAD};
+	ID3D12Resource *Upload = NULL;
+	hr = ID3D12Device_CreateCommittedResource(
+		Renderer->Device, &HeapUpload, D3D12_HEAP_FLAG_NONE, &UploadDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Upload);
+	ExitIfFailed(hr);
+
+	UINT8 *Mapped = NULL;
+	D3D12_RANGE Range = {0, 0};
+	ID3D12Resource_Map(Upload, 0, &Range, (void **)&Mapped);
+	for (UINT i = 0; i < NumRows; ++i) {
+		memcpy(Mapped + Footprint.Offset + i * Footprint.Footprint.RowPitch, Source->Pixels + i * Source->Width * 4, Source->Width * 4);
+	}
+	ID3D12Resource_Unmap(Upload, 0, NULL);
+
+	D3D12_TEXTURE_COPY_LOCATION DstLocation = {.pResource = *OutTexture, .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = 0};
+	D3D12_TEXTURE_COPY_LOCATION SrcLocation = {.pResource = Upload, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = Footprint};
+	ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->CommandList, &DstLocation, 0, 0, 0, &SrcLocation, NULL);
+	D3D12_RESOURCE_BARRIER Barrier = {
+	  .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+	  .Transition = {
+		.pResource = *OutTexture,
+		.Subresource = 0,
+		.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+		.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+	  }};
+	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &Barrier);
+	D3D12_SHADER_RESOURCE_VIEW_DESC SrvDesc = {
+	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+	  .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+	  .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+	  .Texture2D.MipLevels = 1,
+	};
+
+	D3D12_CPU_DESCRIPTOR_HANDLE CpuDescHandle;
+	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->SrvHeap, &CpuDescHandle);
+	CpuDescHandle.ptr += SrvIndex * Renderer->SrvDescriptorSize;
+	ID3D12Device_CreateShaderResourceView(Renderer->Device, *OutTexture, &SrvDesc, CpuDescHandle);
+
+	D3D12_GPU_DESCRIPTOR_HANDLE GpuDescHandle;
+	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->SrvHeap, &GpuDescHandle);
+	*OutSrv = GpuDescHandle;
+	OutSrv->ptr += SrvIndex * Renderer->SrvDescriptorSize;
+
+	R_ExecuteCommands(Renderer);
+	ID3D12Resource_Release(Upload);
 }
 
 void R_Vertices(ID3D12Device *Device, R_Mesh *const Mesh)

@@ -34,7 +34,7 @@ int Sendai_run()
 	R_Init(&Engine.WorldRenderer, Engine.hWnd);
 
 	CreateSceneRootSig(Engine.WorldRenderer.Device, &Engine.Scene.RootSign);
-	const WCHAR *shaders_path = wcscat(Engine.WorldRenderer.AssetsPath, L"src/shaders/gltf/gltf.hlsl");
+	PCWSTR shaders_path = wcscat(Engine.WorldRenderer.AssetsPath, L"src/shaders/gltf/gltf.hlsl");
 	CompileSceneVS(shaders_path, &Engine.Scene.VS);
 	CompileScenePS(shaders_path, &Engine.Scene.PS);
 	CreateScenePipelineState(&Engine.WorldRenderer, &Engine.Scene);

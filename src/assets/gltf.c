@@ -27,11 +27,11 @@ static void RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBu
 
 static LONG LoadGLTFFile(_In_z_ PCWSTR Path, _Outptr_ void **Data);
 
-static cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *options, _Inout_ cgltf_data *vertex_data, _In_z_ PCWSTR gltf_path);
+static cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path);
 
 static cgltf_result LoadGLTFBuffer(_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data);
 
-static void AppendFileNameToPath(_In_z_ WCHAR *BasePath, _In_z_ char *FileName, _Out_writes_z_(MAX_PATH) char FullPath[MAX_PATH]);
+static void AppendFileNameToPath(_In_z_ PWSTR BasePath, _In_z_ char *FileName, _Out_writes_z_(MAX_PATH) char FullPath[MAX_PATH]);
 
 /****************************************************
 	Public functions
@@ -283,9 +283,9 @@ cgltf_result LoadGLTFBuffer(_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFile
 
 void RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBuffer[MAX_PATH])
 {
-	WCHAR *LastDoubleSlash = wcsrchr(FullPathBuffer, L'\\');
-	WCHAR *LastSlash = wcsrchr(FullPathBuffer, L'/');
-	WCHAR *Separator = (LastDoubleSlash > LastSlash) ? LastDoubleSlash : LastSlash;
+	PWSTR LastDoubleSlash = wcsrchr(FullPathBuffer, L'\\');
+	PWSTR LastSlash = wcsrchr(FullPathBuffer, L'/');
+	PWSTR Separator = (LastDoubleSlash > LastSlash) ? LastDoubleSlash : LastSlash;
 
 	if (Separator) {
 		*(Separator + 1) = L'\0'; // Null-terminate after the slash to keep the directory
@@ -321,7 +321,7 @@ cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _Inout_ cgltf_da
 		}
 
 		if (wcsncmp(URI, L"data:", 5) == 0) {
-			const WCHAR *Comma = wcsrchr(URI, L',');
+			PCWSTR Comma = wcsrchr(URI, L',');
 
 			if (Comma && Comma - URI >= 7 && wcsncmp(Comma - 7, L";base64", 7) == 0) {
 				cgltf_result Result = cgltf_load_buffer_base64(Options, Data->buffers[i].size, Comma + 1, &Data->buffers[i].vertex_data);
@@ -380,7 +380,7 @@ LONG LoadGLTFFile(_In_z_ PCWSTR Path, _Outptr_ void **Data)
 	return Size;
 }
 
-void AppendFileNameToPath(_In_z_ WCHAR *BasePathW, _In_z_ char *FileName, _Out_writes_z_(MAX_PATH) char FullPath[MAX_PATH])
+void AppendFileNameToPath(_In_z_ PWSTR BasePathW, _In_z_ char *FileName, _Out_writes_z_(MAX_PATH) char FullPath[MAX_PATH])
 {
 	char BasePart[MAX_PATH];
 	WideCharToMultiByte(CP_UTF8, 0, BasePathW, -1, BasePart, MAX_PATH, NULL, NULL);

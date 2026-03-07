@@ -7,8 +7,8 @@
 #include "scene.h"
 
 typedef struct Sendai {
-	WCHAR *Title;
-	WCHAR *Window;
+	PWSTR Title;
+	PWSTR Window;
 	HINSTANCE hInstance;
 	HWND hWnd;
 	BOOL bRunning;

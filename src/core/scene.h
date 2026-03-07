@@ -21,8 +21,8 @@ typedef struct SendaiScene {
 	S_Arena SceneArena;
 } SendaiScene;
 
-void CreateSceneRootSig(ID3D12Device *device, ID3D12RootSignature **root_sign);
+void CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign);
 
-BOOL CompileSceneVS(const WCHAR *file_path, ID3DBlob **vertex_shader);
-BOOL CompileScenePS(const WCHAR *file_path, ID3DBlob **pixel_shader);
-void CreateScenePipelineState(R_World *renderer, SendaiScene *scene);
+BOOL CompileSceneVS(PCWSTR FilePath, ID3DBlob **VS);
+BOOL CompileScenePS(PCWSTR FilePath, ID3DBlob **PS);
+void CreateScenePipelineState(R_World *Renderer, SendaiScene *Scene);

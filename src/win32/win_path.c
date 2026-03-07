@@ -1,6 +1,6 @@
 #include "win_path.h"
 
-void Win32CurrPath(_Out_writes_(PathSize) WCHAR *const Path, UINT PathSize)
+void Win32CurrPath(_Out_writes_(PathSize) PWSTR const Path, UINT PathSize)
 {
 	if (Path == NULL) {
 		OutputDebugString("Assets path is NULL \n");
@@ -12,7 +12,7 @@ void Win32CurrPath(_Out_writes_(PathSize) WCHAR *const Path, UINT PathSize)
 		exit(EXIT_FAILURE);
 	}
 
-	WCHAR *LastSlash = wcsrchr(Path, L'\\');
+	PWSTR LastSlash = wcsrchr(Path, L'\\');
 	if (LastSlash) {
 		*(LastSlash + 1) = L'\0';
 	}
