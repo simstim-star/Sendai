@@ -228,7 +228,7 @@ void R_UploadTexture(R_World *Renderer, R_Texture *Source, ID3D12Resource **OutT
 	ID3D12Resource_Release(Upload);
 }
 
-void R_Vertices(ID3D12Device *Device, R_Mesh *const Mesh)
+void R_CreateVertexBuffer(ID3D12Device *Device, R_Mesh *const Mesh)
 {
 	const D3D12_HEAP_PROPERTIES HeapPropertyUpload = (D3D12_HEAP_PROPERTIES){
 	  .Type = D3D12_HEAP_TYPE_UPLOAD,
@@ -253,7 +253,7 @@ void R_Vertices(ID3D12Device *Device, R_Mesh *const Mesh)
 	Mesh->VertexBufferView.SizeInBytes = sizeof(R_Vertex) * 24;
 }
 
-void R_Indices(ID3D12Device *Device, R_Mesh *const Mesh)
+void R_CreateIndexBuffer(ID3D12Device *Device, R_Mesh *const Mesh)
 {
 	const D3D12_HEAP_PROPERTIES HeapPropertyUpload = (D3D12_HEAP_PROPERTIES){
 	  .Type = D3D12_HEAP_TYPE_UPLOAD,
@@ -310,12 +310,15 @@ void R_Draw(R_World *const Renderer, SendaiScene *Scene)
 	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, ID3D12Resource_GetGPUVirtualAddress(Renderer->ConstantBuffer));
 	ID3D12DescriptorHeap *Heaps[] = {Renderer->SrvHeap};
 	ID3D12GraphicsCommandList_SetDescriptorHeaps(Renderer->CommandList, 1, Heaps);
-	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, Renderer->ModelGpuSrv);
+	if (Renderer->ModelGpuSrv.ptr) {
+		ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, Renderer->ModelGpuSrv);
+	}
 	for (int i = 0; i < Scene->MeshCount; ++i) {
 		ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Scene->Meshes[i].VertexBufferView);
 		ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Scene->Meshes[i].IndexBufferView);
 		ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Scene->Meshes[i].IndexCount, 1, 0, 0, 0);
 	}
+
 	UI_Draw(Renderer->CommandList);
 
 	// Bring the rtv resource back to present state

@@ -12,7 +12,6 @@ static void InitWindow(Sendai *Engine);
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam);
 static void EngineUpdate(Sendai *Engine);
 static void EngineDraw(Sendai *Engine);
-static void HandleWindowsMessage(Sendai *Engine, MSG *Message);
 static void GuiUpdate(Sendai *Engine);
 
 /****************************************************
@@ -42,25 +41,11 @@ int Sendai_run()
 	UI_Init(&Engine.UI, Engine.WorldRenderer.Width, Engine.WorldRenderer.Height, Engine.WorldRenderer.Device, Engine.WorldRenderer.CommandList);
 	S_TimerInit(&Engine.Timer);
 
-
-	PWSTR file = SelectGLTFPath();
-	if (file) {
-		SendaiGLTF_load(file, &Engine.Scene);
-		CoTaskMemFree(file); // TODO improve this
-	}
-
-	for (int i = 0; i < Engine.Scene.MeshCount; ++i) {
-		R_Vertices(Engine.WorldRenderer.Device, &Engine.Scene.Meshes[i]);
-		R_Indices(Engine.WorldRenderer.Device, &Engine.Scene.Meshes[i]);
-		// TODO loop through all textures
-		R_UploadTexture(
-			&Engine.WorldRenderer, &Engine.Scene.Meshes[0].Textures[0], &Engine.WorldRenderer.ModelGpuTexture, &Engine.WorldRenderer.ModelGpuSrv, 0);
-	}
-
 	ShowWindow(Engine.hWnd, SW_MAXIMIZE);
 
 	MSG msg = {0};
 	while (Engine.bRunning) {
+		UI_InputBegin(&Engine.UI);
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
 			if (msg.message == WM_QUIT) {
 				Engine.bRunning = false;
@@ -68,7 +53,7 @@ int Sendai_run()
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-
+		UI_InputEnd(&Engine.UI);
 		if (Engine.bRunning) {
 			EngineUpdate(&Engine);
 			EngineDraw(&Engine);
@@ -119,7 +104,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
 			int width = LOWORD(lparam);
 			int height = HIWORD(lparam);
 			R_SwapchainResize(&engine->WorldRenderer, width, height);
-			UI_Resize(width, height);
+			UI_Resize(&engine->UI, width, height);
 		}
 		return 0;
 
@@ -157,21 +142,8 @@ static void EngineDraw(Sendai *engine) {
     R_Draw(&engine->WorldRenderer, &engine->Scene);
 }
 
-void HandleWindowsMessage(Sendai *engine, MSG *msg)
-{
-	while (PeekMessage(msg, NULL, 0, 0, PM_REMOVE)) {
-		if (msg->message == WM_QUIT) {
-			engine->bRunning = FALSE;
-		}
-
-		TranslateMessage(msg);
-		DispatchMessage(msg);
-	}
-}
-
 void GuiUpdate(Sendai *engine)
 {
-	UI_InputBegin(&engine->UI);
+	UI_DrawTopBar(&engine->UI, engine);
 	UI_LogWindow(&engine->UI);
-	UI_InputEnd(&engine->UI);
 }

@@ -61,8 +61,8 @@ typedef struct R_World {
 } R_World;
 
 void R_Init(R_World *const Renderer, HWND hWnd);
-void R_Vertices(ID3D12Device *Device, R_Mesh *const mesh);
-void R_Indices(ID3D12Device *Device, R_Mesh *const mesh);
+void R_CreateVertexBuffer(ID3D12Device *Device, R_Mesh *const mesh);
+void R_CreateIndexBuffer(ID3D12Device *Device, R_Mesh *const mesh);
 void R_UploadTexture(R_World *Renderer, R_Texture *Source, ID3D12Resource **OutTexture, D3D12_GPU_DESCRIPTOR_HANDLE *OutSrv, UINT SrvIndex);
 void R_Destroy(R_World *Renderer);
 void R_Update(R_World *const Renderer, R_Camera *const Camera, SendaiScene *Scene);

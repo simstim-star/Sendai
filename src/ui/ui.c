@@ -18,6 +18,8 @@
 #include <d3d12.h>
 #include <stdio.h>
 
+#include "../core/engine.h"
+#include "../win32/file_dialog.h"
 #include "ui.h"
 
 #include "../../deps/nuklear.h"
@@ -37,7 +39,7 @@ static struct nk_colorf ColorToNuklear(R_Color *color);
 void UI_Init(UI_Renderer *const UI, int Width, int Height, ID3D12Device *Device, ID3D12GraphicsCommandList *CommandList)
 {
 	UI->Context = nk_d3d12_init(Device, Width, Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, USER_TEXTURES);
-
+	UI->WindowWidth = Width;
 	{
 		struct nk_font_atlas *Atlas;
 		nk_d3d12_font_stash_begin(&Atlas);
@@ -45,17 +47,27 @@ void UI_Init(UI_Renderer *const UI, int Width, int Height, ID3D12Device *Device,
 	}
 }
 
-void UI_DrawTopBar(UI_Renderer *UI, const char **Window)
+void UI_DrawTopBar(UI_Renderer *UI, Sendai *Engine)
 {
 	const float BarHeight = 35.0f;
 
-	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, 800, BarHeight), NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
+	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, UI->WindowWidth, BarHeight), NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
 		nk_layout_row_dynamic(UI->Context, BarHeight - 5, 4);
+		if (nk_button_label(UI->Context, "File")) {
+			PWSTR FilePath = SelectGLTFPath();
+			if (FilePath) {
+				SendaiGLTF_load(FilePath, &Engine->Scene);
+				CoTaskMemFree(FilePath); // TODO improve this
+			}
 
-		if (nk_button_label(UI->Context, "Home"))
-			*Window = "home";
-		else if (nk_button_label(UI->Context, "Triangle"))
-			*Window = "triangle";
+			for (int i = 0; i < Engine->Scene.MeshCount; ++i) {
+				R_CreateVertexBuffer(Engine->WorldRenderer.Device, &Engine->Scene.Meshes[i]);
+				R_CreateIndexBuffer(Engine->WorldRenderer.Device, &Engine->Scene.Meshes[i]);
+				// TODO loop through all textures
+				R_UploadTexture(
+					&Engine->WorldRenderer, &Engine->Scene.Meshes[0].Textures[0], &Engine->WorldRenderer.ModelGpuTexture, &Engine->WorldRenderer.ModelGpuSrv, 0);
+			}
+		}
 	}
 	nk_end(UI->Context);
 }
@@ -91,8 +103,9 @@ void UI_Draw(ID3D12GraphicsCommandList *CommandList)
 	nk_d3d12_render(CommandList, NK_ANTI_ALIASING_ON);
 }
 
-void UI_Resize(const int Width, const int Height)
+void UI_Resize(UI_Renderer *UI, const int Width, const int Height)
 {
+	UI->WindowWidth = Width;
 	nk_d3d12_resize(Width, Height);
 }
 
