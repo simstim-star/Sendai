@@ -18,10 +18,9 @@
 #include <d3d12.h>
 #include <stdio.h>
 
-#include "../core/engine.h"
-#include "../win32/file_dialog.h"
-#include "ui.h"
 
+#include "ui.h"
+#include "../win32/file_dialog.h"
 #include "../../deps/nuklear.h"
 #include "../core/log.h"
 #include "../shaders/nuklear/nuklear_d3d12.h"
@@ -39,7 +38,7 @@ static struct nk_colorf ColorToNuklear(R_Color *color);
 void UI_Init(UI_Renderer *const UI, int Width, int Height, ID3D12Device *Device, ID3D12GraphicsCommandList *CommandList)
 {
 	UI->Context = nk_d3d12_init(Device, Width, Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, USER_TEXTURES);
-	UI->WindowWidth = Width;
+	UI->Width = Width;
 	{
 		struct nk_font_atlas *Atlas;
 		nk_d3d12_font_stash_begin(&Atlas);
@@ -47,32 +46,22 @@ void UI_Init(UI_Renderer *const UI, int Width, int Height, ID3D12Device *Device,
 	}
 }
 
-void UI_DrawTopBar(UI_Renderer *UI, Sendai *Engine)
+UI_Action UI_DrawTopBar(UI_Renderer *UI)
 {
 	const float BarHeight = 35.0f;
+	UI_Action Action = UI_ACTION_NONE;
 
-	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, UI->WindowWidth, BarHeight), NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
+	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, UI->Width, BarHeight), NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
 		nk_layout_row_dynamic(UI->Context, BarHeight - 5, 4);
 		if (nk_button_label(UI->Context, "File")) {
-			PWSTR FilePath = SelectGLTFPath();
-			if (FilePath) {
-				SendaiGLTF_load(FilePath, &Engine->Scene);
-				CoTaskMemFree(FilePath); // TODO improve this
-			}
-
-			for (int i = 0; i < Engine->Scene.MeshCount; ++i) {
-				R_CreateVertexBuffer(Engine->WorldRenderer.Device, &Engine->Scene.Meshes[i]);
-				R_CreateIndexBuffer(Engine->WorldRenderer.Device, &Engine->Scene.Meshes[i]);
-				// TODO loop through all textures
-				R_UploadTexture(
-					&Engine->WorldRenderer, &Engine->Scene.Meshes[0].Textures[0], &Engine->WorldRenderer.ModelGpuTexture, &Engine->WorldRenderer.ModelGpuSrv, 0);
-			}
+			Action =  UI_ACTION_FILE_OPEN;
 		}
 	}
 	nk_end(UI->Context);
+	return Action;
 }
 
-void UI_LogWindow(UI_Renderer *const UI)
+UI_Action UI_LogWindow(UI_Renderer *const UI)
 {
 	struct nk_context *Context = UI->Context;
 	const float WindowX = 900.0f;
@@ -86,6 +75,8 @@ void UI_LogWindow(UI_Renderer *const UI)
 		nk_edit_string(Context, LogFlags, SENDAI_LOG.Buffer, &SENDAI_LOG.Len, SENDAI_LOG.Max, nk_filter_default);
 	}
 	nk_end(Context);
+
+	return UI_ACTION_NONE;
 }
 
 void UI_InputBegin(const UI_Renderer *UI)
@@ -105,7 +96,7 @@ void UI_Draw(ID3D12GraphicsCommandList *CommandList)
 
 void UI_Resize(UI_Renderer *UI, const int Width, const int Height)
 {
-	UI->WindowWidth = Width;
+	UI->Width = Width;
 	nk_d3d12_resize(Width, Height);
 }
 

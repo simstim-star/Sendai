@@ -12,7 +12,7 @@ static void InitWindow(Sendai *Engine);
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam);
 static void EngineUpdate(Sendai *Engine);
 static void EngineDraw(Sendai *Engine);
-static void GuiUpdate(Sendai *Engine);
+static void UIUpdate(Sendai *Engine);
 
 /****************************************************
 	Public functions
@@ -86,41 +86,41 @@ void InitWindow(Sendai *engine)
 	engine->hWnd = CreateWindow(wc.lpszClassName, engine->Title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 
 		rect.right - rect.left, rect.bottom - rect.top, NULL, NULL,engine->hInstance, engine);
 }
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
-	if (UI_HandleEvent(hwnd, message, wparam, lparam))
+	if (UI_HandleEvent(hWnd, Message, wParam, lParam))
 		return 0;
 
-	Sendai *engine = (Sendai *)(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+	Sendai *engine = (Sendai *)(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
-	switch (message) {
+	switch (Message) {
 	case WM_CREATE: {
-		LPCREATESTRUCT p_create_struct = (LPCREATESTRUCT)(lparam);
-		SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)(p_create_struct->lpCreateParams));
+		LPCREATESTRUCT p_create_struct = (LPCREATESTRUCT)(lParam);
+		SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)(p_create_struct->lpCreateParams));
 		return 0;
 	}
 	case WM_SIZE:
 		if (engine && engine->WorldRenderer.SwapChain) {
-			int width = LOWORD(lparam);
-			int height = HIWORD(lparam);
+			int width = LOWORD(lParam);
+			int height = HIWORD(lParam);
 			R_SwapchainResize(&engine->WorldRenderer, width, height);
 			UI_Resize(&engine->UI, width, height);
 		}
 		return 0;
 
 	case WM_PAINT:
-		ValidateRect(hwnd, NULL);
+		ValidateRect(hWnd, NULL);
 		return 0;
 
 	case WM_KEYDOWN:
 		if (engine) {
-			R_CameraOnKeyDown(&engine->Camera, wparam);
+			R_CameraOnKeyDown(&engine->Camera, wParam);
 		}
 		return 0;
 
 	case WM_KEYUP:
 		if (engine) {
-			R_CameraOnKeyUp(&engine->Camera, wparam);
+			R_CameraOnKeyUp(&engine->Camera, wParam);
 		}
 		return 0;
 
@@ -129,21 +129,40 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
 		return 0;
 	}
 
-	return DefWindowProc(hwnd, message, wparam, lparam);
+	return DefWindowProc(hWnd, Message, wParam, lParam);
 }
-static void EngineUpdate(Sendai *engine) {
-    S_Tick(&engine->Timer);
-    R_CameraUpdate(&engine->Camera, TicksToSeconds_FLOAT(engine->Timer.ElapsedTicks));
-    GuiUpdate(engine);
-}
-
-static void EngineDraw(Sendai *engine) {
-    R_Update(&engine->WorldRenderer, &engine->Camera, &engine->Scene);
-    R_Draw(&engine->WorldRenderer, &engine->Scene);
+static void EngineUpdate(Sendai *Engine) {
+    S_Tick(&Engine->Timer);
+    R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
+    UIUpdate(Engine);
 }
 
-void GuiUpdate(Sendai *engine)
+static void EngineDraw(Sendai *Engine) {
+    R_Update(&Engine->WorldRenderer, &Engine->Camera, &Engine->Scene);
+    R_Draw(&Engine->WorldRenderer, &Engine->Scene);
+}
+
+void UIUpdate(Sendai *Engine)
 {
-	UI_DrawTopBar(&engine->UI, engine);
-	UI_LogWindow(&engine->UI);
+	UI_Action Action = UI_DrawTopBar(&Engine->UI) | UI_LogWindow(&Engine->UI);
+	
+	switch (Action) {
+	case UI_ACTION_FILE_OPEN: {
+		PWSTR FilePath = SelectGLTFPath();
+		if (FilePath) {
+			SendaiGLTF_load(FilePath, &Engine->Scene);
+			CoTaskMemFree(FilePath); // TODO improve this
+		}
+
+		for (int i = 0; i < Engine->Scene.MeshCount; ++i) {
+			R_CreateVertexBuffer(Engine->WorldRenderer.Device, &Engine->Scene.Meshes[i]);
+			R_CreateIndexBuffer(Engine->WorldRenderer.Device, &Engine->Scene.Meshes[i]);
+			// TODO loop through all textures
+			R_UploadTexture(&Engine->WorldRenderer, &Engine->Scene.Meshes[0].Textures[0], &Engine->WorldRenderer.ModelGpuTexture, &Engine->WorldRenderer.ModelGpuSrv, 0);
+		}
+		break;
+	}
+	default:
+		break;
+	}
 }
