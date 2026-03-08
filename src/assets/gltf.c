@@ -37,7 +37,7 @@ static void AppendFileNameToPath(_In_z_ PWSTR BasePath, _In_z_ char *FileName, _
 	Public functions
 *****************************************************/
 
-BOOL SendaiGLTF_load(PCWSTR Path, SendaiScene *OutScene)
+BOOL SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 {
 	void *FileData = NULL;
 	LONG Size = LoadGLTFFile(Path, &FileData);
@@ -60,44 +60,47 @@ BOOL SendaiGLTF_load(PCWSTR Path, SendaiScene *OutScene)
 		return FALSE;
 	}
 
-	OutScene->Meshes = S_ArenaAlloc(&OutScene->SceneArena, Data->meshes_count * sizeof(R_Mesh));
-	OutScene->MeshCount = Data->meshes_count;
+	Scene->Models[Scene->ModelsCount].Meshes = S_ArenaAlloc(&Scene->SceneArena, Data->meshes_count * sizeof(R_Mesh));
+	Scene->Models[Scene->ModelsCount].MeshesCount = Data->meshes_count;
 	if (Data->meshes_count == 0) {
 		S_LogAppend("No meshes in glTF\n");
 		cgltf_free(Data);
 		return false;
 	}
-	size_t ImagesCount = Data->images_count || 1;
 
-	R_Texture *Textures = S_ArenaAlloc(&OutScene->SceneArena, Data->meshes_count * ImagesCount * sizeof(R_Texture));
-	for (size_t MeshId = 0; MeshId < Data->meshes_count; MeshId++) {
-		OutScene->Meshes[MeshId].Textures = &Textures[MeshId];
-		OutScene->Meshes[MeshId].TextureCount = ImagesCount;
+	Scene->Models[Scene->ModelsCount].Images = S_ArenaAlloc(&Scene->SceneArena, Data->images_count * sizeof(R_Texture));
+	Scene->Models[Scene->ModelsCount].ImagesCount = Data->images_count; 
+	
+	for (int i = 0; i < Data->images_count; ++i) {
+		cgltf_image *BaseImage = &Data->images[i];
+		uint8_t *Pixels = NULL;
+		size_t Size = 0;
+		int W = 0, H = 0, Channels = 0;
+		WCHAR BasePath[MAX_PATH];
+		wcscpy_s(BasePath, MAX_PATH, Path);
+		RemoveAllAfterLastSlash(BasePath);
+		if (LoadGLTFImage(BasePath, Data, BaseImage, &Pixels, &Size, &W, &H, &Channels)) {
+			Scene->Models[Scene->ModelsCount].Images[i].Pixels = Pixels;
+			Scene->Models[Scene->ModelsCount].Images[i].Width = W;
+			Scene->Models[Scene->ModelsCount].Images[i].Height = H;
 
-		for (size_t i = 0; i < ImagesCount; ++i) {
-			uint8_t *Pixels = NULL;
-			size_t Size = 0;
-			int W = 0, H = 0, Channels = 0;
-
-			int Loaded = 0;
-			if (i < Data->images_count) {
-				WCHAR BasePath[MAX_PATH];
-				wcscpy_s(BasePath, MAX_PATH, Path);
-				RemoveAllAfterLastSlash(BasePath);
-				Loaded = LoadGLTFImage(BasePath, Data, &Data->images[i], &Pixels, &Size, &W, &H, &Channels);
-			}
-
-			if (!Loaded) {
-				OutScene->Meshes[MeshId].Textures[i].Pixels = &WHITE_PIXEL;
-				OutScene->Meshes[MeshId].Textures[i].Width = 1;
-				OutScene->Meshes[MeshId].Textures[i].Height = 1;
+			PWSTR UniqueNameW = S_ArenaAlloc(&Scene->SceneArena, MAX_PATH * sizeof(WCHAR));
+			if (BaseImage->uri) {
+				WCHAR WideUri[MAX_PATH];
+				MultiByteToWideChar(CP_UTF8, 0, BaseImage->uri, -1, WideUri, MAX_PATH);
+				swprintf_s(UniqueNameW, MAX_PATH, L"%s_%d_%s", Path, i, WideUri);
 			} else {
-				OutScene->Meshes[MeshId].Textures[i].Pixels = Pixels;
-				OutScene->Meshes[MeshId].Textures[i].Width = W;
-				OutScene->Meshes[MeshId].Textures[i].Height = H;
+				swprintf_s(UniqueNameW, MAX_PATH, L"%s_Internal_%d", Path, i);
 			}
-		}
 
+			int UTF8Size = WideCharToMultiByte(CP_UTF8, 0, UniqueNameW, -1, NULL, 0, NULL, NULL);
+			char *UniqueName = S_ArenaAlloc(&Scene->SceneArena, UTF8Size);
+			WideCharToMultiByte(CP_UTF8, 0, UniqueNameW, -1, UniqueName, UTF8Size, NULL, NULL);
+			Scene->Models[Scene->ModelsCount].Images[i].Name = UniqueName;
+		}
+	}
+
+	for (size_t MeshId = 0; MeshId < Data->meshes_count; MeshId++) {
 		cgltf_mesh *Mesh = &Data->meshes[0];
 		cgltf_primitive *Primitive = &Mesh->primitives[0];
 
@@ -124,6 +127,14 @@ BOOL SendaiGLTF_load(PCWSTR Path, SendaiScene *OutScene)
 			}
 		}
 
+		if (Primitive->material) {
+			cgltf_pbr_metallic_roughness *PBR = &Primitive->material->pbr_metallic_roughness;
+			if (PBR && PBR->base_color_texture.texture) {
+				cgltf_image *TargetImage = PBR->base_color_texture.texture->image;
+				Scene->Models[Scene->ModelsCount].Meshes[MeshId].BaseTextureIndex = TargetImage - Data->images;
+			}
+		}
+
 		if (!PositionAccessor) {
 			S_LogAppend("Mesh has no POSITION attribute\n");
 			cgltf_free(Data);
@@ -131,7 +142,7 @@ BOOL SendaiGLTF_load(PCWSTR Path, SendaiScene *OutScene)
 		}
 
 		size_t VertexCount = PositionAccessor->count;
-		R_Vertex *Vertices = S_ArenaAlloc(&OutScene->SceneArena, sizeof(R_Vertex) * VertexCount);
+		R_Vertex *Vertices = S_ArenaAlloc(&Scene->SceneArena, sizeof(R_Vertex) * VertexCount);
 
 		for (size_t i = 0; i < VertexCount; i++) {
 			float pos[3];
@@ -165,7 +176,7 @@ BOOL SendaiGLTF_load(PCWSTR Path, SendaiScene *OutScene)
 
 		uint16_t *Indices = NULL;
 		if (IndexCount > 0) {
-			Indices = S_ArenaAlloc(&OutScene->SceneArena, sizeof(uint16_t) * IndexCount);
+			Indices = S_ArenaAlloc(&Scene->SceneArena, sizeof(uint16_t) * IndexCount);
 			for (size_t i = 0; i < IndexCount; i++) {
 				uint32_t Index;
 				cgltf_accessor_read_uint(IndicesAccessor, (int)i, &Index, 1);
@@ -173,14 +184,15 @@ BOOL SendaiGLTF_load(PCWSTR Path, SendaiScene *OutScene)
 			}
 		}
 
-		OutScene->Meshes[MeshId].Vertices = Vertices;
-		OutScene->Meshes[MeshId].VertexCount = VertexCount;
-		OutScene->Meshes[MeshId].Indices = Indices;
-		OutScene->Meshes[MeshId].IndexCount = IndexCount;
+		Scene->Models[Scene->ModelsCount].Meshes[MeshId].Vertices = Vertices;
+		Scene->Models[Scene->ModelsCount].Meshes[MeshId].VertexCount = VertexCount;
+		Scene->Models[Scene->ModelsCount].Meshes[MeshId].Indices = Indices;
+		Scene->Models[Scene->ModelsCount].Meshes[MeshId].IndexCount = IndexCount;
 	}
 
 	cgltf_free(Data);
 
+	Scene->ModelsCount++;
 	S_LogAppendf(L"Successfully loaded %s\n", Path);
 	return true;
 }

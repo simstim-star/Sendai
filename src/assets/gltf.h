@@ -9,4 +9,4 @@ typedef struct R_Texture R_Texture;
 typedef struct R_Mesh R_Mesh;
 typedef struct SendaiScene SendaiScene;
 
-BOOL SendaiGLTF_load(PCWSTR path, SendaiScene *out_scene);
+BOOL SendaiGLTF_LoadModel(PCWSTR path, SendaiScene *out_scene);

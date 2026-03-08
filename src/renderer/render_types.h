@@ -36,6 +36,7 @@ typedef struct R_Texture {
 	uint8_t *Pixels; // RGBA8
 	int Width;
 	int Height;
+	char *Name;
 } R_Texture;
 
 typedef struct R_Mesh {
@@ -49,8 +50,7 @@ typedef struct R_Mesh {
 	ID3D12Resource *IndexBuffer;
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView;
 
-	R_Texture *Textures;
-	UINT TextureCount;
+	UINT BaseTextureIndex;
 } R_Mesh;
 
 typedef struct R_Model {
@@ -58,4 +58,8 @@ typedef struct R_Model {
 	UINT Id;
 	XMFLOAT3 Position;
 	R_Mesh *Meshes;
+	UINT MeshesCount;
+
+	R_Texture *Images;
+	UINT ImagesCount;
 } R_Model;

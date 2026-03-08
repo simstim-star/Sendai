@@ -6,13 +6,14 @@
 #include "arena.h"
 
 typedef struct R_World R_World;
-typedef struct R_Mesh R_Mesh;
+typedef struct R_Model R_Model;
 typedef struct ID3D12Device ID3D12Device;
 typedef struct ID3D12RootSignature ID3D12RootSignature;
 
 typedef struct SendaiScene {
-	R_Mesh *Meshes;
-	int MeshCount;
+	R_Model *Models;
+	UINT ModelsCount;
+	UINT ModelsCapacity;
 
 	ID3DBlob *VS;
 	ID3DBlob *PS;

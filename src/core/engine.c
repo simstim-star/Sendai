@@ -27,6 +27,10 @@ int Sendai_run()
 	  .bRunning = true
 	};
 
+	Engine.Scene.ModelsCount = 0;
+	Engine.Scene.ModelsCapacity = 10;
+	Engine.Scene.Models = S_ArenaAlloc(&Engine.Scene.SceneArena, sizeof(R_Model) * Engine.Scene.ModelsCapacity);
+
 	Engine.Camera.Yaw = 2 * XM_PI;
 
 	InitWindow(&Engine);
@@ -131,6 +135,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lPara
 
 	return DefWindowProc(hWnd, Message, wParam, lParam);
 }
+
 static void EngineUpdate(Sendai *Engine) {
     S_Tick(&Engine->Timer);
     R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
@@ -150,15 +155,16 @@ void UIUpdate(Sendai *Engine)
 	case UI_ACTION_FILE_OPEN: {
 		PWSTR FilePath = SelectGLTFPath();
 		if (FilePath) {
-			SendaiGLTF_load(FilePath, &Engine->Scene);
-			CoTaskMemFree(FilePath); // TODO improve this
-		}
-
-		for (int i = 0; i < Engine->Scene.MeshCount; ++i) {
-			R_CreateVertexBuffer(Engine->WorldRenderer.Device, &Engine->Scene.Meshes[i]);
-			R_CreateIndexBuffer(Engine->WorldRenderer.Device, &Engine->Scene.Meshes[i]);
-			// TODO loop through all textures
-			R_UploadTexture(&Engine->WorldRenderer, &Engine->Scene.Meshes[0].Textures[0], &Engine->WorldRenderer.ModelGpuTexture, &Engine->WorldRenderer.ModelGpuSrv, 0);
+			SendaiGLTF_LoadModel(FilePath, &Engine->Scene);
+			for (int i = 0; i < Engine->Scene.ModelsCount; ++i) {
+				for (int j = 0; j < Engine->Scene.Models[i].MeshesCount; ++j) {
+					R_Mesh *Mesh = &Engine->Scene.Models[i].Meshes[j];
+					R_CreateVertexBuffer(Engine->WorldRenderer.Device, Mesh);
+					R_CreateIndexBuffer(Engine->WorldRenderer.Device, Mesh);
+					R_UploadTexture(&Engine->WorldRenderer, &Engine->Scene.Models[i].Images[Mesh->BaseTextureIndex]);
+				}
+			}
+			CoTaskMemFree(FilePath);
 		}
 		break;
 	}
