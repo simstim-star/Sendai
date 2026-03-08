@@ -1,0 +1,2 @@
+Asset with embedded data:image: https://github.com/KhronosGroup/glTF-Sample-Assets/blob/494579a5fd7e8daaab5bd06b2ca8e8357c56f398/Models/Duck/glTF-Embedded/Duck.gltf#L180
+Asset for Unicode tests: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/494579a5fd7e8daaab5bd06b2ca8e8357c56f398/Models/Unicode%E2%9D%A4%E2%99%BBTest
