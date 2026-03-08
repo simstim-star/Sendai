@@ -9,6 +9,7 @@
 #define FRAME_COUNT 2
 
 typedef struct R_Camera R_Camera;
+typedef struct R_Primitive R_Primitive;
 
 typedef struct GPUTexture {
 	ID3D12Resource *GpuTexture;
@@ -69,8 +70,8 @@ typedef struct R_World {
 } R_World;
 
 void R_Init(R_World *const Renderer, HWND hWnd);
-void R_CreateVertexBuffer(ID3D12Device *Device, R_Mesh *const mesh);
-void R_CreateIndexBuffer(ID3D12Device *Device, R_Mesh *const mesh);
+void R_CreateVertexBuffer(ID3D12Device *Device, R_Primitive *const Primitive);
+void R_CreateIndexBuffer(ID3D12Device *Device, R_Primitive *const Primitive);
 void R_Destroy(R_World *Renderer);
 void R_Update(R_World *const Renderer, R_Camera *const Camera, SendaiScene *Scene);
 void R_Draw(R_World *const Renderer, SendaiScene *Scene);

@@ -160,7 +160,7 @@ void R_Init(R_World *const Renderer, HWND hWnd)
 	IDXGIFactory2_Release(Factory);
 }
 
-void R_CreateVertexBuffer(ID3D12Device *Device, R_Mesh *const Mesh)
+void R_CreateVertexBuffer(ID3D12Device *Device, R_Primitive *const Primitive)
 {
 	const D3D12_HEAP_PROPERTIES HeapPropertyUpload = (D3D12_HEAP_PROPERTIES){
 	  .Type = D3D12_HEAP_TYPE_UPLOAD,
@@ -177,15 +177,15 @@ void R_CreateVertexBuffer(ID3D12Device *Device, R_Mesh *const Mesh)
 	// code simplicity and because there are very few verts to actually transfer
 	HRESULT hr = ID3D12Device_CreateCommittedResource(
 		Device, &HeapPropertyUpload, D3D12_HEAP_FLAG_NONE, &BufferResource, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
-		&Mesh->VertexBuffer);
+		&Primitive->VertexBuffer);
 	ExitIfFailed(hr);
 
-	Mesh->VertexBufferView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Mesh->VertexBuffer);
-	Mesh->VertexBufferView.StrideInBytes = sizeof(R_Vertex);
-	Mesh->VertexBufferView.SizeInBytes = sizeof(R_Vertex) * 24;
+	Primitive->VertexBufferView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Primitive->VertexBuffer);
+	Primitive->VertexBufferView.StrideInBytes = sizeof(R_Vertex);
+	Primitive->VertexBufferView.SizeInBytes = sizeof(R_Vertex) * 24;
 }
 
-void R_CreateIndexBuffer(ID3D12Device *Device, R_Mesh *const Mesh)
+void R_CreateIndexBuffer(ID3D12Device *Device, R_Primitive *const Primitive)
 {
 	const D3D12_HEAP_PROPERTIES HeapPropertyUpload = (D3D12_HEAP_PROPERTIES){
 	  .Type = D3D12_HEAP_TYPE_UPLOAD,
@@ -194,26 +194,28 @@ void R_CreateIndexBuffer(ID3D12Device *Device, R_Mesh *const Mesh)
 	  .CreationNodeMask = 1,
 	  .VisibleNodeMask = 1,
 	};
-	D3D12_RESOURCE_DESC IndexBufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(Mesh->IndexCount * sizeof(uint16_t), D3D12_RESOURCE_FLAG_NONE, 0);
+	D3D12_RESOURCE_DESC IndexBufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(Primitive->IndexCount * sizeof(uint16_t), D3D12_RESOURCE_FLAG_NONE, 0);
 	HRESULT hr = ID3D12Device_CreateCommittedResource(
 		Device, &HeapPropertyUpload, D3D12_HEAP_FLAG_NONE, &IndexBufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
-		(void **)(&Mesh->IndexBuffer));
+		(void **)(&Primitive->IndexBuffer));
 	ExitIfFailed(hr);
 
-	UpdateRendererResource(Mesh->IndexBuffer, Mesh->Indices, Mesh->IndexCount * sizeof(uint16_t));
+	UpdateRendererResource(Primitive->IndexBuffer, Primitive->Indices, Primitive->IndexCount * sizeof(uint16_t));
 
-	Mesh->IndexBufferView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Mesh->IndexBuffer);
-	Mesh->IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
-	Mesh->IndexBufferView.SizeInBytes = (UINT)(Mesh->IndexCount * sizeof(uint16_t));
+	Primitive->IndexBufferView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Primitive->IndexBuffer);
+	Primitive->IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
+	Primitive->IndexBufferView.SizeInBytes = (UINT)(Primitive->IndexCount * sizeof(uint16_t));
 }
 
 void R_Update(R_World *const Renderer, R_Camera *const Camera, SendaiScene *Scene)
 {
 	for (int i = 0; i < Scene->ModelsCount; ++i) {
 		for (int j = 0; j < Scene->Models[i].MeshesCount; ++j) {
-			UpdateRendererResource(Scene->Models[i].Meshes[j].VertexBuffer, 
-				Scene->Models[i].Meshes[j].Vertices, 
-				Scene->Models[i].Meshes[j].VertexCount * sizeof(R_Vertex));
+			for (int k = 0; k < Scene->Models[i].Meshes[j].PrimitivesCount; ++k) {
+				UpdateRendererResource(Scene->Models[i].Meshes[j].Primitives[k].VertexBuffer, 
+					Scene->Models[i].Meshes[j].Primitives[k].Vertices, 
+					Scene->Models[i].Meshes[j].Primitives[k].VertexCount * sizeof(R_Vertex));
+			}
 		}
 	}
 
@@ -250,15 +252,19 @@ void R_Draw(R_World *const Renderer, SendaiScene *Scene)
 	for (int i = 0; i < Scene->ModelsCount; ++i) {
 		for (int j = 0; j < Scene->Models[i].MeshesCount; ++j) {
 			R_Mesh *Mesh = &Scene->Models[i].Meshes[j];
-			ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Mesh->VertexBufferView);
-			ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Mesh->IndexBufferView);
-			ptrdiff_t TexIdx = shgeti(Renderer->Textures, Scene->Models[i].Images[Mesh->BaseTextureIndex].Name);
-			if (TexIdx != -1) {
-				GPUTexture *Tex = &Renderer->Textures[TexIdx].Texture;
-				ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, Tex->SrvHandle);
+			if (Scene->Models[i].Images) {
+				ptrdiff_t TexIdx = shgeti(Renderer->Textures, Scene->Models[i].Images[Mesh->BaseTextureIndex].Name);
+				if (TexIdx != -1) {
+					GPUTexture *Tex = &Renderer->Textures[TexIdx].Texture;
+					ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, Tex->SrvHandle);
+				}
 			}
-
-			ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Mesh->IndexCount, 1, 0, 0, 0);
+			for (int k = 0; k < Mesh->PrimitivesCount; ++k) {
+				R_Primitive *Primitive = &Mesh->Primitives[k];
+				ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Primitive->VertexBufferView);
+				ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
+				ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);
+			}
 		}
 	}
 

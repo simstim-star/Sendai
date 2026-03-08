@@ -159,9 +159,14 @@ void UIUpdate(Sendai *Engine)
 			for (int i = 0; i < Engine->Scene.ModelsCount; ++i) {
 				for (int j = 0; j < Engine->Scene.Models[i].MeshesCount; ++j) {
 					R_Mesh *Mesh = &Engine->Scene.Models[i].Meshes[j];
-					R_CreateVertexBuffer(Engine->WorldRenderer.Device, Mesh);
-					R_CreateIndexBuffer(Engine->WorldRenderer.Device, Mesh);
-					R_UploadTexture(&Engine->WorldRenderer, &Engine->Scene.Models[i].Images[Mesh->BaseTextureIndex]);
+					for (int k = 0; k < Mesh->PrimitivesCount; ++k) {
+						R_Primitive *Primitive = &Mesh->Primitives[k];
+						R_CreateVertexBuffer(Engine->WorldRenderer.Device, Primitive);
+						R_CreateIndexBuffer(Engine->WorldRenderer.Device, Primitive);
+					}
+					if (Engine->Scene.Models[i].Images) {
+						R_UploadTexture(&Engine->WorldRenderer, &Engine->Scene.Models[i].Images[Mesh->BaseTextureIndex]);
+					}
 				}
 			}
 			CoTaskMemFree(FilePath);

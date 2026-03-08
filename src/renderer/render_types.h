@@ -39,7 +39,7 @@ typedef struct R_Texture {
 	char *Name;
 } R_Texture;
 
-typedef struct R_Mesh {
+typedef struct R_Primitive {
 	R_Vertex *Vertices;
 	UINT VertexCount;
 	ID3D12Resource *VertexBuffer;
@@ -49,6 +49,11 @@ typedef struct R_Mesh {
 	UINT IndexCount;
 	ID3D12Resource *IndexBuffer;
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView;
+} R_Primitive;
+
+typedef struct R_Mesh {
+	R_Primitive *Primitives;
+	UINT PrimitivesCount;
 
 	UINT BaseTextureIndex;
 } R_Mesh;
