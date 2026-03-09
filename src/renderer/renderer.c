@@ -29,16 +29,19 @@ static const float CLEAR_COLOR[] = {0.0f, 0.2f, 0.4f, 1.0f};
 static void SignalAndWait(R_World *const Renderer);
 static void UpdateRendererResource(ID3D12Resource *Resource, void *Data, size_t DataSize);
 static void UploadTexture(R_World *Renderer, R_Texture *Source, ID3D12Resource **OutTexture, D3D12_GPU_DESCRIPTOR_HANDLE *OutSrv, UINT SrvIndex);
+static void RenderPrimitives(SendaiScene *Scene, R_World *const Renderer);
+static void CreateDepthStencilBuffer(R_World *const Renderer);
 
 /****************************************************
-	Public functions
+Public functions
 *****************************************************/
 
 void R_Init(R_World *const Renderer, HWND hWnd)
 {
 	Renderer->hWnd = hWnd;
 	Renderer->AspectRatio = (float)(Renderer->Width) / (Renderer->Height);
-	Renderer->Viewport = (D3D12_VIEWPORT){0.0f, 0.0f, (float)(Renderer->Width), (float)(Renderer->Height)};
+	Renderer->Viewport =
+		(D3D12_VIEWPORT){.TopLeftX = 0.0f, .TopLeftY = 0.0f, .Width = (float)(Renderer->Width), .Height = (float)(Renderer->Height), .MinDepth = 0.0f, .MaxDepth = 1.0f};
 	Renderer->ScissorRect = (D3D12_RECT){0, 0, (LONG)(Renderer->Width), (LONG)(Renderer->Height)};
 	Win32CurrPath(Renderer->AssetsPath, _countof(Renderer->AssetsPath));
 
@@ -80,7 +83,7 @@ void R_Init(R_World *const Renderer, HWND hWnd)
 
 	D3D12_DESCRIPTOR_HEAP_DESC SrvHeapDesc = {
 	  .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-	  .NumDescriptors = 16,
+	  .NumDescriptors = 256,
 	  .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 	  .NodeMask = 0,
 	};
@@ -100,13 +103,20 @@ void R_Init(R_World *const Renderer, HWND hWnd)
 	  .CreationNodeMask = 1,
 	  .VisibleNodeMask = 1,
 	};
+
 	// Constant buffers must be 256-byte aligned size
-	UINT CBSize = (sizeof(R_ConstantBuffer) + 255) & ~255;
-	const D3D12_RESOURCE_DESC CBDesc = CD3DX12_RESOURCE_DESC_BUFFER(CBSize, D3D12_RESOURCE_FLAG_NONE, 0);
+	UINT TransformBufferSize = (sizeof(R_TransformBuffer) + 255) & ~255;
+	const D3D12_RESOURCE_DESC CBDesc = CD3DX12_RESOURCE_DESC_BUFFER(TransformBufferSize, D3D12_RESOURCE_FLAG_NONE, 0);
 
 	hr = ID3D12Device_CreateCommittedResource(
-		Renderer->Device, &HeapPropertyUpload, D3D12_HEAP_FLAG_NONE, &CBDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
-		&Renderer->ConstantBuffer);
+		Renderer->Device, &HeapPropertyUpload, D3D12_HEAP_FLAG_NONE, &CBDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Renderer->TransformBuffer);
+	ExitIfFailed(hr);
+
+	UINT PBRBufferSize = (sizeof(R_PBRConstantBuffer) + 255) & ~255;
+	const D3D12_RESOURCE_DESC PBRDesc = CD3DX12_RESOURCE_DESC_BUFFER(PBRBufferSize, D3D12_RESOURCE_FLAG_NONE, 0);
+
+	hr = ID3D12Device_CreateCommittedResource(
+		Renderer->Device, &HeapPropertyUpload, D3D12_HEAP_FLAG_NONE, &PBRDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Renderer->MaterialBuffer);
 	ExitIfFailed(hr);
 
 	Renderer->FenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
@@ -117,7 +127,7 @@ void R_Init(R_World *const Renderer, HWND hWnd)
 
 	D3D12_DESCRIPTOR_HEAP_DESC RtvDescHeapDesc = {
 	  .Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-	  .NumDescriptors = 2,
+	  .NumDescriptors = 256,
 	  .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
 	  .NodeMask = 0,
 	};
@@ -157,6 +167,12 @@ void R_Init(R_World *const Renderer, HWND hWnd)
 	ID3D12Device_CreateRenderTargetView(Renderer->Device, Renderer->RtvBuffers[1], NULL, DescriptorHandle);
 	Renderer->RtvHandles[1] = DescriptorHandle;
 
+	D3D12_DESCRIPTOR_HEAP_DESC DepthStencilHeapDesc = {.NumDescriptors = 1, .Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE};
+	hr = ID3D12Device_CreateDescriptorHeap(Renderer->Device, &DepthStencilHeapDesc, &IID_ID3D12DescriptorHeap, &Renderer->DepthStencilHeap);
+	ExitIfFailed(hr);
+
+	CreateDepthStencilBuffer(Renderer);
+
 	IDXGIFactory2_Release(Factory);
 }
 
@@ -169,20 +185,19 @@ void R_CreateVertexBuffer(ID3D12Device *Device, R_Primitive *const Primitive)
 	  .CreationNodeMask = 1,
 	  .VisibleNodeMask = 1,
 	};
-	const D3D12_RESOURCE_DESC BufferResource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(R_Vertex) * 2400000, D3D12_RESOURCE_FLAG_NONE, 0);
+	const D3D12_RESOURCE_DESC BufferResource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(R_Vertex) * Primitive->VertexCount, D3D12_RESOURCE_FLAG_NONE, 0);
 
 	// Note: using upload heaps to transfer static data like vert buffers is not
 	// recommended. Every time the GPU needs it, the upload heap will be marshalled
 	// over. Please read up on Default Heap usage. An upload heap is used here for
 	// code simplicity and because there are very few verts to actually transfer
 	HRESULT hr = ID3D12Device_CreateCommittedResource(
-		Device, &HeapPropertyUpload, D3D12_HEAP_FLAG_NONE, &BufferResource, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
-		&Primitive->VertexBuffer);
+		Device, &HeapPropertyUpload, D3D12_HEAP_FLAG_NONE, &BufferResource, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Primitive->VertexBuffer);
 	ExitIfFailed(hr);
 
 	Primitive->VertexBufferView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Primitive->VertexBuffer);
 	Primitive->VertexBufferView.StrideInBytes = sizeof(R_Vertex);
-	Primitive->VertexBufferView.SizeInBytes = sizeof(R_Vertex) * 24;
+	Primitive->VertexBufferView.SizeInBytes = sizeof(R_Vertex) * Primitive->VertexCount;
 }
 
 void R_CreateIndexBuffer(ID3D12Device *Device, R_Primitive *const Primitive)
@@ -209,12 +224,13 @@ void R_CreateIndexBuffer(ID3D12Device *Device, R_Primitive *const Primitive)
 
 void R_Update(R_World *const Renderer, R_Camera *const Camera, SendaiScene *Scene)
 {
-	for (int i = 0; i < Scene->ModelsCount; ++i) {
-		for (int j = 0; j < Scene->Models[i].MeshesCount; ++j) {
-			for (int k = 0; k < Scene->Models[i].Meshes[j].PrimitivesCount; ++k) {
-				UpdateRendererResource(Scene->Models[i].Meshes[j].Primitives[k].VertexBuffer, 
-					Scene->Models[i].Meshes[j].Primitives[k].Vertices, 
-					Scene->Models[i].Meshes[j].Primitives[k].VertexCount * sizeof(R_Vertex));
+	for (int ModelIndex = 0; ModelIndex < Scene->ModelsCount; ++ModelIndex) {
+		R_Model *Model = &Scene->Models[ModelIndex];
+		for (int MeshIndex = 0; MeshIndex < Scene->Models[ModelIndex].MeshesCount; ++MeshIndex) {
+			R_Mesh *Mesh = &Model->Meshes[MeshIndex];
+			for (int PrimitiveIndex = 0; PrimitiveIndex < Scene->Models[ModelIndex].Meshes[MeshIndex].PrimitivesCount; ++PrimitiveIndex) {
+				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIndex];
+				UpdateRendererResource(Primitive->VertexBuffer, Primitive->Vertices, Primitive->VertexCount * sizeof(R_Vertex));
 			}
 		}
 	}
@@ -223,7 +239,7 @@ void R_Update(R_World *const Renderer, R_Camera *const Camera, SendaiScene *Scen
 	XMMATRIX Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f);
 	XMMATRIX MVP = XM_MAT_MULT(View, Proj);
 	MVP = XM_MAT_TRANSP(MVP);
-	UpdateRendererResource(Renderer->ConstantBuffer, &MVP, sizeof(XMMATRIX));
+	UpdateRendererResource(Renderer->TransformBuffer, &MVP, sizeof(XMMATRIX));
 }
 
 void R_Draw(R_World *const Renderer, SendaiScene *Scene)
@@ -242,31 +258,17 @@ void R_Draw(R_World *const Renderer, SendaiScene *Scene)
 	};
 
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &ResourceBarrier);
+	D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilCPUHandle;
+	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->DepthStencilHeap, &DepthStencilCPUHandle);
+	ID3D12GraphicsCommandList_OMSetRenderTargets(Renderer->CommandList, 1, &Renderer->RtvHandles[Renderer->RtvIndex], FALSE, &DepthStencilCPUHandle);
 	ID3D12GraphicsCommandList_ClearRenderTargetView(Renderer->CommandList, Renderer->RtvHandles[Renderer->RtvIndex], CLEAR_COLOR, 0, NULL);
-	ID3D12GraphicsCommandList_OMSetRenderTargets(Renderer->CommandList, 1, &Renderer->RtvHandles[Renderer->RtvIndex], FALSE, NULL);
+	ID3D12GraphicsCommandList_ClearDepthStencilView(Renderer->CommandList, DepthStencilCPUHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, NULL);
 	ID3D12GraphicsCommandList_IASetPrimitiveTopology(Renderer->CommandList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, ID3D12Resource_GetGPUVirtualAddress(Renderer->ConstantBuffer));
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, ID3D12Resource_GetGPUVirtualAddress(Renderer->TransformBuffer));
 	ID3D12DescriptorHeap *Heaps[] = {Renderer->SrvHeap};
 	ID3D12GraphicsCommandList_SetDescriptorHeaps(Renderer->CommandList, 1, Heaps);
 
-	for (int i = 0; i < Scene->ModelsCount; ++i) {
-		for (int j = 0; j < Scene->Models[i].MeshesCount; ++j) {
-			R_Mesh *Mesh = &Scene->Models[i].Meshes[j];
-			if (Scene->Models[i].Images) {
-				ptrdiff_t TexIdx = shgeti(Renderer->Textures, Scene->Models[i].Images[Mesh->BaseTextureIndex].Name);
-				if (TexIdx != -1) {
-					GPUTexture *Tex = &Renderer->Textures[TexIdx].Texture;
-					ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, Tex->SrvHandle);
-				}
-			}
-			for (int k = 0; k < Mesh->PrimitivesCount; ++k) {
-				R_Primitive *Primitive = &Mesh->Primitives[k];
-				ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Primitive->VertexBufferView);
-				ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
-				ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);
-			}
-		}
-	}
+	RenderPrimitives(Scene, Renderer);
 
 	UI_Draw(Renderer->CommandList);
 
@@ -314,7 +316,7 @@ void R_Destroy(R_World *Renderer)
 	ID3D12CommandQueue_Release(Renderer->CommandQueue);
 	ID3D12Fence_Release(Renderer->Fence);
 	ID3D12PipelineState_Release(Renderer->PipelineStateScene);
-	ID3D12Resource_Release(Renderer->ConstantBuffer);
+	ID3D12Resource_Release(Renderer->TransformBuffer);
 	ID3D12Device_Release(Renderer->Device);
 	ID3D12Device_Release(Renderer->SrvHeap);
 	CloseHandle(Renderer->FenceEvent);
@@ -349,22 +351,33 @@ void R_SwapchainResize(R_World *const Renderer, int Width, int Height)
 	ID3D12Device_CreateRenderTargetView(Renderer->Device, Renderer->RtvBuffers[1], NULL, DescriptorHandle);
 	Renderer->RtvHandles[1] = DescriptorHandle;
 	Renderer->RtvIndex = 0;
+
+	Renderer->Width = Width;
+	Renderer->Height = Height;
+	Renderer->AspectRatio = (float)Width / (float)Height;
+	Renderer->Viewport = (D3D12_VIEWPORT){.TopLeftX = 0.0f, .TopLeftY = 0.0f, .Width = (float)Width, .Height = (float)Height, .MinDepth = 0.0f, .MaxDepth = 1.0f};
+	Renderer->ScissorRect = (D3D12_RECT){0, 0, (LONG)Width, (LONG)Height};
+
+	if (Renderer->DepthStencil) {
+		ID3D12Resource_Release(Renderer->DepthStencil);
+	}
+
+	CreateDepthStencilBuffer(Renderer);
 }
 
-void *R_UploadTexture(R_World *Renderer, R_Texture *Source)
+D3D12_GPU_DESCRIPTOR_HANDLE R_UploadTexture(R_World *Renderer, R_Texture *Source, UINT SlotIndex)
 {
 	ptrdiff_t Index = shgeti(Renderer->Textures, Source->Name);
 	if (Index != -1) {
-		return;
+		return Renderer->Textures[Index].Texture.SrvHandle;
 	}
 
 	GPUTexture NewTex = {0};
-
-	UploadTexture(Renderer, Source, &NewTex.GpuTexture, &NewTex.SrvHandle, Renderer->SrvCount);
-	Renderer->SrvCount++;
-
+	UploadTexture(Renderer, Source, &NewTex.GpuTexture, &NewTex.SrvHandle, SlotIndex);
 	TextureLookup Lookup = {.key = _strdup(Source->Name), .Texture = NewTex};
 	shputs(Renderer->Textures, Lookup);
+
+	return NewTex.SrvHandle;
 }
 
 /****************************************************
@@ -460,4 +473,52 @@ void UploadTexture(R_World *Renderer, R_Texture *Source, ID3D12Resource **OutTex
 
 	R_ExecuteCommands(Renderer);
 	ID3D12Resource_Release(Upload);
+}
+
+void RenderPrimitives(SendaiScene *Scene, R_World *const Renderer)
+{
+	for (int ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
+		R_Model *Model = &Scene->Models[ModelIdx];
+		for (int MeshIdx = 0; MeshIdx < Model->MeshesCount; ++MeshIdx) {
+			R_Mesh *Mesh = &Model->Meshes[MeshIdx];
+			for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
+				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
+
+				R_PBRConstantBuffer PBRConstants = {0};
+				memcpy(PBRConstants.BaseColorFactor, Primitive->BaseColorFactor, sizeof(float) * 4);
+				PBRConstants.UVTransform[0] = Primitive->UVScale[0];
+				PBRConstants.UVTransform[1] = Primitive->UVScale[1];
+				PBRConstants.UVTransform[2] = Primitive->UVOffset[0];
+				PBRConstants.UVTransform[3] = Primitive->UVOffset[1];
+
+				ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES, &PBRConstants, 0);
+
+				if (Primitive->AlbedoIndex >= 0) {
+					ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 2, Primitive->MaterialDescriptorBase);
+				}
+
+				ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Primitive->VertexBufferView);
+				ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
+				ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);
+			}
+		}
+	}
+}
+
+void CreateDepthStencilBuffer(R_World *const Renderer)
+{
+	D3D12_RESOURCE_DESC TextureDesc =
+		CD3DX12_TEX2D(DXGI_FORMAT_D32_FLOAT, Renderer->Width, Renderer->Height, 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_TEXTURE_LAYOUT_UNKNOWN, 0);
+
+	D3D12_CLEAR_VALUE DepthOptimizedClearValue = {.Format = DXGI_FORMAT_D32_FLOAT, .DepthStencil.Depth = 1.0f};
+
+	D3D12_HEAP_PROPERTIES DefaultHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+
+	ID3D12Device_CreateCommittedResource(
+		Renderer->Device, &DefaultHeap, D3D12_HEAP_FLAG_NONE, &TextureDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &DepthOptimizedClearValue, &IID_ID3D12Resource,
+		&Renderer->DepthStencil);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilHandle;
+	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->DepthStencilHeap, &DepthStencilHandle);
+	ID3D12Device_CreateDepthStencilView(Renderer->Device, Renderer->DepthStencil, NULL, DepthStencilHandle);
 }

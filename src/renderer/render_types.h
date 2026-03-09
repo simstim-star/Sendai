@@ -25,12 +25,19 @@ typedef struct R_Vertex {
 	} UV;
 } R_Vertex;
 
-typedef struct R_ConstantBuffer {
+typedef struct R_TransformConstantBuffer {
 	XMMATRIX MVP;
 
 	// Constant buffers must be 256-byte aligned. XMMATRIX is 64 bytes.
 	char Padding[192];
-} R_ConstantBuffer;
+} R_TransformBuffer;
+
+typedef struct R_PBRConstantBuffer {
+	float BaseColorFactor[4]; 
+	float UVTransform[4];	  
+} R_PBRConstantBuffer;
+
+#define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 2
 
 typedef struct R_Texture {
 	uint8_t *Pixels; // RGBA8
@@ -49,13 +56,18 @@ typedef struct R_Primitive {
 	UINT IndexCount;
 	ID3D12Resource *IndexBuffer;
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView;
+
+	INT AlbedoIndex;
+	float BaseColorFactor[4]; 
+	float UVScale[2]; 
+	float UVOffset[2]; 
+
+	D3D12_GPU_DESCRIPTOR_HANDLE MaterialDescriptorBase;
 } R_Primitive;
 
 typedef struct R_Mesh {
 	R_Primitive *Primitives;
 	UINT PrimitivesCount;
-
-	UINT BaseTextureIndex;
 } R_Mesh;
 
 typedef struct R_Model {

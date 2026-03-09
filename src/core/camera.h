@@ -19,10 +19,10 @@ typedef struct R_Camera {
 		bool S;
 		bool D;
 
-		bool Left;
-		bool Right;
-		bool Up;
-		bool Down;
+		bool LeftArrow;
+		bool RightArrow;
+		bool UpArrow;
+		bool DownArrow;
 	} KeysPressed;
 } R_Camera;
 

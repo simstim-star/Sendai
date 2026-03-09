@@ -27,7 +27,7 @@ R_Camera R_CameraSpawn(XMFLOAT3 Position)
 	  .Pitch = 0.0f,
 	  .LookDirection = {0, 0, -1},
 	  .UpDirection = {0, 1, 0},
-	  .MoveSpeed = {5.0f},
+	  .MoveSpeed = {25.0f},
 	  .TurnSpeed = XM_PIDIV4,
 	};
 }
@@ -36,16 +36,16 @@ void R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 {
 	float RotateDelta = Camera->TurnSpeed * ElapsedSeconds;
 
-	if (Camera->KeysPressed.Left) {
+	if (Camera->KeysPressed.LeftArrow) {
 		Camera->Yaw += RotateDelta;
 	}
-	if (Camera->KeysPressed.Right) {
+	if (Camera->KeysPressed.RightArrow) {
 		Camera->Yaw -= RotateDelta;
 	}
-	if (Camera->KeysPressed.Up) {
+	if (Camera->KeysPressed.UpArrow) {
 		Camera->Pitch += RotateDelta;
 	}
-	if (Camera->KeysPressed.Down) {
+	if (Camera->KeysPressed.DownArrow) {
 		Camera->Pitch -= RotateDelta;
 	}
 
@@ -66,7 +66,6 @@ void R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 	XMVECTOR Forward = XMLoadFloat3(&Camera->LookDirection);
 	XMVECTOR Up = XMLoadFloat3(&Camera->UpDirection);
 	XMVECTOR Right = XM_VEC3_CROSS(Forward, Up);
-
 
 	XMVECTOR Movement = XMVectorZero();
 
@@ -125,28 +124,28 @@ void R_CameraOnKeyDown(R_Camera *Camera, WPARAM Key)
 {
 	switch (Key) {
 	case 'W':
-		Camera->KeysPressed.W = true;
+		Camera->KeysPressed.W = TRUE;
 		break;
 	case 'A':
-		Camera->KeysPressed.A = true;
+		Camera->KeysPressed.A = TRUE;
 		break;
 	case 'S':
-		Camera->KeysPressed.S = true;
+		Camera->KeysPressed.S = TRUE;
 		break;
 	case 'D':
-		Camera->KeysPressed.D = true;
+		Camera->KeysPressed.D = TRUE;
 		break;
 	case VK_LEFT:
-		Camera->KeysPressed.Left = true;
+		Camera->KeysPressed.LeftArrow = TRUE;
 		break;
 	case VK_RIGHT:
-		Camera->KeysPressed.Right = true;
+		Camera->KeysPressed.RightArrow = TRUE;
 		break;
 	case VK_UP:
-		Camera->KeysPressed.Up = true;
+		Camera->KeysPressed.UpArrow = TRUE;
 		break;
 	case VK_DOWN:
-		Camera->KeysPressed.Down = true;
+		Camera->KeysPressed.DownArrow = TRUE;
 		break;
 	case VK_ESCAPE:
 		CameraReset(Camera);
@@ -158,28 +157,28 @@ void R_CameraOnKeyUp(R_Camera *Camera, WPARAM Key)
 {
 	switch (Key) {
 	case 'W':
-		Camera->KeysPressed.W = false;
+		Camera->KeysPressed.W = FALSE;
 		break;
 	case 'A':
-		Camera->KeysPressed.A = false;
+		Camera->KeysPressed.A = FALSE;
 		break;
 	case 'S':
-		Camera->KeysPressed.S = false;
+		Camera->KeysPressed.S = FALSE;
 		break;
 	case 'D':
-		Camera->KeysPressed.D = false;
+		Camera->KeysPressed.D = FALSE;
 		break;
 	case VK_LEFT:
-		Camera->KeysPressed.Left = false;
+		Camera->KeysPressed.LeftArrow = FALSE;
 		break;
 	case VK_RIGHT:
-		Camera->KeysPressed.Right = false;
+		Camera->KeysPressed.RightArrow = FALSE;
 		break;
 	case VK_UP:
-		Camera->KeysPressed.Up = false;
+		Camera->KeysPressed.UpArrow = FALSE;
 		break;
 	case VK_DOWN:
-		Camera->KeysPressed.Down = false;
+		Camera->KeysPressed.DownArrow = FALSE;
 		break;
 	}
 }

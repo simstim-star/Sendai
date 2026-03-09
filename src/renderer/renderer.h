@@ -46,6 +46,9 @@ typedef struct R_World {
 	ID3D12Device *Device;
 	ID3D12CommandQueue *CommandQueue;
 
+	ID3D12Resource *DepthStencil;
+	ID3D12DescriptorHeap *DepthStencilHeap;
+
 	ID3D12CommandAllocator *CommandAllocator;
 	ID3D12GraphicsCommandList *CommandList;
 
@@ -64,7 +67,8 @@ typedef struct R_World {
 		Resources
 	*****************************/
 
-	ID3D12Resource *ConstantBuffer;
+	ID3D12Resource *TransformBuffer;
+	ID3D12Resource *MaterialBuffer;
 	TextureLookup *Textures;
 	UINT SrvCount;
 } R_World;
@@ -75,6 +79,8 @@ void R_CreateIndexBuffer(ID3D12Device *Device, R_Primitive *const Primitive);
 void R_Destroy(R_World *Renderer);
 void R_Update(R_World *const Renderer, R_Camera *const Camera, SendaiScene *Scene);
 void R_Draw(R_World *const Renderer, SendaiScene *Scene);
+void RenderPrimitives(SendaiScene *Scene, R_World *const Renderer);
 void R_ExecuteCommands(R_World *const Renderer);
 void R_SwapchainResize(R_World *const Renderer, int Width, int Height);
-void *R_UploadTexture(R_World *Renderer, R_Texture *Source);
+void CreateDepthStencilBuffer(R_World *const Renderer);
+D3D12_GPU_DESCRIPTOR_HANDLE R_UploadTexture(R_World *Renderer, R_Texture *Source, UINT SlotIndex);

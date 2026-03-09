@@ -1,23 +1,29 @@
-cbuffer MVP : register(b0)
+cbuffer TransformData : register(b0)
 {
     float4x4 mvp;
 };
 
-Texture2D albedo : register(t0);
-SamplerState samp : register(s0);
+cbuffer PBRData : register(b1)
+{
+    float4 baseColorFactor;
+    float4 uvTransform;    
+};
+
+Texture2D albedoTex : register(t0);
+SamplerState samp   : register(s0);
 
 struct VSIn
 {
-    float4 pos : POSITION;
+    float4 pos   : POSITION;
     float4 color : COLOR;
-    float2 uv : TEXCOORD0;
+    float2 uv    : TEXCOORD0;
 };
 
 struct PSIn
 {
-    float4 pos : SV_POSITION;
+    float4 pos   : SV_POSITION;
     float4 color : COLOR;
-    float2 uv : TEXCOORD0;
+    float2 uv    : TEXCOORD0;
 };
 
 PSIn VSMain(VSIn v)
@@ -31,5 +37,7 @@ PSIn VSMain(VSIn v)
 
 float4 PSMain(PSIn i) : SV_TARGET
 {
-    return albedo.Sample(samp, i.uv) * i.color;
+    float2 uv = i.uv * uvTransform.xy + uvTransform.zw;
+    float4 albedo = albedoTex.Sample(samp, uv);
+    return albedo * baseColorFactor * i.color;
 }

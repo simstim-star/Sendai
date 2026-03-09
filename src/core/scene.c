@@ -8,41 +8,48 @@
 #include "../renderer/renderer.h"
 #include <d3d12.h>
 #include <d3dcompiler.h>
+#include "../renderer/render_types.h"
 
 void CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 {
-	D3D12_DESCRIPTOR_RANGE SrvRange = {
-	  .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-	  .NumDescriptors = 1,
-	  .BaseShaderRegister = 0,
-	  .RegisterSpace = 0,
-	  .OffsetInDescriptorsFromTableStart = 0,
-	};
+	D3D12_ROOT_PARAMETER RootParameters[3] = {0};
 
-	D3D12_ROOT_PARAMETER RootParameters[2] = {0};
-
-	/* b0 : MVP */
 	RootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	RootParameters[0].Descriptor.ShaderRegister = 0;
 	RootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
-	/* t0 : texture */
-	RootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	RootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
-	RootParameters[1].DescriptorTable.pDescriptorRanges = &SrvRange;
+	RootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+	RootParameters[1].Constants.ShaderRegister = 1;
+	RootParameters[1].Constants.RegisterSpace = 0;
+	RootParameters[1].Constants.Num32BitValues = NUM_32BITS_PBR_VALUES;
 	RootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+	D3D12_DESCRIPTOR_RANGE SrvRange = {
+	  .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+	  .NumDescriptors = 2, 
+	  .BaseShaderRegister = 0,
+	  .RegisterSpace = 0,
+	  .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+	};
+
+	RootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	RootParameters[2].DescriptorTable.NumDescriptorRanges = 1;
+	RootParameters[2].DescriptorTable.pDescriptorRanges = &SrvRange;
+	RootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	D3D12_STATIC_SAMPLER_DESC Sampler = {
 	  .Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
 	  .AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
 	  .AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
 	  .AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+	  .ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
+	  .MaxLOD = D3D12_FLOAT32_MAX,
 	  .ShaderRegister = 0,
 	  .ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
 	};
 
 	D3D12_ROOT_SIGNATURE_DESC RootSignatureDesc = {
-	  .NumParameters = 2,
+	  .NumParameters = 3,
 	  .pParameters = RootParameters,
 	  .NumStaticSamplers = 1,
 	  .pStaticSamplers = &Sampler,
@@ -52,11 +59,16 @@ void CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 	ID3DBlob *Signature = NULL;
 	ID3DBlob *Error = NULL;
 	HRESULT hr = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &Error);
-	ExitIfFailed(hr);
 
-	const LPVOID pBuffer = ID3D10Blob_GetBufferPointer(Signature);
-	const SIZE_T BufferSize = ID3D10Blob_GetBufferSize(Signature);
-	hr = ID3D12Device_CreateRootSignature(Device, 0, pBuffer, BufferSize, &IID_ID3D12RootSignature, RootSign);
+	if (FAILED(hr)) {
+		if (Error) {
+			S_LogAppend((char *)ID3D10Blob_GetBufferPointer(Error));
+		}
+		ExitIfFailed(hr);
+	}
+
+	hr = ID3D12Device_CreateRootSignature(
+		Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature), &IID_ID3D12RootSignature, (void **)RootSign);
 	ExitIfFailed(hr);
 }
 
@@ -110,8 +122,8 @@ void CreateScenePipelineState(R_World *renderer, SendaiScene *scene)
 		  },
 	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
 	  .BlendState = CD3DX12_DEFAULT_BLEND_DESC(),
-	  .DepthStencilState.DepthEnable = FALSE,
-	  .DepthStencilState.StencilEnable = FALSE,
+	  .DepthStencilState = CD3DX12_DEFAULT_DEPTH_STENCIL_DESC(),
+	  .DSVFormat = DXGI_FORMAT_D32_FLOAT,
 	  .SampleMask = UINT_MAX,
 	  .PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
 	  .NumRenderTargets = 1,

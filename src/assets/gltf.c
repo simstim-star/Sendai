@@ -27,13 +27,28 @@ static BOOL ExtractImageData(
 
 static void RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBuffer[MAX_PATH]);
 
-static LONG LoadGLTFFile(_In_z_ PCWSTR Path, _Outptr_ void **Data);
+static LONG LoadGLTFFile(_In_z_ PCWSTR Path, _In_ S_Arena *Arena, _Outptr_ void **Data);
 
-static cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path);
+static cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ S_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path);
 
-static cgltf_result LoadGLTFBuffer(_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data);
+static cgltf_result
+LoadGLTFBuffer(_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _In_ S_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data);
 
 static void AppendFileNameToPath(_In_z_ PWSTR BasePath, _In_z_ char *FileName, _Out_writes_z_(MAX_PATH) char FullPath[MAX_PATH]);
+
+static int IsDataEmbedded(const cgltf_image *const BaseImage);
+
+static void *cgltf_arena_alloc(void *user, cgltf_size size)
+{
+	return S_ArenaAlloc((S_Arena *)user, size);
+}
+
+static void cgltf_arena_free(void *user, void *ptr)
+{
+	// No-op: Arena handles lifetime
+	(void)user;
+	(void)ptr;
+}
 
 /****************************************************
 	Public functions
@@ -41,14 +56,20 @@ static void AppendFileNameToPath(_In_z_ PWSTR BasePath, _In_z_ char *FileName, _
 
 BOOL SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 {
+	S_Arena LocalArena = S_ArenaInit(GIGABYTES(1));
+
 	void *FileData = NULL;
-	LONG Size = LoadGLTFFile(Path, &FileData);
+	LONG Size = LoadGLTFFile(Path, &LocalArena, &FileData);
 	if (Size <= 0) {
 		S_LogAppendf("Failed to load %s\n", Path);
 		return FALSE;
 	}
 
 	cgltf_options Options = {0};
+	Options.memory.alloc_func = cgltf_arena_alloc;
+	Options.memory.free_func = cgltf_arena_free;
+	Options.memory.user_data = &LocalArena;
+
 	cgltf_data *Data = NULL;
 	cgltf_result Result = cgltf_parse(&Options, FileData, Size, &Data);
 	if (Result != cgltf_result_success) {
@@ -59,7 +80,7 @@ BOOL SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 		return FALSE;
 	}
 
-	Result = LoadGLTFBuffers(&Options, Data, Path);
+	Result = LoadGLTFBuffers(&Options, &LocalArena, Data, Path);
 	if (Result != cgltf_result_success) {
 		if (Data) {
 			cgltf_free(Data);
@@ -82,58 +103,63 @@ BOOL SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 	}
 
 	for (size_t MeshId = 0; MeshId < Data->meshes_count; MeshId++) {
-		cgltf_mesh *Mesh = &Data->meshes[MeshId];
-		Scene->Models[Scene->ModelsCount].Meshes[MeshId].Primitives = S_ArenaAlloc(&Scene->SceneArena, Mesh->primitives_count * sizeof(R_Primitive));
-		Scene->Models[Scene->ModelsCount].Meshes[MeshId].PrimitivesCount = Mesh->primitives_count;
+		cgltf_mesh *MeshData = &Data->meshes[MeshId];
+		R_Mesh *Mesh = &Scene->Models[Scene->ModelsCount].Meshes[MeshId];
+		Mesh->Primitives = S_ArenaAlloc(&Scene->SceneArena, MeshData->primitives_count * sizeof(R_Primitive));
+		Mesh->PrimitivesCount = MeshData->primitives_count;
 
-		for (cgltf_size PrimitiveId = 0; PrimitiveId < Mesh->primitives_count; PrimitiveId++) {
-			cgltf_primitive *Primitive = &Mesh->primitives[PrimitiveId];
-			cgltf_accessor *PositionAccessor = NULL;
-			cgltf_accessor *ColorAccessor = NULL;
-			cgltf_accessor *UVAccessor = NULL;
+		for (cgltf_size PrimitiveId = 0; PrimitiveId < MeshData->primitives_count; PrimitiveId++) {
+			cgltf_primitive *PrimitiveData = &MeshData->primitives[PrimitiveId];
+			cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum] = {0};
+			R_Primitive *Primitive = &Scene->Models[Scene->ModelsCount].Meshes[MeshId].Primitives[PrimitiveId];
 
-			for (int AttributeId = 0; AttributeId < Primitive->attributes_count; ++AttributeId) {
-				cgltf_attribute *Attribute = &Primitive->attributes[AttributeId];
-				switch (Attribute->type) {
-				case cgltf_attribute_type_position: {
-					PositionAccessor = Attribute->vertex_data;
-					break;
-				}
-				case cgltf_attribute_type_color:
-					ColorAccessor = Attribute->vertex_data;
-					break;
-				case cgltf_attribute_type_texcoord:
-					if (Attribute->index == 0) {
-						UVAccessor = Attribute->vertex_data;
+			for (int AttributeId = 0; AttributeId < PrimitiveData->attributes_count; ++AttributeId) {
+				cgltf_attribute *AttributeData = &PrimitiveData->attributes[AttributeId];
+				AccessorsData[AttributeData->type] = AttributeData->vertex_data;
+			}
+
+			if (PrimitiveData->material) {
+				cgltf_material *MaterialData = PrimitiveData->material;
+				if (MaterialData->has_pbr_metallic_roughness) {
+					cgltf_pbr_metallic_roughness *MetallicRoughnessData = &MaterialData->pbr_metallic_roughness;
+
+					if (MetallicRoughnessData->base_color_texture.texture) {
+						Primitive->AlbedoIndex = MetallicRoughnessData->base_color_texture.texture->image - Data->images;
+
+						if (MetallicRoughnessData->base_color_texture.has_transform) {
+							Primitive->UVScale[0] = MetallicRoughnessData->base_color_texture.transform.scale[0];
+							Primitive->UVScale[1] = MetallicRoughnessData->base_color_texture.transform.scale[1];
+							Primitive->UVOffset[0] = MetallicRoughnessData->base_color_texture.transform.offset[0];
+							Primitive->UVOffset[1] = MetallicRoughnessData->base_color_texture.transform.offset[1];
+						} else {
+							Primitive->UVScale[0] = 1.0f;
+							Primitive->UVScale[1] = 1.0f;
+							Primitive->UVOffset[0] = 0.0f;
+							Primitive->UVOffset[1] = 0.0f;
+						}
+					} else {
+						Primitive->AlbedoIndex = -1;
 					}
-					break;
-				default:
-					break;
+
+					memcpy(Primitive->BaseColorFactor, MetallicRoughnessData->base_color_factor, sizeof(float) * 4);
 				}
 			}
 
-			if (Primitive->material) {
-				cgltf_pbr_metallic_roughness *PBR = &Primitive->material->pbr_metallic_roughness;
-				if (PBR && PBR->base_color_texture.texture) {
-					cgltf_image *TargetImage = PBR->base_color_texture.texture->image;
-					Scene->Models[Scene->ModelsCount].Meshes[MeshId].BaseTextureIndex = TargetImage - Data->images;
-				}
-			}
-
+			cgltf_accessor *PositionAccessor = AccessorsData[cgltf_attribute_type_position];
 			if (!PositionAccessor) {
 				S_LogAppend("Mesh has no POSITION attribute\n");
-				cgltf_free(Data);
-				return FALSE;
+				break;
 			}
 
 			size_t VertexCount = PositionAccessor->count;
 			R_Vertex *Vertices = S_ArenaAlloc(&Scene->SceneArena, sizeof(R_Vertex) * VertexCount);
 
 			for (size_t i = 0; i < VertexCount; i++) {
-				float pos[3];
-				cgltf_accessor_read_float(PositionAccessor, i, pos, 3);
-				Vertices[i].Position = (R_Float4){pos[0], pos[1], -pos[2], 1.0f};
+				float Position[3];
+				cgltf_accessor_read_float(PositionAccessor, i, Position, 3);
+				Vertices[i].Position = (R_Float4){Position[0], Position[1], -Position[2], 1.0f};
 
+				cgltf_accessor *ColorAccessor = AccessorsData[cgltf_attribute_type_color];
 				if (ColorAccessor) {
 					float c[4];
 					cgltf_accessor_read_float(ColorAccessor, i, c, 4);
@@ -145,6 +171,7 @@ BOOL SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 					Vertices[i].Color = (R_Float4){1.0f, 1.0f, 1.0f, 1.0f};
 				}
 
+				cgltf_accessor *UVAccessor = AccessorsData[cgltf_attribute_type_texcoord];
 				if (UVAccessor) {
 					float UV[2];
 					cgltf_accessor_read_float(UVAccessor, i, UV, 2);
@@ -156,7 +183,7 @@ BOOL SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 				}
 			}
 
-			cgltf_accessor *IndicesAccessor = Primitive->indices;
+			cgltf_accessor *IndicesAccessor = PrimitiveData->indices;
 			size_t IndexCount = IndicesAccessor ? IndicesAccessor->count : 0;
 
 			uint16_t *Indices = NULL;
@@ -169,14 +196,15 @@ BOOL SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 				}
 			}
 
-			Scene->Models[Scene->ModelsCount].Meshes[MeshId].Primitives[PrimitiveId].Vertices = Vertices;
-			Scene->Models[Scene->ModelsCount].Meshes[MeshId].Primitives[PrimitiveId].VertexCount = VertexCount;
-			Scene->Models[Scene->ModelsCount].Meshes[MeshId].Primitives[PrimitiveId].Indices = Indices;
-			Scene->Models[Scene->ModelsCount].Meshes[MeshId].Primitives[PrimitiveId].IndexCount = IndexCount;
+			Primitive->Vertices = Vertices;
+			Primitive->VertexCount = VertexCount;
+			Primitive->Indices = Indices;
+			Primitive->IndexCount = IndexCount;
 		}
 	}
 
 	cgltf_free(Data);
+	S_ArenaRelease(&LocalArena);
 
 	Scene->ModelsCount++;
 	S_LogAppendf(L"Successfully loaded %s\n", Path);
@@ -201,13 +229,13 @@ void PreloadImages(SendaiScene *Scene, cgltf_data *Data, PCWSTR Path)
 		wcscpy_s(BasePath, MAX_PATH, Path);
 		RemoveAllAfterLastSlash(BasePath);
 		if (ExtractImageData(BasePath, BaseImage, &Pixels, &Size, &W, &H, &Channels)) {
-			Scene->Models[Scene->ModelsCount].Images[i].Pixels = Pixels;
-			Scene->Models[Scene->ModelsCount].Images[i].Width = W;
-			Scene->Models[Scene->ModelsCount].Images[i].Height = H;
+			R_Texture *Texture = &Scene->Models[Scene->ModelsCount].Images[i];
+			Texture->Pixels = Pixels;
+			Texture->Width = W;
+			Texture->Height = H;
 
 			PWSTR UniqueNameW = S_ArenaAlloc(&Scene->SceneArena, MAX_PATH * sizeof(WCHAR));
-			BOOL bIsDataEmbedded = strncmp(BaseImage->uri, "data:", 5) == 0;
-			if (BaseImage->uri && !bIsDataEmbedded) {
+			if (BaseImage->uri && !IsDataEmbedded(BaseImage)) {
 				WCHAR UriW[MAX_PATH];
 				MultiByteToWideChar(CP_UTF8, 0, BaseImage->uri, -1, UriW, MAX_PATH);
 				swprintf_s(UniqueNameW, MAX_PATH, L"%s_%d_%s", Path, i, UriW);
@@ -218,7 +246,7 @@ void PreloadImages(SendaiScene *Scene, cgltf_data *Data, PCWSTR Path)
 			int UTF8Size = WideCharToMultiByte(CP_UTF8, 0, UniqueNameW, -1, NULL, 0, NULL, NULL);
 			char *UniqueName = S_ArenaAlloc(&Scene->SceneArena, UTF8Size);
 			WideCharToMultiByte(CP_UTF8, 0, UniqueNameW, -1, UniqueName, UTF8Size, NULL, NULL);
-			Scene->Models[Scene->ModelsCount].Images[i].Name = UniqueName;
+			Texture->Name = UniqueName;
 		}
 	}
 }
@@ -236,8 +264,7 @@ BOOL ExtractImageData(
 	unsigned char *StbiData = NULL;
 
 	if (Img->uri) {
-		BOOL bIsDataEmbedded = strncmp(Img->uri, "data:", 5) == 0;
-		if (bIsDataEmbedded) {
+		if (IsDataEmbedded(Img)) {
 			const char *FirstCommaPtr = strchr(Img->uri, ',');
 			if (!FirstCommaPtr) {
 				return FALSE;
@@ -287,7 +314,8 @@ BOOL ExtractImageData(
 	return TRUE;
 }
 
-cgltf_result LoadGLTFBuffer(_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data)
+cgltf_result
+LoadGLTFBuffer(_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _In_ S_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data)
 {
 	WCHAR FullPathBuffer[MAX_PATH];
 	wcscpy_s(FullPathBuffer, MAX_PATH, FullPathGLTF);
@@ -307,12 +335,11 @@ cgltf_result LoadGLTFBuffer(_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFile
 	*Size = ftell(file);
 	fseek(file, 0, SEEK_SET);
 
-	*Data = malloc(*Size);
+	*Data = S_ArenaAlloc(Arena, *Size);
 	if (!*Data) {
 		fclose(file);
 		return cgltf_result_out_of_memory;
 	}
-
 	fread(*Data, 1, *Size, file);
 	fclose(file);
 
@@ -332,7 +359,7 @@ void RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBuffer[MA
 	}
 }
 
-cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path)
+cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ S_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path)
 {
 	if (Options == NULL) {
 		return cgltf_result_invalid_options;
@@ -372,7 +399,7 @@ cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _Inout_ cgltf_da
 				return cgltf_result_unknown_format;
 			}
 		} else if (strstr(URI, "://") == NULL && Path) {
-			cgltf_result Result = LoadGLTFBuffer(Path, URI, &Data->buffers[i].size, &Data->buffers[i].vertex_data);
+			cgltf_result Result = LoadGLTFBuffer(Path, URI, Arena, &Data->buffers[i].size, &Data->buffers[i].vertex_data);
 			Data->buffers[i].data_free_method = cgltf_data_free_method_file_release;
 
 			if (Result != cgltf_result_success) {
@@ -386,7 +413,7 @@ cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _Inout_ cgltf_da
 	return cgltf_result_success;
 }
 
-LONG LoadGLTFFile(_In_z_ PCWSTR Path, _Outptr_ void **Data)
+LONG LoadGLTFFile(_In_z_ PCWSTR Path, S_Arena *Arena, _Outptr_ void **Data)
 {
 	FILE *file = _wfopen(Path, L"rb");
 	if (!file) {
@@ -401,7 +428,7 @@ LONG LoadGLTFFile(_In_z_ PCWSTR Path, _Outptr_ void **Data)
 		return Size;
 	}
 
-	*Data = malloc(Size);
+	*Data = S_ArenaAlloc(Arena, Size);
 	if (!*Data) {
 		fclose(file);
 		return 0;
@@ -430,4 +457,9 @@ void AppendFileNameToPath(_In_z_ PWSTR BasePathW, _In_z_ char *FileName, _Out_wr
 	}
 
 	strcat_s(FullPath, MAX_PATH, FileName);
+}
+
+int IsDataEmbedded(const cgltf_image *const BaseImage)
+{
+	return BaseImage->uri && strncmp(BaseImage->uri, "data:", 5) == 0;
 }

@@ -22,7 +22,7 @@ int Sendai_run()
 	Sendai Engine = {
 	  .Title = L"Sendai",
 	  .WorldRenderer = {.Width = 1280, .Height = 720},
-	  .Camera = R_CameraSpawn((XMFLOAT3){0, 0, -10}),
+	  .Camera = R_CameraSpawn((XMFLOAT3){0, 25, -100}),
 	  .Scene.SceneArena = S_ArenaInit(GIGABYTES(2)),
 	  .bRunning = true
 	};
@@ -37,9 +37,9 @@ int Sendai_run()
 	R_Init(&Engine.WorldRenderer, Engine.hWnd);
 
 	CreateSceneRootSig(Engine.WorldRenderer.Device, &Engine.Scene.RootSign);
-	PCWSTR shaders_path = wcscat(Engine.WorldRenderer.AssetsPath, L"src/shaders/gltf/gltf.hlsl");
-	CompileSceneVS(shaders_path, &Engine.Scene.VS);
-	CompileScenePS(shaders_path, &Engine.Scene.PS);
+	PCWSTR ShadersPath = wcscat(Engine.WorldRenderer.AssetsPath, L"src/shaders/gltf/gltf.hlsl");
+	CompileSceneVS(ShadersPath, &Engine.Scene.VS);
+	CompileScenePS(ShadersPath, &Engine.Scene.PS);
 	CreateScenePipelineState(&Engine.WorldRenderer, &Engine.Scene);
 
 	UI_Init(&Engine.UI, Engine.WorldRenderer.Width, Engine.WorldRenderer.Height, Engine.WorldRenderer.Device, Engine.WorldRenderer.CommandList);
@@ -92,9 +92,7 @@ void InitWindow(Sendai *engine)
 }
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
-	if (UI_HandleEvent(hWnd, Message, wParam, lParam))
-		return 0;
-
+	
 	Sendai *engine = (Sendai *)(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
 	switch (Message) {
@@ -133,6 +131,9 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lPara
 		return 0;
 	}
 
+	if (UI_HandleEvent(hWnd, Message, wParam, lParam))
+		return 0;
+
 	return DefWindowProc(hWnd, Message, wParam, lParam);
 }
 
@@ -156,16 +157,22 @@ void UIUpdate(Sendai *Engine)
 		PWSTR FilePath = SelectGLTFPath();
 		if (FilePath) {
 			SendaiGLTF_LoadModel(FilePath, &Engine->Scene);
-			for (int i = 0; i < Engine->Scene.ModelsCount; ++i) {
-				for (int j = 0; j < Engine->Scene.Models[i].MeshesCount; ++j) {
-					R_Mesh *Mesh = &Engine->Scene.Models[i].Meshes[j];
-					for (int k = 0; k < Mesh->PrimitivesCount; ++k) {
-						R_Primitive *Primitive = &Mesh->Primitives[k];
+			for (int ModelIdx = 0; ModelIdx < Engine->Scene.ModelsCount; ++ModelIdx) {
+				for (int MeshIdx = 0; MeshIdx < Engine->Scene.Models[ModelIdx].MeshesCount; ++MeshIdx) {
+					R_Mesh *Mesh = &Engine->Scene.Models[ModelIdx].Meshes[MeshIdx];
+					for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
+						R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
 						R_CreateVertexBuffer(Engine->WorldRenderer.Device, Primitive);
 						R_CreateIndexBuffer(Engine->WorldRenderer.Device, Primitive);
-					}
-					if (Engine->Scene.Models[i].Images) {
-						R_UploadTexture(&Engine->WorldRenderer, &Engine->Scene.Models[i].Images[Mesh->BaseTextureIndex]);
+
+						if (Primitive->AlbedoIndex >= 0) {
+							UINT BaseSlot = Engine->WorldRenderer.SrvCount;
+							R_Texture *AlbedoTexture = &Engine->Scene.Models[ModelIdx].Images[Primitive->AlbedoIndex];
+							Primitive->MaterialDescriptorBase = R_UploadTexture(&Engine->WorldRenderer, AlbedoTexture, BaseSlot);
+
+							// dirty hack
+							Engine->WorldRenderer.SrvCount += 1;
+						}
 					}
 				}
 			}
