@@ -1,13 +1,9 @@
 #pragma once
 
-#define COBJMACROS
-
 #include "scene.h"
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"
 #include "../renderer/renderer.h"
-#include <d3d12.h>
-#include <d3dcompiler.h>
 #include "../renderer/render_types.h"
 
 void CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)

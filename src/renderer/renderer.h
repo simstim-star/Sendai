@@ -1,8 +1,6 @@
 #pragma once
 
-#include <d3d12.h>
-#include <dxgi1_6.h>
-
+#include "../core/pch.h"
 #include "../assets/gltf.h"
 #include "../core/scene.h"
 

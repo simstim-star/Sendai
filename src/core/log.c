@@ -1,9 +1,5 @@
 #include "log.h"
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
-
 S_Log SENDAI_LOG = {.Buffer = {0}, .Len = 0, .Max = sizeof(SENDAI_LOG.Buffer)};
 
 void S_LogAppend(const char *Text)

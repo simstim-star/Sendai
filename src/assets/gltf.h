@@ -1,8 +1,6 @@
-// load_gltf.h
-
 #pragma once
 
-#include <windows.h>
+#include "../core/pch.h"
 
 typedef struct R_Vertex R_Vertex;
 typedef struct R_Texture R_Texture;

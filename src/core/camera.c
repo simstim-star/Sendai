@@ -1,6 +1,4 @@
 #include "camera.h"
-#include <math.h>
-#include <stdlib.h>
 
 /*****************************************************************
  Private functions

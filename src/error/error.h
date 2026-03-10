@@ -1,6 +1,6 @@
 #pragma once
 
-#include <windows.h>
+#include "../core/pch.h"
 
 void ExitIfFailed(const HRESULT hr);
 void ExitWithMessage(const char *Message);

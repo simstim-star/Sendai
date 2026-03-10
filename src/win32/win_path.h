@@ -1,7 +1,6 @@
 #pragma once
 
-#include <sal.h>
-#include <wtypes.h>
+#include "../core/pch.h"
 
 /******************************************************************************************************************
 	Retrieves the path of the executable file of the current process with a last slash ('\\') appended in the end.

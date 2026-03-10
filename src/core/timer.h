@@ -3,9 +3,7 @@
  */
 
 #pragma once
-#include <basetsd.h>
-#include <stdbool.h>
-#include <windows.h>
+#include "../core/pch.h"
 
 // Integer format represents time using 10,000,000 ticks per second.
 #define TICKS_PER_SECOND 10000000

@@ -1,24 +1,15 @@
-#define COBJMACROS
-#define WIN32_LEAN_AND_MEAN
-
-#include <d3d12.h>
-#include <d3dcompiler.h>
-#include <dxgi1_6.h>
-#include <windows.h>
-
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"
 #include "../ui/ui.h"
 #include "../win32/win_path.h"
-#include "renderer.h"
 
-#include "dxgidebug.h"
+#include "renderer.h"
 #include "render_types.h"
 
 #include "../core/camera.h"
+
 #define STB_DS_IMPLEMENTATION
 #include "../../deps/stb_ds.h"
-#include <stdint.h>
 
 static const float CLEAR_COLOR[] = {0.0f, 0.2f, 0.4f, 1.0f};
 

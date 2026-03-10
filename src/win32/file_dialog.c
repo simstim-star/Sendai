@@ -1,10 +1,5 @@
 #include "file_dialog.h"
 
-#include <stdio.h>
-
-#define COBJMACROS
-#include <shobjidl.h>
-
 static const COMDLG_FILTERSPEC ModelsFilter[] = {{L"glTF Models", L"*.gltf;*.glb"}, {L"All Files", L"*.*"}};
 
 PWSTR SelectGLTFPath(void)

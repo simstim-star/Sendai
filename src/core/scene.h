@@ -1,7 +1,6 @@
 #pragma once
 
-#include <windows.h>
-#include <d3dcommon.h>
+#include "../core/pch.h"
 
 #include "arena.h"
 

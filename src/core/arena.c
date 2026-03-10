@@ -1,11 +1,6 @@
 #include "arena.h"
 #include "../error/error.h"
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <windows.h>
-
 S_Arena S_ArenaInit(size_t ReserveSize)
 {
 	S_Arena Arena = {0};

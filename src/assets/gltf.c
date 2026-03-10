@@ -11,9 +11,8 @@
 #include "../core/scene.h"
 #include "../renderer/render_types.h"
 #include "gltf.h"
-#include <sal.h>
 
-static const uint8_t WHITE_PIXEL[] = {255, 255, 255, 255};
+static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
 
 /****************************************************
 	Forward declaration of private functions
@@ -22,7 +21,7 @@ static const uint8_t WHITE_PIXEL[] = {255, 255, 255, 255};
 static void PreloadImages(SendaiScene *Scene, cgltf_data *Data, PCWSTR Path);
 
 static BOOL ExtractImageData(
-	_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _Outptr_result_bytebuffer_(*OutSize) uint8_t **Pixels, _Out_ size_t *Size, _Out_ int *W, _Out_ int *H,
+	_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _Outptr_result_bytebuffer_(*OutSize) UINT8 **Pixels, _Out_ size_t *Size, _Out_ int *W, _Out_ int *H,
 	_Out_ int *Channels);
 
 static void RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBuffer[MAX_PATH]);
@@ -222,7 +221,7 @@ void PreloadImages(SendaiScene *Scene, cgltf_data *Data, PCWSTR Path)
 
 	for (int i = 0; i < Data->images_count; ++i) {
 		cgltf_image *BaseImage = &Data->images[i];
-		uint8_t *Pixels = NULL;
+		UINT8 *Pixels = NULL;
 		size_t Size = 0;
 		int W = 0, H = 0, Channels = 0;
 		WCHAR BasePath[MAX_PATH];
@@ -252,7 +251,7 @@ void PreloadImages(SendaiScene *Scene, cgltf_data *Data, PCWSTR Path)
 }
 
 BOOL ExtractImageData(
-	_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _Outptr_result_bytebuffer_(*OutSize) uint8_t **Pixels, _Out_ size_t *Size, _Out_ int *W, _Out_ int *H,
+	_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _Outptr_result_bytebuffer_(*OutSize) UINT8 **Pixels, _Out_ size_t *Size, _Out_ int *W, _Out_ int *H,
 	_Out_ int *Channels)
 {
 	if (!Pixels || !Size || !W || !H || !Channels) {
@@ -293,7 +292,7 @@ BOOL ExtractImageData(
 	} else if (Img->buffer_view) {
 		cgltf_buffer_view *BufferView = Img->buffer_view;
 		cgltf_buffer *Buffer = BufferView->buffer;
-		const uint8_t *Data = (const uint8_t *)Buffer->vertex_data + BufferView->offset;
+		const UINT8 *Data = (const UINT8 *)Buffer->vertex_data + BufferView->offset;
 		StbiData = stbi_load_from_memory(Data, (int)BufferView->size, W, H, Channels, 4);
 		if (StbiData == NULL) {
 			return FALSE;

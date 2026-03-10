@@ -1,8 +1,7 @@
 #pragma once
 
+#include "../core/pch.h"
 #include "DirectXMathC.h"
-
-#include <d3d12.h>
 
 typedef struct R_Color {
 	float R, G, B, A;

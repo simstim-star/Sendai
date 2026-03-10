@@ -1,5 +1,5 @@
 #pragma once
 
-#include <windows.h>
+#include "../core/pch.h"
 
 PWSTR SelectGLTFPath(void);

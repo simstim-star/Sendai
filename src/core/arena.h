@@ -1,6 +1,6 @@
 #pragma once
 
-#include <windows.h>
+#include "pch.h"
 
 #define KILOBYTES(val) ((val) * 1024ULL)
 #define MEGABYTES(val) (KILOBYTES(val) * 1024ULL)

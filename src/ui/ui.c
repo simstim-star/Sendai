@@ -15,10 +15,6 @@
 #define NK_IMPLEMENTATION
 #define NK_D3D12_IMPLEMENTATION
 
-#include <d3d12.h>
-#include <stdio.h>
-
-
 #include "ui.h"
 #include "../win32/file_dialog.h"
 #include "../../deps/nuklear.h"
