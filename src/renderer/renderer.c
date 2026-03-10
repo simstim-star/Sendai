@@ -18,7 +18,6 @@ static const float CLEAR_COLOR[] = {0.0f, 0.2f, 0.4f, 1.0f};
 *****************************************************/
 
 static void SignalAndWait(R_World *const Renderer);
-static void UpdateRendererResource(ID3D12Resource *Resource, void *Data, size_t DataSize);
 static void UploadTexture(R_World *Renderer, R_Texture *Source, ID3D12Resource **OutTexture, D3D12_GPU_DESCRIPTOR_HANDLE *OutSrv, UINT SrvIndex);
 static void RenderPrimitives(SendaiScene *Scene, R_World *const Renderer);
 static void CreateDepthStencilBuffer(R_World *const Renderer);
@@ -169,73 +168,47 @@ R_Init(R_World *const Renderer, HWND hWnd)
 	IDXGIFactory2_Release(Factory);
 }
 
-void
-R_CreateVertexBuffer(ID3D12Device *Device, R_Primitive *const Primitive)
+D3D12_GPU_VIRTUAL_ADDRESS
+R_UploadStaticData(ID3D12Device *Device, ID3D12GraphicsCommandList *CmdList, UINT BufferSize, void *Data, ID3D12Resource **ppResource)
 {
-	const D3D12_HEAP_PROPERTIES HeapPropertyUpload = (D3D12_HEAP_PROPERTIES){
-	  .Type = D3D12_HEAP_TYPE_UPLOAD,
-	  .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-	  .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-	  .CreationNodeMask = 1,
-	  .VisibleNodeMask = 1,
-	};
-	const D3D12_RESOURCE_DESC BufferResource = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(R_Vertex) * Primitive->VertexCount, D3D12_RESOURCE_FLAG_NONE, 0);
+	const D3D12_RESOURCE_DESC BufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(BufferSize, D3D12_RESOURCE_FLAG_NONE, 0);
+	ID3D12Resource *UploadBuffer;
+	D3D12_HEAP_PROPERTIES UploadHeapProps = {.Type = D3D12_HEAP_TYPE_UPLOAD};
 
-	// Note: using upload heaps to transfer static data like vert buffers is not
-	// recommended. Every time the GPU needs it, the upload heap will be marshalled
-	// over. Please read up on Default Heap usage. An upload heap is used here for
-	// code simplicity and because there are very few verts to actually transfer
-	HRESULT hr = ID3D12Device_CreateCommittedResource(Device, &HeapPropertyUpload, D3D12_HEAP_FLAG_NONE, &BufferResource,
-													  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Primitive->VertexBuffer);
-	ExitIfFailed(hr);
+	ID3D12Device_CreateCommittedResource(Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL,
+										 &IID_ID3D12Resource, &UploadBuffer);
 
-	Primitive->VertexBufferView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Primitive->VertexBuffer);
-	Primitive->VertexBufferView.StrideInBytes = sizeof(R_Vertex);
-	Primitive->VertexBufferView.SizeInBytes = sizeof(R_Vertex) * Primitive->VertexCount;
-}
+	void *MappedToUploadBuffer;
+	ID3D12Resource_Map(UploadBuffer, 0, NULL, &MappedToUploadBuffer);
+	memcpy(MappedToUploadBuffer, Data, BufferSize);
+	ID3D12Resource_Unmap(UploadBuffer, 0, NULL);
 
-void
-R_CreateIndexBuffer(ID3D12Device *Device, R_Primitive *const Primitive)
-{
-	const D3D12_HEAP_PROPERTIES HeapPropertyUpload = (D3D12_HEAP_PROPERTIES){
-	  .Type = D3D12_HEAP_TYPE_UPLOAD,
-	  .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-	  .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-	  .CreationNodeMask = 1,
-	  .VisibleNodeMask = 1,
-	};
-	D3D12_RESOURCE_DESC IndexBufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(Primitive->IndexCount * sizeof(uint16_t), D3D12_RESOURCE_FLAG_NONE, 0);
-	HRESULT hr =
-		ID3D12Device_CreateCommittedResource(Device, &HeapPropertyUpload, D3D12_HEAP_FLAG_NONE, &IndexBufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
-											 NULL, &IID_ID3D12Resource, (void **)(&Primitive->IndexBuffer));
-	ExitIfFailed(hr);
+	D3D12_HEAP_PROPERTIES DefaultHeapProps = {.Type = D3D12_HEAP_TYPE_DEFAULT};
+	ID3D12Device_CreateCommittedResource(Device, &DefaultHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc, D3D12_RESOURCE_STATE_COPY_DEST, NULL,
+										 &IID_ID3D12Resource, ppResource);
 
-	UpdateRendererResource(Primitive->IndexBuffer, Primitive->Indices, Primitive->IndexCount * sizeof(uint16_t));
+	ID3D12Resource *pResource = *ppResource;
+	ID3D12GraphicsCommandList_CopyBufferRegion(CmdList, pResource, 0, UploadBuffer, 0, BufferSize);
 
-	Primitive->IndexBufferView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Primitive->IndexBuffer);
-	Primitive->IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
-	Primitive->IndexBufferView.SizeInBytes = (UINT)(Primitive->IndexCount * sizeof(uint16_t));
+	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+									  .Transition.pResource = pResource,
+									  .Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+									  .Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
+									  .Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES};
+
+	ID3D12GraphicsCommandList_ResourceBarrier(CmdList, 1, &Barrier);
+
+	return ID3D12Resource_GetGPUVirtualAddress(pResource);
 }
 
 void
 R_Update(R_World *const Renderer, R_Camera *const Camera, SendaiScene *Scene)
 {
-	for (int ModelIndex = 0; ModelIndex < Scene->ModelsCount; ++ModelIndex) {
-		R_Model *Model = &Scene->Models[ModelIndex];
-		for (int MeshIndex = 0; MeshIndex < Scene->Models[ModelIndex].MeshesCount; ++MeshIndex) {
-			R_Mesh *Mesh = &Model->Meshes[MeshIndex];
-			for (int PrimitiveIndex = 0; PrimitiveIndex < Scene->Models[ModelIndex].Meshes[MeshIndex].PrimitivesCount; ++PrimitiveIndex) {
-				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIndex];
-				UpdateRendererResource(Primitive->VertexBuffer, Primitive->Vertices, Primitive->VertexCount * sizeof(R_Vertex));
-			}
-		}
-	}
-
 	XMMATRIX View = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection);
 	XMMATRIX Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f);
 	XMMATRIX MVP = XM_MAT_MULT(View, Proj);
 	MVP = XM_MAT_TRANSP(MVP);
-	UpdateRendererResource(Renderer->TransformBuffer, &MVP, sizeof(XMMATRIX));
+	R_UpdateResource(Renderer->TransformBuffer, &MVP, sizeof(XMMATRIX));
 }
 
 void
@@ -383,6 +356,17 @@ R_UploadTexture(R_World *Renderer, R_Texture *Source, UINT SlotIndex)
 	return NewTex.SrvHandle;
 }
 
+void
+R_UpdateResource(ID3D12Resource *Resource, void *Data, size_t DataSize)
+{
+	UINT8 *Begin = NULL;
+	const D3D12_RANGE ReadRange = {0, 0};
+	HRESULT hr = ID3D12Resource_Map(Resource, 0, &ReadRange, (void **)&Begin);
+	ExitIfFailed(hr);
+	memcpy(Begin, Data, DataSize);
+	ID3D12Resource_Unmap(Resource, 0, NULL);
+}
+
 /****************************************************
 	Implementation of private functions
 *****************************************************/
@@ -394,17 +378,6 @@ SignalAndWait(R_World *const Renderer)
 	ExitIfFailed(hr);
 	ID3D12Fence_SetEventOnCompletion(Renderer->Fence, Renderer->FenceValue, Renderer->FenceEvent);
 	WaitForSingleObject(Renderer->FenceEvent, INFINITE);
-}
-
-void
-UpdateRendererResource(ID3D12Resource *Resource, void *Data, size_t DataSize)
-{
-	UINT8 *Begin = NULL;
-	const D3D12_RANGE ReadRange = {0, 0};
-	HRESULT hr = ID3D12Resource_Map(Resource, 0, &ReadRange, (void **)&Begin);
-	ExitIfFailed(hr);
-	memcpy(Begin, Data, DataSize);
-	ID3D12Resource_Unmap(Resource, 0, NULL);
 }
 
 void

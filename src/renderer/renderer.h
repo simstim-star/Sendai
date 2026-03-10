@@ -73,13 +73,13 @@ typedef struct R_World {
 } R_World;
 
 void R_Init(R_World *const Renderer, HWND hWnd);
-void R_CreateVertexBuffer(ID3D12Device *Device, R_Primitive *const Primitive);
-void R_CreateIndexBuffer(ID3D12Device *Device, R_Primitive *const Primitive);
+
+D3D12_GPU_VIRTUAL_ADDRESS
+R_UploadStaticData(ID3D12Device *Device, ID3D12GraphicsCommandList *CmdList, UINT BufferSize, void *Data, ID3D12Resource **Resource);
 void R_Destroy(R_World *Renderer);
 void R_Update(R_World *const Renderer, R_Camera *const Camera, SendaiScene *Scene);
 void R_Draw(R_World *const Renderer, SendaiScene *Scene);
-void RenderPrimitives(SendaiScene *Scene, R_World *const Renderer);
+void R_UpdateResource(ID3D12Resource *Resource, void *Data, size_t DataSize);
 void R_ExecuteCommands(R_World *const Renderer);
 void R_SwapchainResize(R_World *const Renderer, int Width, int Height);
-void CreateDepthStencilBuffer(R_World *const Renderer);
 D3D12_GPU_DESCRIPTOR_HANDLE R_UploadTexture(R_World *Renderer, R_Texture *Source, UINT SlotIndex);

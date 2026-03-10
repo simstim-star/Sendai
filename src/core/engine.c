@@ -13,9 +13,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lPara
 static void EngineUpdate(Sendai *Engine);
 static void EngineDraw(Sendai *Engine);
 static void UIUpdate(Sendai *Engine);
-static void LoadPrimitivesIntoBuffers(PWSTR FilePath, Sendai *Engine);
-
-void LoadPrimitivesIntoBuffers(PWSTR FilePath, Sendai *Engine);
+static void LoadPrimitivesIntoBuffers(R_World *Renderer, SendaiScene *Scene);
 
 /****************************************************
 	Public functions
@@ -171,7 +169,8 @@ UIUpdate(Sendai *Engine)
 		if (FilePath == NULL) {
 			break;
 		}
-		LoadPrimitivesIntoBuffers(FilePath, Engine);
+		SendaiGLTF_LoadModel(FilePath, &Engine->Scene);
+		LoadPrimitivesIntoBuffers(&Engine->WorldRenderer, &Engine->Scene);
 		CoTaskMemFree(FilePath);
 		break;
 	}
@@ -181,24 +180,36 @@ UIUpdate(Sendai *Engine)
 }
 
 void
-LoadPrimitivesIntoBuffers(PWSTR FilePath, Sendai *Engine)
+LoadPrimitivesIntoBuffers(R_World *Renderer, SendaiScene *Scene)
 {
-	SendaiGLTF_LoadModel(FilePath, &Engine->Scene);
-	for (int ModelIdx = 0; ModelIdx < Engine->Scene.ModelsCount; ++ModelIdx) {
-		for (int MeshIdx = 0; MeshIdx < Engine->Scene.Models[ModelIdx].MeshesCount; ++MeshIdx) {
-			R_Mesh *Mesh = &Engine->Scene.Models[ModelIdx].Meshes[MeshIdx];
+	for (int ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
+		for (int MeshIdx = 0; MeshIdx < Scene->Models[ModelIdx].MeshesCount; ++MeshIdx) {
+			R_Mesh *Mesh = &Scene->Models[ModelIdx].Meshes[MeshIdx];
 			for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
 				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
-				R_CreateVertexBuffer(Engine->WorldRenderer.Device, Primitive);
-				R_CreateIndexBuffer(Engine->WorldRenderer.Device, Primitive);
+
+				UINT VertexBufferSize = sizeof(R_Vertex) * Primitive->VertexCount;
+				Primitive->VertexBufferView =
+					(D3D12_VERTEX_BUFFER_VIEW){.BufferLocation = R_UploadStaticData(Renderer->Device, Renderer->CommandList, VertexBufferSize,
+																					Primitive->Vertices, &Primitive->VertexBuffer),
+											   .SizeInBytes = VertexBufferSize,
+											   .StrideInBytes = sizeof(R_Vertex)};
+
+				UINT IndexBufferSize = Primitive->IndexCount * sizeof(UINT16);
+				Primitive->IndexBufferView = (D3D12_INDEX_BUFFER_VIEW){
+				  .BufferLocation =
+					  R_UploadStaticData(Renderer->Device, Renderer->CommandList, IndexBufferSize, Primitive->Indices, &Primitive->IndexBuffer),
+				  .Format = DXGI_FORMAT_R16_UINT,
+				  .SizeInBytes = Primitive->IndexCount * sizeof(UINT16),
+				};
 
 				if (Primitive->AlbedoIndex >= 0) {
-					UINT BaseSlot = Engine->WorldRenderer.SrvCount;
-					R_Texture *AlbedoTexture = &Engine->Scene.Models[ModelIdx].Images[Primitive->AlbedoIndex];
-					Primitive->MaterialDescriptorBase = R_UploadTexture(&Engine->WorldRenderer, AlbedoTexture, BaseSlot);
+					UINT BaseSlot = Renderer->SrvCount;
+					R_Texture *AlbedoTexture = &Scene->Models[ModelIdx].Images[Primitive->AlbedoIndex];
+					Primitive->MaterialDescriptorBase = R_UploadTexture(Renderer, AlbedoTexture, BaseSlot);
 
 					// dirty hack
-					Engine->WorldRenderer.SrvCount += 1;
+					Renderer->SrvCount += 1;
 				}
 			}
 		}
