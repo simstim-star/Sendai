@@ -1,8 +1,8 @@
 #include "engine.h"
 #include "../assets/gltf.h"
+#include "../renderer/renderer.h"
 #include "../ui/ui.h"
 #include "../win32/file_dialog.h"
-#include "../renderer/renderer.h"
 
 /****************************************************
 	Forward declaration of private functions
@@ -23,12 +23,14 @@ int Sendai_run()
 	  .Title = L"Sendai",
 	  .WorldRenderer = {.Width = 1280, .Height = 720},
 	  .Camera = R_CameraSpawn((XMFLOAT3){0, 25, -100}),
-	  .Scene.SceneArena = S_ArenaInit(GIGABYTES(2)),
-	  .bRunning = true
-	};
+	  .Scene =
+		  {
+			.SceneArena = S_ArenaInit(GIGABYTES(2)),
+			.ModelsCount = 0,
+			.ModelsCapacity = 1000,
+		  },
+	  .bRunning = true};
 
-	Engine.Scene.ModelsCount = 0;
-	Engine.Scene.ModelsCapacity = 10;
 	Engine.Scene.Models = S_ArenaAlloc(&Engine.Scene.SceneArena, sizeof(R_Model) * Engine.Scene.ModelsCapacity);
 
 	Engine.Camera.Yaw = 2 * XM_PI;
@@ -87,26 +89,27 @@ void InitWindow(Sendai *engine)
 	RegisterClassEx(&wc);
 	RECT rect = {0, 0, (LONG)(engine->WorldRenderer.Width), (LONG)(engine->WorldRenderer.Height)};
 	AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
-	engine->hWnd = CreateWindow(wc.lpszClassName, engine->Title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 
-		rect.right - rect.left, rect.bottom - rect.top, NULL, NULL,engine->hInstance, engine);
+	engine->hWnd = CreateWindow(
+		wc.lpszClassName, engine->Title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, NULL, NULL,
+		engine->hInstance, engine);
 }
+
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
-	
-	Sendai *engine = (Sendai *)(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+	Sendai *Engine = (Sendai *)(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
 	switch (Message) {
 	case WM_CREATE: {
-		LPCREATESTRUCT p_create_struct = (LPCREATESTRUCT)(lParam);
-		SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)(p_create_struct->lpCreateParams));
+		LPCREATESTRUCT pCreateStruct = (LPCREATESTRUCT)(lParam);
+		SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)(pCreateStruct->lpCreateParams));
 		return 0;
 	}
 	case WM_SIZE:
-		if (engine && engine->WorldRenderer.SwapChain) {
+		if (Engine && Engine->WorldRenderer.SwapChain) {
 			int width = LOWORD(lParam);
 			int height = HIWORD(lParam);
-			R_SwapchainResize(&engine->WorldRenderer, width, height);
-			UI_Resize(&engine->UI, width, height);
+			R_SwapchainResize(&Engine->WorldRenderer, width, height);
+			UI_Resize(&Engine->UI, width, height);
 		}
 		return 0;
 
@@ -115,14 +118,14 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lPara
 		return 0;
 
 	case WM_KEYDOWN:
-		if (engine) {
-			R_CameraOnKeyDown(&engine->Camera, wParam);
+		if (Engine) {
+			R_CameraOnKeyDown(&Engine->Camera, wParam);
 		}
 		return 0;
 
 	case WM_KEYUP:
-		if (engine) {
-			R_CameraOnKeyUp(&engine->Camera, wParam);
+		if (Engine) {
+			R_CameraOnKeyUp(&Engine->Camera, wParam);
 		}
 		return 0;
 
@@ -137,21 +140,23 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lPara
 	return DefWindowProc(hWnd, Message, wParam, lParam);
 }
 
-static void EngineUpdate(Sendai *Engine) {
-    S_Tick(&Engine->Timer);
-    R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
-    UIUpdate(Engine);
+static void EngineUpdate(Sendai *Engine)
+{
+	S_Tick(&Engine->Timer);
+	R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
+	UIUpdate(Engine);
 }
 
-static void EngineDraw(Sendai *Engine) {
-    R_Update(&Engine->WorldRenderer, &Engine->Camera, &Engine->Scene);
-    R_Draw(&Engine->WorldRenderer, &Engine->Scene);
+static void EngineDraw(Sendai *Engine)
+{
+	R_Update(&Engine->WorldRenderer, &Engine->Camera, &Engine->Scene);
+	R_Draw(&Engine->WorldRenderer, &Engine->Scene);
 }
 
 void UIUpdate(Sendai *Engine)
 {
-	UI_Action Action = UI_DrawTopBar(&Engine->UI) | UI_LogWindow(&Engine->UI);
-	
+	UI_Action Action = UI_DrawTopBar(&Engine->UI) | UI_DrawBottomBar(&Engine->UI);
+
 	switch (Action) {
 	case UI_ACTION_FILE_OPEN: {
 		PWSTR FilePath = SelectGLTFPath();
