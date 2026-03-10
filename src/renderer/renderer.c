@@ -180,35 +180,6 @@ R_Init(R_World *const Renderer, HWND hWnd)
 }
 
 void
-X(ID3D12Device *Device, ID3D12GraphicsCommandList *CmdList, UINT BufferSize, ID3D12Resource **ppResource)
-{
-	const D3D12_RESOURCE_DESC BufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(BufferSize, D3D12_RESOURCE_FLAG_NONE, 0);
-	ID3D12Resource *UploadBuffer;
-	D3D12_HEAP_PROPERTIES UploadHeapProps = {.Type = D3D12_HEAP_TYPE_UPLOAD};
-
-	ID3D12Device_CreateCommittedResource(Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL,
-										 &IID_ID3D12Resource, &UploadBuffer);
-
-
-	D3D12_HEAP_PROPERTIES DefaultHeapProps = {.Type = D3D12_HEAP_TYPE_DEFAULT};
-	ID3D12Device_CreateCommittedResource(Device, &DefaultHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc, D3D12_RESOURCE_STATE_COPY_DEST, NULL,
-										 &IID_ID3D12Resource, ppResource);
-
-	ID3D12Resource *pResource = *ppResource;
-	ID3D12GraphicsCommandList_CopyBufferRegion(CmdList, pResource, 0, UploadBuffer, 0, BufferSize);
-
-	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-									  .Transition.pResource = pResource,
-									  .Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
-									  .Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
-									  .Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES};
-
-	ID3D12GraphicsCommandList_ResourceBarrier(CmdList, 1, &Barrier);
-
-	return ID3D12Resource_GetGPUVirtualAddress(pResource);
-}
-
-void
 R_Update(R_World *const Renderer, R_Camera *const Camera, SendaiScene *Scene)
 {
 	XMMATRIX View = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection);
@@ -436,18 +407,18 @@ UploadTexture(R_World *Renderer, R_Texture *Source, ID3D12Resource **OutTexture,
 										.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 									  }};
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &Barrier);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE CpuDescHandle;
+	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->SrvHeap, &CpuDescHandle);
+	
+	UINT IncrementSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	CpuDescHandle.ptr += (SIZE_T)SrvIndex * IncrementSize;
 	D3D12_SHADER_RESOURCE_VIEW_DESC SrvDesc = {
 	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
 	  .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
 	  .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
 	  .Texture2D.MipLevels = 1,
 	};
-
-	UINT IncrementSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-	D3D12_CPU_DESCRIPTOR_HANDLE CpuDescHandle;
-	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->SrvHeap, &CpuDescHandle);
-	CpuDescHandle.ptr += (SIZE_T)SrvIndex * IncrementSize;
 	ID3D12Device_CreateShaderResourceView(Renderer->Device, *OutTexture, &SrvDesc, CpuDescHandle);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE GpuDescHandle;
