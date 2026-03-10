@@ -1,16 +1,16 @@
 #include "log.h"
 
-S_Log SENDAI_LOG = {.Buffer = {0}, .Len = 0, .Max = sizeof(SENDAI_LOG.Buffer)};
+S_Log SENDAI_LOG = {.Buffer = {0}, .Len = 0};
 
 void
-S_LogAppend(const char *Text)
+S_LogAppend(PCWSTR Text)
 {
 	if (Text == NULL) {
 		return;
 	}
 
-	size_t TextLen = strlen(Text);
-	size_t RemainingSpace = SENDAI_LOG.Max - SENDAI_LOG.Len;
+	size_t TextLen = wcslen(Text);
+	size_t RemainingSpace = LOG_CAPACITY - SENDAI_LOG.Len;
 
 	if (TextLen + 1 > RemainingSpace) {
 		TextLen = RemainingSpace - 1;
@@ -19,19 +19,19 @@ S_LogAppend(const char *Text)
 		}
 	}
 
-	strncat(SENDAI_LOG.Buffer, Text, TextLen);
+	wcsncat(SENDAI_LOG.Buffer, Text, TextLen);
 	SENDAI_LOG.Len += TextLen;
-	SENDAI_LOG.Buffer[SENDAI_LOG.Len] = '\0';
+	SENDAI_LOG.Buffer[SENDAI_LOG.Len] = L'\0';
 }
 
 void
-S_LogAppendf(const char *Format, ...)
+S_LogAppendf(PCWSTR Format, ...)
 {
 	if (Format == NULL) {
 		return;
 	}
 
-	int RemainingSpace = SENDAI_LOG.Max - SENDAI_LOG.Len;
+	int RemainingSpace = LOG_CAPACITY - SENDAI_LOG.Len;
 
 	if (RemainingSpace <= 1) {
 		return;
@@ -39,7 +39,7 @@ S_LogAppendf(const char *Format, ...)
 
 	va_list Args;
 	va_start(Args, Format);
-	int CharsWouldWrite = vsnprintf(SENDAI_LOG.Buffer + SENDAI_LOG.Len, RemainingSpace, Format, Args);
+	int CharsWouldWrite = vswprintf(SENDAI_LOG.Buffer + SENDAI_LOG.Len, RemainingSpace, Format, Args);
 	va_end(Args);
 
 	if (CharsWouldWrite < 0)
@@ -51,5 +51,5 @@ S_LogAppendf(const char *Format, ...)
 		SENDAI_LOG.Len += RemainingSpace - 1;
 	}
 
-	SENDAI_LOG.Buffer[SENDAI_LOG.Len] = '\0';
+	SENDAI_LOG.Buffer[SENDAI_LOG.Len] = L'\0';
 }

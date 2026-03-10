@@ -45,7 +45,7 @@ UI_Init(UI_Renderer *const UI, int Width, int Height, ID3D12Device *Device, ID3D
 }
 
 UI_Action
-UI_DrawTopBar(UI_Renderer *UI)
+UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State)
 {
 	const float BarHeight = UI->Height * 0.05f;
 	UI_Action Action = UI_ACTION_NONE;
@@ -56,12 +56,12 @@ UI_DrawTopBar(UI_Renderer *UI)
 			Action = UI_ACTION_FILE_OPEN;
 		}
 		if (nk_button_label(UI->Context, "Logs")) {
-			UI->ShowLog = !UI->ShowLog;
+			State->ShowLog = !State->ShowLog;
 		}
 	}
 	nk_end(UI->Context);
 
-	if (UI->ShowLog) {
+	if (State->ShowLog) {
 		Action = UI_LogWindow(UI);
 	}
 
@@ -69,15 +69,17 @@ UI_DrawTopBar(UI_Renderer *UI)
 }
 
 UI_Action
-UI_DrawBottomBar(UI_Renderer *UI)
+UI_DrawBottomBar(UI_Renderer *UI, UI_BottomBarState *State)
 {
 	struct nk_context *Ctx = UI->Context;
 	const float HandleHeight = 10.0f;
+	const float InfoBarHeight = 22.0f;
 
-	UI->BottomBarHeight = fmax(UI->BottomBarHeight, UI->Height * 0.08f);
-	UI->BottomBarHeight = fmin(UI->BottomBarHeight, UI->Height * 0.9f);
+	State->BottomBarHeight = fmax(State->BottomBarHeight, UI->Height * 0.08f);
+	State->BottomBarHeight = fmin(State->BottomBarHeight, UI->Height * 0.9f);
 
-	struct nk_rect BarRect = nk_rect(0, UI->Height - UI->BottomBarHeight, UI->Width, UI->BottomBarHeight);
+	float MaxAvailableHeight = UI->Height - InfoBarHeight;
+	struct nk_rect BarRect = nk_rect(0, MaxAvailableHeight - State->BottomBarHeight, UI->Width, State->BottomBarHeight);
 
 	if (nk_begin(Ctx, "BottomBar", BarRect, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
 		nk_layout_row_static(Ctx, HandleHeight, UI->Width, 1);
@@ -86,10 +88,10 @@ UI_DrawBottomBar(UI_Renderer *UI)
 
 		BOOL bIsMouseDown = nk_input_is_mouse_down(&Ctx->input, NK_BUTTON_LEFT);
 		BOOL bIsHoveringHandle = nk_input_is_mouse_hovering_rect(&Ctx->input, Bounds);
-		UI->bIsDraggingBottom = bIsMouseDown && (UI->bIsDraggingBottom || bIsHoveringHandle);
+		State->bIsDraggingBottom = bIsMouseDown && (State->bIsDraggingBottom || bIsHoveringHandle);
 
-		if (UI->bIsDraggingBottom) {
-			UI->BottomBarHeight -= Ctx->input.mouse.delta.y;
+		if (State->bIsDraggingBottom) {
+			State->BottomBarHeight -= Ctx->input.mouse.delta.y;
 			nk_fill_rect(Canvas, Bounds, 0, nk_rgba(150, 150, 255, 255));
 		} else if (bIsHoveringHandle) {
 			nk_fill_rect(Canvas, Bounds, 0, nk_rgba(100, 100, 120, 200));
@@ -98,32 +100,55 @@ UI_DrawBottomBar(UI_Renderer *UI)
 			nk_fill_rect(Canvas, line, 1.0f, nk_rgba(60, 60, 60, 255));
 		}
 
-		const float ItemWidth = UI->Width * 0.1f;
-		const float BackButtonWidth = 40.0f;
-
-		if (UI->ShowLog) {
-			nk_layout_row_begin(Ctx, NK_STATIC, 25, 2);
-			nk_layout_row_push(Ctx, BackButtonWidth);
-			if (nk_button_label(Ctx, "<")) {
-				UI->ShowLog = 0;
-			}
-			nk_layout_row_push(Ctx, 100);
-			nk_label(Ctx, "  System Log", NK_TEXT_LEFT);
-			nk_layout_row_end(Ctx);
-
-			float LogAreaHeight = UI->BottomBarHeight - (HandleHeight + 40.0f);
-			nk_layout_row_dynamic(Ctx, fmax(10.0f, LogAreaHeight), 1);
-
-			const nk_flags LogFlags = NK_EDIT_MULTILINE | NK_EDIT_READ_ONLY | NK_EDIT_ALWAYS_INSERT_MODE | NK_EDIT_GOTO_END_ON_ACTIVATE;
-			nk_edit_string(Ctx, LogFlags, SENDAI_LOG.Buffer, &SENDAI_LOG.Len, SENDAI_LOG.Max, nk_filter_default);
-		} else {
-			nk_layout_row_static(Ctx, 30, ItemWidth, 2);
-			if (nk_button_label(Ctx, "Show Log")) {
-				UI->ShowLog = 1;
-			}
-		}
+		// Just to use as reference in the future
+		//const float ItemWidth = UI->Width * 0.1f;
+		//const float BackButtonWidth = 40.0f;
+		//if (UI->ShowLog) {
+		//	nk_layout_row_begin(Ctx, NK_STATIC, 25, 2);
+		//	nk_layout_row_push(Ctx, BackButtonWidth);
+		//	if (nk_button_label(Ctx, "<")) {
+		//		UI->ShowLog = 0;
+		//	}
+		//	nk_layout_row_push(Ctx, 100);
+		//	nk_label(Ctx, "  System Log", NK_TEXT_LEFT);
+		//	nk_layout_row_end(Ctx);
+		//
+		//	float LogAreaHeight = State->BottomBarHeight - (HandleHeight + 40.0f);
+		//	nk_layout_row_dynamic(Ctx, fmax(10.0f, LogAreaHeight), 1);
+		//
+		//	const nk_flags LogFlags = NK_EDIT_MULTILINE | NK_EDIT_READ_ONLY | NK_EDIT_ALWAYS_INSERT_MODE | NK_EDIT_GOTO_END_ON_ACTIVATE;
+		//	nk_edit_string(Ctx, LogFlags, SENDAI_LOG.Buffer, &SENDAI_LOG.Len, SENDAI_LOG.Max, nk_filter_default);
+		//} else {
+		//	nk_layout_row_static(Ctx, 30, ItemWidth, 2);
+		//	if (nk_button_label(Ctx, "Show Log")) {
+		//		UI->ShowLog = 1;
+		//	}
+		//}
 	}
 	nk_end(Ctx);
+
+	struct nk_color InfoBarColor = nk_rgba(30, 30, 35, 255);
+	nk_style_push_style_item(Ctx, &Ctx->style.window.fixed_background, nk_style_item_color(InfoBarColor));
+	nk_style_push_vec2(Ctx, &Ctx->style.window.padding, nk_vec2(4, 2));
+	nk_style_push_color(Ctx, &Ctx->style.text.color, nk_rgba(0, 255, 0, 255));
+	struct nk_rect InfoRect = nk_rect(0, UI->Height - InfoBarHeight, UI->Width, InfoBarHeight);
+
+	if (nk_begin(Ctx, "InfoBar", InfoRect, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
+		nk_layout_row_begin(Ctx, NK_DYNAMIC, InfoBarHeight - 4, 2);
+		nk_layout_row_push(Ctx, 0.85f);
+		nk_label(Ctx, " Sendai Engine v0.1", NK_TEXT_LEFT);
+
+		nk_layout_row_push(Ctx, 0.15f);
+		char FPSBuffer[16];
+		snprintf(FPSBuffer, sizeof(FPSBuffer), "%u FPS", State->FPS);
+		nk_label(Ctx, FPSBuffer, NK_TEXT_RIGHT);
+		nk_layout_row_end(Ctx);
+	}
+	nk_end(Ctx);
+
+	nk_style_pop_color(Ctx);	  
+	nk_style_pop_vec2(Ctx);		  
+	nk_style_pop_style_item(Ctx); 
 
 	return UI_ACTION_NONE;
 }
@@ -140,7 +165,14 @@ UI_LogWindow(UI_Renderer *const UI)
 	if (nk_begin(Context, "System Log", nk_rect(WindowX, WindowY, WindowW, WindowH), WindowFlags)) {
 		nk_layout_row_dynamic(Context, WindowW * 2, 1);
 		const nk_flags LogFlags = NK_EDIT_MULTILINE | NK_EDIT_READ_ONLY | NK_EDIT_ALWAYS_INSERT_MODE | NK_EDIT_GOTO_END_ON_ACTIVATE;
-		nk_edit_string(Context, LogFlags, SENDAI_LOG.Buffer, &SENDAI_LOG.Len, SENDAI_LOG.Max, nk_filter_default);
+		
+		int RequiredBytes =
+			WideCharToMultiByte(CP_UTF8, 0, SENDAI_LOG.Buffer, SENDAI_LOG.Len, SENDAI_LOG.UTF8Buffer, sizeof(SENDAI_LOG.UTF8Buffer) - 1, NULL, NULL);
+
+		if (RequiredBytes >= 0) {
+			SENDAI_LOG.UTF8Buffer[RequiredBytes] = '\0';
+			nk_edit_string(Context, LogFlags, SENDAI_LOG.UTF8Buffer, &RequiredBytes, sizeof(SENDAI_LOG.UTF8Buffer), nk_filter_default);
+		}
 	}
 	nk_end(Context);
 

@@ -9,11 +9,24 @@ typedef struct UI_Renderer {
 	struct nk_context *Context;
 	UINT Width;
 	UINT Height;
+} UI_Renderer;
 
-	int ShowLog;
+
+typedef struct UI_BottomBarState {
 	float BottomBarHeight;
 	BOOL bIsDraggingBottom;
-} UI_Renderer;
+	UINT32 FPS;
+	UINT FrameCounter;
+} UI_BottomBarState;
+
+typedef struct UI_TopBarState {
+	BOOL ShowLog;
+} UI_TopBarState;
+
+typedef struct UI_State {
+	UI_TopBarState TopBar;
+	UI_BottomBarState BottomBar;
+} UI_State;
 
 void UI_Init(UI_Renderer *const UI, int Width, int Height, struct ID3D12Device *Device, struct ID3D12GraphicsCommandList *CommandList);
 
@@ -23,9 +36,9 @@ void UI_InputEnd(const UI_Renderer *UI);
 
 UI_Action UI_LogWindow(UI_Renderer *const UI);
 
-UI_Action UI_DrawTopBar(UI_Renderer *UI);
+UI_Action UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State);
 
-UI_Action UI_DrawBottomBar(UI_Renderer *UI);
+UI_Action UI_DrawBottomBar(UI_Renderer *UI, UI_BottomBarState *State);
 
 void UI_Draw(struct ID3D12GraphicsCommandList *CommandList);
 

@@ -5,6 +5,7 @@
 #include "../error/error.h"
 #include "../renderer/render_types.h"
 #include "../renderer/renderer.h"
+#include "../core/log.h"
 
 void
 CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
@@ -59,7 +60,7 @@ CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 
 	if (FAILED(hr)) {
 		if (Error) {
-			S_LogAppend((char *)ID3D10Blob_GetBufferPointer(Error));
+			S_LogAppend((PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}

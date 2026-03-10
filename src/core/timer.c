@@ -58,7 +58,7 @@ S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC Update)
 	Delta *= TICKS_PER_SECOND;
 	Delta /= StepTimer->QPCFrequency.QuadPart;
 
-	UINT32 last_frame_count = StepTimer->FrameCount;
+	UINT32 LastFrameCount = StepTimer->FrameCount;
 
 	if (StepTimer->bFixedTimeStep) {
 		// Fixed timestep update logic
@@ -102,7 +102,7 @@ S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC Update)
 	}
 
 	// Track the current framerate.
-	if (StepTimer->FrameCount != last_frame_count) {
+	if (StepTimer->FrameCount != LastFrameCount) {
 		StepTimer->FramesThisSecond++;
 	}
 

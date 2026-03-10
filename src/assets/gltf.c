@@ -57,7 +57,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 	void *FileData = NULL;
 	LONG Size = LoadGLTFFile(Path, &LocalArena, &FileData);
 	if (Size <= 0) {
-		S_LogAppendf("Failed to load %s\n", Path);
+		S_LogAppendf(L"Failed to load %s\n", Path);
 		return FALSE;
 	}
 
@@ -72,7 +72,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 		if (Data) {
 			cgltf_free(Data);
 		}
-		S_LogAppendf("Failed to parse %s\n", Path);
+		S_LogAppendf(L"Failed to parse %s\n", Path);
 		return FALSE;
 	}
 
@@ -81,12 +81,12 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 		if (Data) {
 			cgltf_free(Data);
 		}
-		S_LogAppendf("Failed to load GLTF buffers from %s\n", Path);
+		S_LogAppendf(L"Failed to load GLTF buffers from %s\n", Path);
 		return FALSE;
 	}
 
 	if (Data->meshes_count == 0) {
-		S_LogAppend("No meshes in glTF\n");
+		S_LogAppend(L"No meshes in glTF\n");
 		cgltf_free(Data);
 		return FALSE;
 	}
@@ -143,7 +143,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 
 			cgltf_accessor *PositionAccessor = AccessorsData[cgltf_attribute_type_position];
 			if (!PositionAccessor) {
-				S_LogAppend("Mesh has no POSITION attribute\n");
+				S_LogAppend(L"Mesh has no POSITION attribute\n");
 				break;
 			}
 

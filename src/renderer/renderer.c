@@ -410,7 +410,6 @@ UploadTexture(R_World *Renderer, R_Texture *Source, ID3D12Resource **OutTexture,
 
 	D3D12_CPU_DESCRIPTOR_HANDLE CpuDescHandle;
 	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->SrvHeap, &CpuDescHandle);
-	
 	UINT IncrementSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	CpuDescHandle.ptr += (SIZE_T)SrvIndex * IncrementSize;
 	D3D12_SHADER_RESOURCE_VIEW_DESC SrvDesc = {

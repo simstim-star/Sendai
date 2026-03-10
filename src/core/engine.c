@@ -12,7 +12,7 @@ static void InitWindow(Sendai *Engine);
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam);
 static void EngineUpdate(Sendai *Engine);
 static void EngineDraw(Sendai *Engine);
-static void UIUpdate(Sendai *Engine);
+static void UI_Update(Sendai *Engine);
 static void LoadPrimitivesIntoBuffers(R_World *Renderer, SendaiScene *Scene);
 
 /****************************************************
@@ -46,14 +46,14 @@ Sendai_run()
 	CompileScenePS(ShadersPath, &Engine.Scene.PS);
 	CreateScenePipelineState(&Engine.WorldRenderer, &Engine.Scene);
 
-	UI_Init(&Engine.UI, Engine.WorldRenderer.Width, Engine.WorldRenderer.Height, Engine.WorldRenderer.Device, Engine.WorldRenderer.CommandList);
+	UI_Init(&Engine.UI_Renderer, Engine.WorldRenderer.Width, Engine.WorldRenderer.Height, Engine.WorldRenderer.Device, Engine.WorldRenderer.CommandList);
 	S_TimerInit(&Engine.Timer);
 
 	ShowWindow(Engine.hWnd, SW_MAXIMIZE);
 
 	MSG msg = {0};
 	while (Engine.bRunning) {
-		UI_InputBegin(&Engine.UI);
+		UI_InputBegin(&Engine.UI_Renderer);
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
 			if (msg.message == WM_QUIT) {
 				Engine.bRunning = false;
@@ -61,7 +61,7 @@ Sendai_run()
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		UI_InputEnd(&Engine.UI);
+		UI_InputEnd(&Engine.UI_Renderer);
 		if (Engine.bRunning) {
 			EngineUpdate(&Engine);
 			EngineDraw(&Engine);
@@ -112,7 +112,7 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			int width = LOWORD(lParam);
 			int height = HIWORD(lParam);
 			R_SwapchainResize(&Engine->WorldRenderer, width, height);
-			UI_Resize(&Engine->UI, width, height);
+			UI_Resize(&Engine->UI_Renderer, width, height);
 		}
 		return 0;
 
@@ -146,9 +146,14 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 static void
 EngineUpdate(Sendai *Engine)
 {
+	if (Engine->FrameCounter == 50) {
+		Engine->FrameCounter = 0;
+	}
+	Engine->FrameCounter++;
+
 	S_Tick(&Engine->Timer);
 	R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
-	UIUpdate(Engine);
+	UI_Update(Engine);
 }
 
 static void
@@ -159,9 +164,11 @@ EngineDraw(Sendai *Engine)
 }
 
 void
-UIUpdate(Sendai *Engine)
+UI_Update(Sendai *Engine)
 {
-	UI_Action Action = UI_DrawTopBar(&Engine->UI) | UI_DrawBottomBar(&Engine->UI);
+	Engine->UI.BottomBar.FPS = Engine->Timer.FramesPerSecond;
+	Engine->UI.BottomBar.FrameCounter = Engine->FrameCounter;
+	UI_Action Action = UI_DrawTopBar(&Engine->UI_Renderer, &Engine->UI.TopBar) | UI_DrawBottomBar(&Engine->UI_Renderer, &Engine->UI.BottomBar);
 
 	switch (Action) {
 	case UI_ACTION_FILE_OPEN: {
