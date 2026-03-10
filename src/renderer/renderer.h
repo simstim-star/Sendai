@@ -53,6 +53,10 @@ typedef struct R_World {
 
 	ID3D12PipelineState *PipelineStateScene;
 
+	ID3D12Resource *VertexBuffer;
+	ID3D12Resource *IndexBuffer;
+	ID3D12Resource *UploadBuffer;
+
 	/*****************************
 		Synchronization objects
 	*****************************/
@@ -74,8 +78,6 @@ typedef struct R_World {
 
 void R_Init(R_World *const Renderer, HWND hWnd);
 
-D3D12_GPU_VIRTUAL_ADDRESS
-R_UploadStaticData(ID3D12Device *Device, ID3D12GraphicsCommandList *CmdList, UINT BufferSize, void *Data, ID3D12Resource **Resource);
 void R_Destroy(R_World *Renderer);
 void R_Update(R_World *const Renderer, R_Camera *const Camera, SendaiScene *Scene);
 void R_Draw(R_World *const Renderer, SendaiScene *Scene);

@@ -163,13 +163,24 @@ R_Init(R_World *const Renderer, HWND hWnd)
 	hr = ID3D12Device_CreateDescriptorHeap(Renderer->Device, &DepthStencilHeapDesc, &IID_ID3D12DescriptorHeap, &Renderer->DepthStencilHeap);
 	ExitIfFailed(hr);
 
+	const D3D12_RESOURCE_DESC BufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(MEGABYTES(128), D3D12_RESOURCE_FLAG_NONE, 0);
+	D3D12_HEAP_PROPERTIES UploadHeapProps = {.Type = D3D12_HEAP_TYPE_UPLOAD};
+	ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL,
+										 &IID_ID3D12Resource, &Renderer->UploadBuffer);
+
+	D3D12_HEAP_PROPERTIES DefaultHeapProps = {.Type = D3D12_HEAP_TYPE_DEFAULT};
+	ID3D12Device_CreateCommittedResource(Renderer->Device, &DefaultHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc, D3D12_RESOURCE_STATE_COPY_DEST, NULL,
+										 &IID_ID3D12Resource, &Renderer->VertexBuffer);
+	ID3D12Device_CreateCommittedResource(Renderer->Device, &DefaultHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc, D3D12_RESOURCE_STATE_COPY_DEST, NULL,
+										 &IID_ID3D12Resource, &Renderer->IndexBuffer);
+
 	CreateDepthStencilBuffer(Renderer);
 
 	IDXGIFactory2_Release(Factory);
 }
 
-D3D12_GPU_VIRTUAL_ADDRESS
-R_UploadStaticData(ID3D12Device *Device, ID3D12GraphicsCommandList *CmdList, UINT BufferSize, void *Data, ID3D12Resource **ppResource)
+void
+X(ID3D12Device *Device, ID3D12GraphicsCommandList *CmdList, UINT BufferSize, ID3D12Resource **ppResource)
 {
 	const D3D12_RESOURCE_DESC BufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(BufferSize, D3D12_RESOURCE_FLAG_NONE, 0);
 	ID3D12Resource *UploadBuffer;
@@ -178,10 +189,6 @@ R_UploadStaticData(ID3D12Device *Device, ID3D12GraphicsCommandList *CmdList, UIN
 	ID3D12Device_CreateCommittedResource(Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL,
 										 &IID_ID3D12Resource, &UploadBuffer);
 
-	void *MappedToUploadBuffer;
-	ID3D12Resource_Map(UploadBuffer, 0, NULL, &MappedToUploadBuffer);
-	memcpy(MappedToUploadBuffer, Data, BufferSize);
-	ID3D12Resource_Unmap(UploadBuffer, 0, NULL);
 
 	D3D12_HEAP_PROPERTIES DefaultHeapProps = {.Type = D3D12_HEAP_TYPE_DEFAULT};
 	ID3D12Device_CreateCommittedResource(Device, &DefaultHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc, D3D12_RESOURCE_STATE_COPY_DEST, NULL,

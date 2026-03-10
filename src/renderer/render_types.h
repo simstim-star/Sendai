@@ -48,12 +48,10 @@ typedef struct R_Texture {
 typedef struct R_Primitive {
 	R_Vertex *Vertices;
 	UINT VertexCount;
-	ID3D12Resource *VertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
 
 	UINT *Indices;
 	UINT IndexCount;
-	ID3D12Resource *IndexBuffer;
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView;
 
 	INT AlbedoIndex;
