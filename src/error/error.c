@@ -1,6 +1,7 @@
 #include "error.h"
 
-void ExitIfFailed(const HRESULT hr)
+void
+ExitIfFailed(const HRESULT hr)
 {
 	if (!FAILED(hr)) {
 		return;
@@ -13,7 +14,8 @@ void ExitIfFailed(const HRESULT hr)
 	exit(EXIT_FAILURE);
 }
 
-void ExitWithMessage(const char *Message)
+void
+ExitWithMessage(const char *Message)
 {
 	fprintf(stderr, "FATAL ERROR: %s\n", Message);
 	exit(EXIT_FAILURE);

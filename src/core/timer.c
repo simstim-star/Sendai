@@ -1,10 +1,12 @@
 /*
-* Based on https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12MeshShaders/src/DynamicLOD/StepTimer.h
-*/
+ * Based on
+ * https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12MeshShaders/src/DynamicLOD/StepTimer.h
+ */
 
 #include "timer.h"
 
-void S_TimerInit(S_StepTimer *StepTimer)
+void
+S_TimerInit(S_StepTimer *StepTimer)
 {
 	StepTimer->ElapsedTicks = 0;
 	StepTimer->TotalTicks = 0;
@@ -26,7 +28,8 @@ void S_TimerInit(S_StepTimer *StepTimer)
 // After an intentional timing discontinuity (for instance a blocking IO operation)
 // call this to avoid having the fixed timestep logic attempt a set of catch-up
 // Update calls.
-void S_ResetElapsedTime(S_StepTimer *StepTimer)
+void
+S_ResetElapsedTime(S_StepTimer *StepTimer)
 {
 	QueryPerformanceCounter(&StepTimer->QPCLastTime);
 
@@ -37,7 +40,8 @@ void S_ResetElapsedTime(S_StepTimer *StepTimer)
 }
 
 // Update timer state, calling the specified Update function the appropriate number of times.
-void S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC Update)
+void
+S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC Update)
 {
 	// Query the current time.
 	LARGE_INTEGER CurrentTime;
@@ -72,9 +76,9 @@ void S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC Update)
 		// ensure that the time step is still fixed.
 		StepTimer->LeftoverTicks += Delta;
 
-		// This will be done every time the leftover reaches the target. In case it has reached the target exaclty, it will do what
-		// is expected: just step with the target. If it surpases, we will still step with target, but we will also register a leftover
-		// that will propagate to the next tick (this leftover will be the difference timeDelta - target)
+		// This will be done every time the leftover reaches the target. In case it has reached the target exaclty, it will do
+		// what is expected: just step with the target. If it surpases, we will still step with target, but we will also register
+		// a leftover that will propagate to the next tick (this leftover will be the difference timeDelta - target)
 		while (StepTimer->LeftoverTicks >= StepTimer->TargetElapsedTicks) {
 			StepTimer->ElapsedTicks = StepTimer->TargetElapsedTicks;
 			StepTimer->TotalTicks += StepTimer->TargetElapsedTicks;

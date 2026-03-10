@@ -6,11 +6,11 @@
 #define MEGABYTES(val) (KILOBYTES(val) * 1024ULL)
 #define GIGABYTES(val) (MEGABYTES(val) * 1024ULL)
 
-typedef struct SendaiArena{
-	UINT8 *Base;		   // Start of reserved address space
-	size_t SizeReserved;  // Total size of address space
-	size_t SizeCommitted; // Currently committed memory
-	size_t Offset;		   // Current allocation position
+typedef struct SendaiArena {
+	UINT8 *Base;
+	size_t SizeReserved;
+	size_t SizeCommitted;
+	size_t Offset;
 } S_Arena;
 
 S_Arena S_ArenaInit(size_t ReserveSize);

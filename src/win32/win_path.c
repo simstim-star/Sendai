@@ -1,6 +1,7 @@
 #include "win_path.h"
 
-void Win32CurrPath(_Out_writes_(PathSize) PWSTR const Path, UINT PathSize)
+void
+Win32CurrPath(_Out_writes_(PathSize) PWSTR const Path, UINT PathSize)
 {
 	if (Path == NULL) {
 		OutputDebugString("Assets path is NULL \n");

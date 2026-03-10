@@ -1,7 +1,7 @@
 #pragma once
 
-#include "pch.h"
 #include "DirectXMathC.h"
+#include "pch.h"
 
 typedef struct R_Camera {
 	XMFLOAT3 InitialPosition;

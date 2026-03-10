@@ -16,10 +16,10 @@
 #define NK_D3D12_IMPLEMENTATION
 
 #include "ui.h"
-#include "../win32/file_dialog.h"
 #include "../../deps/nuklear.h"
 #include "../core/log.h"
 #include "../shaders/nuklear/nuklear_d3d12.h"
+#include "../win32/file_dialog.h"
 
 /****************************************************
 	Forward declaration of private functions
@@ -31,7 +31,8 @@ static struct nk_colorf ColorToNuklear(R_Color *color);
 	Public functions
 *****************************************************/
 
-void UI_Init(UI_Renderer *const UI, int Width, int Height, ID3D12Device *Device, ID3D12GraphicsCommandList *CommandList)
+void
+UI_Init(UI_Renderer *const UI, int Width, int Height, ID3D12Device *Device, ID3D12GraphicsCommandList *CommandList)
 {
 	UI->Context = nk_d3d12_init(Device, Width, Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, USER_TEXTURES);
 	UI->Width = Width;
@@ -43,7 +44,8 @@ void UI_Init(UI_Renderer *const UI, int Width, int Height, ID3D12Device *Device,
 	}
 }
 
-UI_Action UI_DrawTopBar(UI_Renderer *UI)
+UI_Action
+UI_DrawTopBar(UI_Renderer *UI)
 {
 	const float BarHeight = UI->Height * 0.05f;
 	UI_Action Action = UI_ACTION_NONE;
@@ -51,14 +53,14 @@ UI_Action UI_DrawTopBar(UI_Renderer *UI)
 	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, UI->Width, BarHeight), NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
 		nk_layout_row_dynamic(UI->Context, BarHeight * 0.8f, 3);
 		if (nk_button_label(UI->Context, "File")) {
-			Action =  UI_ACTION_FILE_OPEN;
+			Action = UI_ACTION_FILE_OPEN;
 		}
 		if (nk_button_label(UI->Context, "Logs")) {
 			UI->ShowLog = !UI->ShowLog;
 		}
 	}
 	nk_end(UI->Context);
-	
+
 	if (UI->ShowLog) {
 		Action = UI_LogWindow(UI);
 	}
@@ -66,7 +68,8 @@ UI_Action UI_DrawTopBar(UI_Renderer *UI)
 	return Action;
 }
 
-UI_Action UI_DrawBottomBar(UI_Renderer *UI)
+UI_Action
+UI_DrawBottomBar(UI_Renderer *UI)
 {
 	struct nk_context *Ctx = UI->Context;
 	const float HandleHeight = 10.0f;
@@ -80,11 +83,11 @@ UI_Action UI_DrawBottomBar(UI_Renderer *UI)
 		nk_layout_row_static(Ctx, HandleHeight, UI->Width, 1);
 		struct nk_rect Bounds = nk_widget_bounds(Ctx);
 		struct nk_command_buffer *Canvas = nk_window_get_canvas(Ctx);
-		
+
 		BOOL bIsMouseDown = nk_input_is_mouse_down(&Ctx->input, NK_BUTTON_LEFT);
 		BOOL bIsHoveringHandle = nk_input_is_mouse_hovering_rect(&Ctx->input, Bounds);
 		UI->bIsDraggingBottom = bIsMouseDown && (UI->bIsDraggingBottom || bIsHoveringHandle);
-		
+
 		if (UI->bIsDraggingBottom) {
 			UI->BottomBarHeight -= Ctx->input.mouse.delta.y;
 			nk_fill_rect(Canvas, Bounds, 0, nk_rgba(150, 150, 255, 255));
@@ -125,7 +128,8 @@ UI_Action UI_DrawBottomBar(UI_Renderer *UI)
 	return UI_ACTION_NONE;
 }
 
-UI_Action UI_LogWindow(UI_Renderer *const UI)
+UI_Action
+UI_LogWindow(UI_Renderer *const UI)
 {
 	struct nk_context *Context = UI->Context;
 	const float WindowX = 900.0f;
@@ -143,39 +147,46 @@ UI_Action UI_LogWindow(UI_Renderer *const UI)
 	return UI_ACTION_NONE;
 }
 
-void UI_InputBegin(const UI_Renderer *UI)
+void
+UI_InputBegin(const UI_Renderer *UI)
 {
 	nk_input_begin(UI->Context);
 }
 
-void UI_InputEnd(const UI_Renderer *UI)
+void
+UI_InputEnd(const UI_Renderer *UI)
 {
 	nk_input_end(UI->Context);
 }
 
-void UI_Draw(ID3D12GraphicsCommandList *CommandList)
+void
+UI_Draw(ID3D12GraphicsCommandList *CommandList)
 {
 	nk_d3d12_render(CommandList, NK_ANTI_ALIASING_ON);
 }
 
-void UI_Resize(UI_Renderer *UI, const int Width, const int Height)
+void
+UI_Resize(UI_Renderer *UI, const int Width, const int Height)
 {
 	UI->Width = Width;
 	UI->Height = Height;
 	nk_d3d12_resize(Width, Height);
 }
 
-int UI_HandleEvent(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
+int
+UI_HandleEvent(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
 	return nk_d3d12_handle_event(hWnd, Message, wParam, lParam);
 }
 
-void UI_Destroy()
+void
+UI_Destroy()
 {
 	nk_d3d12_shutdown();
 }
 
-static struct nk_colorf ColorToNuklear(R_Color *Color)
+static struct nk_colorf
+ColorToNuklear(R_Color *Color)
 {
 	return (struct nk_colorf){
 	  .r = Color->R,

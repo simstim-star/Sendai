@@ -7,7 +7,8 @@ set(SOURCE_FILES "src/core/camera.c" "src/core/timer.c" "src/win32/win_main.c" "
 "src/renderer/renderer.c" "src/ui/ui.c" "src/error/error.c" "src/core/engine.c" "src/core/log.c" "src/core/scene.c" "src/assets/gltf.c"
 "src/core/arena.c")
 set(HEADER_FILES "src/core/camera.h" "src/core/timer.h" "src/win32/win_path.h" "src/win32/file_dialog.h" "src/assets/gltf.h"
-"src/renderer/renderer.h" "src/ui/ui.h" "src/error/error.h" "src/core/engine.h" "src/core/log.h" "src/core/scene.h" "src/core/arena.h")
+"src/renderer/renderer.h" "src/ui/ui.h" "src/error/error.h" "src/core/engine.h" "src/core/log.h" "src/core/scene.h" "src/core/arena.h"
+"src/dx_helpers/barrier_helpers.h" "src/dx_helpers/desc_helpers.h")
 set(DEPS_FILES "deps/b64.h" "deps/cgltf.h" "deps/nuklear.h" "deps/stb_ds.h" "deps/stb_image.h")
 set(SHADER_FILES "src/shaders/gltf/gltf.hlsl")
 set_source_files_properties(${SHADER_FILES} PROPERTIES LANGUAGE HLSL)

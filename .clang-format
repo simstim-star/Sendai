@@ -2,14 +2,21 @@ BasedOnStyle: LLVM
 IndentWidth: 4
 TabWidth: 4
 UseTab: Always
-ColumnLimit: 170
+ColumnLimit: 150
+
+BreakAfterReturnType: AllDefinitions
+
 BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+
+AlignAfterOpenBracket: Align
+
+BinPackParameters: false
+
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Inline
 SpaceBeforeParens: ControlStatements
 KeepEmptyLinesAtTheStartOfBlocks: false
-AlignAfterOpenBracket: AlwaysBreak
 BracedInitializerIndentWidth: 2
-BraceWrapping:
-  AfterFunction: true

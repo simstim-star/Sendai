@@ -4,7 +4,8 @@
  Private functions
 ******************************************************************/
 
-static void CameraReset(R_Camera *camera)
+static void
+CameraReset(R_Camera *camera)
 {
 	camera->Position = camera->InitialPosition;
 	camera->Yaw = XM_PI;
@@ -16,7 +17,8 @@ static void CameraReset(R_Camera *camera)
  Public functions
 ******************************************************************/
 
-R_Camera R_CameraSpawn(XMFLOAT3 Position)
+R_Camera
+R_CameraSpawn(XMFLOAT3 Position)
 {
 	return (R_Camera){
 	  .InitialPosition = Position,
@@ -30,7 +32,8 @@ R_Camera R_CameraSpawn(XMFLOAT3 Position)
 	};
 }
 
-void R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
+void
+R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 {
 	float RotateDelta = Camera->TurnSpeed * ElapsedSeconds;
 
@@ -50,11 +53,11 @@ void R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 	Camera->Pitch = min(Camera->Pitch, XM_PIDIV4);
 	Camera->Pitch = max(-XM_PIDIV4, Camera->Pitch);
 
-	/* 
+	/*
 		Determine the look direction (check notes/xyz_from_yaw_pitch.png)
 		 x = cos(pitch) * sin(yaw)
-         y = sin(pitch)
-         z = cos(pitch) * cos(yaw)
+		 y = sin(pitch)
+		 z = cos(pitch) * cos(yaw)
 	*/
 	float look_b = cosf(Camera->Pitch);
 	Camera->LookDirection.x = look_b * sinf(Camera->Yaw);
@@ -105,7 +108,8 @@ void R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 	}
 }
 
-XMMATRIX R_CameraViewMatrix(XMFLOAT3 pos, XMFLOAT3 look, XMFLOAT3 up)
+XMMATRIX
+R_CameraViewMatrix(XMFLOAT3 pos, XMFLOAT3 look, XMFLOAT3 up)
 {
 	XMVECTOR EyePosition = XMLoadFloat3(&pos);
 	XMVECTOR EyeDirection = XMLoadFloat3(&look);
@@ -113,12 +117,14 @@ XMMATRIX R_CameraViewMatrix(XMFLOAT3 pos, XMFLOAT3 look, XMFLOAT3 up)
 	return XM_MAT_LOOK_RH(EyePosition, EyeDirection, UpDirection);
 }
 
-XMMATRIX R_CameraProjectionMatrix(float FOV, float AspectRatio, float NearPlane, float FarPlane)
+XMMATRIX
+R_CameraProjectionMatrix(float FOV, float AspectRatio, float NearPlane, float FarPlane)
 {
 	return XMMatrixPerspectiveFovRH(FOV, AspectRatio, NearPlane, FarPlane);
 }
 
-void R_CameraOnKeyDown(R_Camera *Camera, WPARAM Key)
+void
+R_CameraOnKeyDown(R_Camera *Camera, WPARAM Key)
 {
 	switch (Key) {
 	case 'W':
@@ -151,7 +157,8 @@ void R_CameraOnKeyDown(R_Camera *Camera, WPARAM Key)
 	}
 }
 
-void R_CameraOnKeyUp(R_Camera *Camera, WPARAM Key)
+void
+R_CameraOnKeyUp(R_Camera *Camera, WPARAM Key)
 {
 	switch (Key) {
 	case 'W':

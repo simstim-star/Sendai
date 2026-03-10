@@ -20,9 +20,13 @@ static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
 
 static void PreloadImages(SendaiScene *Scene, cgltf_data *Data, PCWSTR Path);
 
-static BOOL ExtractImageData(
-	_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _Outptr_result_bytebuffer_(*OutSize) UINT8 **Pixels, _Out_ size_t *Size, _Out_ int *W, _Out_ int *H,
-	_Out_ int *Channels);
+static BOOL ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
+							 _In_ cgltf_image *Img,
+							 _Outptr_result_bytebuffer_(*Size) UINT8 **Pixels,
+							 _Out_ size_t *Size,
+							 _Out_ int *W,
+							 _Out_ int *H,
+							 _Out_ int *Channels);
 
 static void RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBuffer[MAX_PATH]);
 
@@ -30,30 +34,23 @@ static LONG LoadGLTFFile(_In_z_ PCWSTR Path, _In_ S_Arena *Arena, _Outptr_ void 
 
 static cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ S_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path);
 
-static cgltf_result
-LoadGLTFBuffer(_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _In_ S_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data);
+static cgltf_result LoadGLTFBuffer(
+	_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _In_ S_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data);
 
 static void AppendFileNameToPath(_In_z_ PWSTR BasePath, _In_z_ char *FileName, _Out_writes_z_(MAX_PATH) char FullPath[MAX_PATH]);
 
 static int IsDataEmbedded(const cgltf_image *const BaseImage);
 
-static void *cgltf_arena_alloc(void *user, cgltf_size size)
-{
-	return S_ArenaAlloc((S_Arena *)user, size);
-}
-
-static void cgltf_arena_free(void *user, void *ptr)
-{
-	// No-op: Arena handles lifetime
-	(void)user;
-	(void)ptr;
-}
+// The below functions are to inject into gltf to use my arena
+static void *cgltf_arena_alloc(void *user, cgltf_size size);
+static void cgltf_arena_free(void *user, void *ptr);
 
 /****************************************************
 	Public functions
 *****************************************************/
 
-BOOL SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
+BOOL
+SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 {
 	S_Arena LocalArena = S_ArenaInit(GIGABYTES(1));
 
@@ -214,7 +211,8 @@ BOOL SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 	Implementation of private functions
 *****************************************************/
 
-void PreloadImages(SendaiScene *Scene, cgltf_data *Data, PCWSTR Path)
+void
+PreloadImages(SendaiScene *Scene, cgltf_data *Data, PCWSTR Path)
 {
 	Scene->Models[Scene->ModelsCount].Images = S_ArenaAlloc(&Scene->SceneArena, Data->images_count * sizeof(R_Texture));
 	Scene->Models[Scene->ModelsCount].ImagesCount = Data->images_count;
@@ -250,9 +248,14 @@ void PreloadImages(SendaiScene *Scene, cgltf_data *Data, PCWSTR Path)
 	}
 }
 
-BOOL ExtractImageData(
-	_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _Outptr_result_bytebuffer_(*OutSize) UINT8 **Pixels, _Out_ size_t *Size, _Out_ int *W, _Out_ int *H,
-	_Out_ int *Channels)
+BOOL
+ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
+				 _In_ cgltf_image *Img,
+				 _Outptr_result_bytebuffer_(*Size) UINT8 **Pixels,
+				 _Out_ size_t *Size,
+				 _Out_ int *W,
+				 _Out_ int *H,
+				 _Out_ int *Channels)
 {
 	if (!Pixels || !Size || !W || !H || !Channels) {
 		return FALSE;
@@ -314,7 +317,8 @@ BOOL ExtractImageData(
 }
 
 cgltf_result
-LoadGLTFBuffer(_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _In_ S_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data)
+LoadGLTFBuffer(
+	_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _In_ S_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data)
 {
 	WCHAR FullPathBuffer[MAX_PATH];
 	wcscpy_s(FullPathBuffer, MAX_PATH, FullPathGLTF);
@@ -345,7 +349,8 @@ LoadGLTFBuffer(_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _In_ S_
 	return cgltf_result_success;
 }
 
-void RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBuffer[MAX_PATH])
+void
+RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBuffer[MAX_PATH])
 {
 	PWSTR LastDoubleSlash = wcsrchr(FullPathBuffer, L'\\');
 	PWSTR LastSlash = wcsrchr(FullPathBuffer, L'/');
@@ -358,7 +363,8 @@ void RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBuffer[MA
 	}
 }
 
-cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ S_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path)
+cgltf_result
+LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ S_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path)
 {
 	if (Options == NULL) {
 		return cgltf_result_invalid_options;
@@ -412,7 +418,8 @@ cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ S_Arena *Ar
 	return cgltf_result_success;
 }
 
-LONG LoadGLTFFile(_In_z_ PCWSTR Path, S_Arena *Arena, _Outptr_ void **Data)
+LONG
+LoadGLTFFile(_In_z_ PCWSTR Path, S_Arena *Arena, _Outptr_ void **Data)
 {
 	FILE *file = _wfopen(Path, L"rb");
 	if (!file) {
@@ -444,7 +451,8 @@ LONG LoadGLTFFile(_In_z_ PCWSTR Path, S_Arena *Arena, _Outptr_ void **Data)
 	return Size;
 }
 
-void AppendFileNameToPath(_In_z_ PWSTR BasePathW, _In_z_ char *FileName, _Out_writes_z_(MAX_PATH) char FullPath[MAX_PATH])
+void
+AppendFileNameToPath(_In_z_ PWSTR BasePathW, _In_z_ char *FileName, _Out_writes_z_(MAX_PATH) char FullPath[MAX_PATH])
 {
 	char BasePart[MAX_PATH];
 	WideCharToMultiByte(CP_UTF8, 0, BasePathW, -1, BasePart, MAX_PATH, NULL, NULL);
@@ -458,7 +466,22 @@ void AppendFileNameToPath(_In_z_ PWSTR BasePathW, _In_z_ char *FileName, _Out_wr
 	strcat_s(FullPath, MAX_PATH, FileName);
 }
 
-int IsDataEmbedded(const cgltf_image *const BaseImage)
+int
+IsDataEmbedded(const cgltf_image *const BaseImage)
 {
 	return BaseImage->uri && strncmp(BaseImage->uri, "data:", 5) == 0;
+}
+
+void *
+cgltf_arena_alloc(void *user, cgltf_size size)
+{
+	return S_ArenaAlloc((S_Arena *)user, size);
+}
+
+void
+cgltf_arena_free(void *user, void *ptr)
+{
+	// No-op: Arena handles lifetime
+	(void)user;
+	(void)ptr;
 }

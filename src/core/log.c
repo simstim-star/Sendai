@@ -2,7 +2,8 @@
 
 S_Log SENDAI_LOG = {.Buffer = {0}, .Len = 0, .Max = sizeof(SENDAI_LOG.Buffer)};
 
-void S_LogAppend(const char *Text)
+void
+S_LogAppend(const char *Text)
 {
 	if (Text == NULL) {
 		return;
@@ -23,7 +24,8 @@ void S_LogAppend(const char *Text)
 	SENDAI_LOG.Buffer[SENDAI_LOG.Len] = '\0';
 }
 
-void S_LogAppendf(const char *Format, ...)
+void
+S_LogAppendf(const char *Format, ...)
 {
 	if (Format == NULL) {
 		return;

@@ -3,10 +3,11 @@
 #include "scene.h"
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"
-#include "../renderer/renderer.h"
 #include "../renderer/render_types.h"
+#include "../renderer/renderer.h"
 
-void CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
+void
+CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 {
 	D3D12_ROOT_PARAMETER RootParameters[3] = {0};
 
@@ -22,7 +23,7 @@ void CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 
 	D3D12_DESCRIPTOR_RANGE SrvRange = {
 	  .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-	  .NumDescriptors = 2, 
+	  .NumDescriptors = 2,
 	  .BaseShaderRegister = 0,
 	  .RegisterSpace = 0,
 	  .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
@@ -63,12 +64,13 @@ void CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 		ExitIfFailed(hr);
 	}
 
-	hr = ID3D12Device_CreateRootSignature(
-		Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature), &IID_ID3D12RootSignature, (void **)RootSign);
+	hr = ID3D12Device_CreateRootSignature(Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature),
+										  &IID_ID3D12RootSignature, (void **)RootSign);
 	ExitIfFailed(hr);
 }
 
-BOOL CompileSceneVS(PCWSTR FilePath, ID3DBlob **VS)
+BOOL
+CompileSceneVS(PCWSTR FilePath, ID3DBlob **VS)
 {
 #if defined(_DEBUG)
 	const UINT CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
@@ -82,7 +84,8 @@ BOOL CompileSceneVS(PCWSTR FilePath, ID3DBlob **VS)
 	return TRUE;
 }
 
-BOOL CompileScenePS(PCWSTR FilePath, ID3DBlob **PS)
+BOOL
+CompileScenePS(PCWSTR FilePath, ID3DBlob **PS)
 {
 #if defined(_DEBUG)
 	const UINT CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
@@ -96,7 +99,8 @@ BOOL CompileScenePS(PCWSTR FilePath, ID3DBlob **PS)
 	return TRUE;
 }
 
-void CreateScenePipelineState(R_World *renderer, SendaiScene *scene)
+void
+CreateScenePipelineState(R_World *renderer, SendaiScene *scene)
 {
 	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
 	  {"POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},

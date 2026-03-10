@@ -1,7 +1,8 @@
 #include "arena.h"
 #include "../error/error.h"
 
-S_Arena S_ArenaInit(size_t ReserveSize)
+S_Arena
+S_ArenaInit(size_t ReserveSize)
 {
 	S_Arena Arena = {0};
 	Arena.Base = VirtualAlloc(NULL, ReserveSize, MEM_RESERVE, PAGE_READWRITE);
@@ -17,7 +18,8 @@ S_Arena S_ArenaInit(size_t ReserveSize)
 	return Arena;
 }
 
-void *S_ArenaAlloc(S_Arena *Arena, size_t Size)
+void *
+S_ArenaAlloc(S_Arena *Arena, size_t Size)
 {
 	size_t AlignMask = 7;
 	size_t Position = (Arena->Offset + AlignMask) & ~AlignMask;
@@ -40,7 +42,8 @@ void *S_ArenaAlloc(S_Arena *Arena, size_t Size)
 	return Arena->Base + Position;
 }
 
-void S_ArenaReset(S_Arena *Arena)
+void
+S_ArenaReset(S_Arena *Arena)
 {
 	Arena->Offset = 0;
 	if (Arena->SizeCommitted > 0) {
@@ -48,7 +51,8 @@ void S_ArenaReset(S_Arena *Arena)
 	}
 }
 
-void S_ArenaRelease(S_Arena *Arena)
+void
+S_ArenaRelease(S_Arena *Arena)
 {
 	if (Arena->Base) {
 		VirtualFree(Arena->Base, 0, MEM_RELEASE);

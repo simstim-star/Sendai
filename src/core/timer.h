@@ -1,5 +1,6 @@
 /*
- * Based on https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12MeshShaders/src/DynamicLOD/StepTimer.h
+ * Based on
+ * https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12MeshShaders/src/DynamicLOD/StepTimer.h
  */
 
 #pragma once
@@ -8,15 +9,21 @@
 // Integer format represents time using 10,000,000 ticks per second.
 #define TICKS_PER_SECOND 10000000
 
-inline float TicksToSeconds_FLOAT(UINT64 Ticks) {
+inline float
+TicksToSeconds_FLOAT(UINT64 Ticks)
+{
 	return ((float)Ticks) / TICKS_PER_SECOND;
 }
 
-inline double TicksToSeconds_DOUBLE(UINT64 Ticks) {
+inline double
+TicksToSeconds_DOUBLE(UINT64 Ticks)
+{
 	return ((double)Ticks) / TICKS_PER_SECOND;
 }
 
-inline UINT64 SecondsToTicks(double Seconds) {
+inline UINT64
+SecondsToTicks(double Seconds)
+{
 	return (UINT64)(Seconds * TICKS_PER_SECOND);
 }
 
@@ -53,6 +60,8 @@ typedef void (*LPUPDATEFUNC)(void);
 void S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC update);
 
 // Only updates timer state, but doesn't do anything else
-inline void S_Tick(S_StepTimer *StepTimer) {
+inline void
+S_Tick(S_StepTimer *StepTimer)
+{
 	S_TickWithUpdateFn(StepTimer, NULL);
 }

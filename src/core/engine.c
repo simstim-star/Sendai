@@ -17,19 +17,20 @@ static void UIUpdate(Sendai *Engine);
 /****************************************************
 	Public functions
 *****************************************************/
-int Sendai_run()
+
+int
+Sendai_run()
 {
-	Sendai Engine = {
-	  .Title = L"Sendai",
-	  .WorldRenderer = {.Width = 1280, .Height = 720},
-	  .Camera = R_CameraSpawn((XMFLOAT3){0, 25, -100}),
-	  .Scene =
-		  {
-			.SceneArena = S_ArenaInit(GIGABYTES(2)),
-			.ModelsCount = 0,
-			.ModelsCapacity = 1000,
-		  },
-	  .bRunning = true};
+	Sendai Engine = {.Title = L"Sendai",
+					 .WorldRenderer = {.Width = 1280, .Height = 720},
+					 .Camera = R_CameraSpawn((XMFLOAT3){0, 25, -100}),
+					 .Scene =
+						 {
+						   .SceneArena = S_ArenaInit(GIGABYTES(2)),
+						   .ModelsCount = 0,
+						   .ModelsCapacity = 1000,
+						 },
+					 .bRunning = true};
 
 	Engine.Scene.Models = S_ArenaAlloc(&Engine.Scene.SceneArena, sizeof(R_Model) * Engine.Scene.ModelsCapacity);
 
@@ -75,7 +76,8 @@ int Sendai_run()
 	Implementation of private functions
 *****************************************************/
 
-void InitWindow(Sendai *engine)
+void
+InitWindow(Sendai *engine)
 {
 	WNDCLASSEX wc = {0};
 	wc.cbSize = sizeof(WNDCLASSEX);
@@ -89,12 +91,12 @@ void InitWindow(Sendai *engine)
 	RegisterClassEx(&wc);
 	RECT rect = {0, 0, (LONG)(engine->WorldRenderer.Width), (LONG)(engine->WorldRenderer.Height)};
 	AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
-	engine->hWnd = CreateWindow(
-		wc.lpszClassName, engine->Title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, NULL, NULL,
-		engine->hInstance, engine);
+	engine->hWnd = CreateWindow(wc.lpszClassName, engine->Title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
+								rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, engine->hInstance, engine);
 }
 
-LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK
+WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
 	Sendai *Engine = (Sendai *)(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
@@ -140,20 +142,23 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lPara
 	return DefWindowProc(hWnd, Message, wParam, lParam);
 }
 
-static void EngineUpdate(Sendai *Engine)
+static void
+EngineUpdate(Sendai *Engine)
 {
 	S_Tick(&Engine->Timer);
 	R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
 	UIUpdate(Engine);
 }
 
-static void EngineDraw(Sendai *Engine)
+static void
+EngineDraw(Sendai *Engine)
 {
 	R_Update(&Engine->WorldRenderer, &Engine->Camera, &Engine->Scene);
 	R_Draw(&Engine->WorldRenderer, &Engine->Scene);
 }
 
-void UIUpdate(Sendai *Engine)
+void
+UIUpdate(Sendai *Engine)
 {
 	UI_Action Action = UI_DrawTopBar(&Engine->UI) | UI_DrawBottomBar(&Engine->UI);
 
