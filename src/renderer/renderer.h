@@ -8,6 +8,7 @@
 
 typedef struct R_Camera R_Camera;
 typedef struct R_Primitive R_Primitive;
+typedef struct R_Texture R_Texture;
 
 typedef struct GPUTexture {
 	ID3D12Resource *GpuTexture;

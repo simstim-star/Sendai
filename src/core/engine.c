@@ -13,6 +13,9 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lPara
 static void EngineUpdate(Sendai *Engine);
 static void EngineDraw(Sendai *Engine);
 static void UIUpdate(Sendai *Engine);
+static void LoadPrimitivesIntoBuffers(PWSTR FilePath, Sendai *Engine);
+
+void LoadPrimitivesIntoBuffers(PWSTR FilePath, Sendai *Engine);
 
 /****************************************************
 	Public functions
@@ -164,33 +167,40 @@ UIUpdate(Sendai *Engine)
 
 	switch (Action) {
 	case UI_ACTION_FILE_OPEN: {
-		PWSTR FilePath = SelectGLTFPath();
-		if (FilePath) {
-			SendaiGLTF_LoadModel(FilePath, &Engine->Scene);
-			for (int ModelIdx = 0; ModelIdx < Engine->Scene.ModelsCount; ++ModelIdx) {
-				for (int MeshIdx = 0; MeshIdx < Engine->Scene.Models[ModelIdx].MeshesCount; ++MeshIdx) {
-					R_Mesh *Mesh = &Engine->Scene.Models[ModelIdx].Meshes[MeshIdx];
-					for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
-						R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
-						R_CreateVertexBuffer(Engine->WorldRenderer.Device, Primitive);
-						R_CreateIndexBuffer(Engine->WorldRenderer.Device, Primitive);
-
-						if (Primitive->AlbedoIndex >= 0) {
-							UINT BaseSlot = Engine->WorldRenderer.SrvCount;
-							R_Texture *AlbedoTexture = &Engine->Scene.Models[ModelIdx].Images[Primitive->AlbedoIndex];
-							Primitive->MaterialDescriptorBase = R_UploadTexture(&Engine->WorldRenderer, AlbedoTexture, BaseSlot);
-
-							// dirty hack
-							Engine->WorldRenderer.SrvCount += 1;
-						}
-					}
-				}
-			}
-			CoTaskMemFree(FilePath);
+		PWSTR FilePath = Win32SelectGLTFPath();
+		if (FilePath == NULL) {
+			break;
 		}
+		LoadPrimitivesIntoBuffers(FilePath, Engine);
+		CoTaskMemFree(FilePath);
 		break;
 	}
 	default:
 		break;
+	}
+}
+
+void
+LoadPrimitivesIntoBuffers(PWSTR FilePath, Sendai *Engine)
+{
+	SendaiGLTF_LoadModel(FilePath, &Engine->Scene);
+	for (int ModelIdx = 0; ModelIdx < Engine->Scene.ModelsCount; ++ModelIdx) {
+		for (int MeshIdx = 0; MeshIdx < Engine->Scene.Models[ModelIdx].MeshesCount; ++MeshIdx) {
+			R_Mesh *Mesh = &Engine->Scene.Models[ModelIdx].Meshes[MeshIdx];
+			for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
+				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
+				R_CreateVertexBuffer(Engine->WorldRenderer.Device, Primitive);
+				R_CreateIndexBuffer(Engine->WorldRenderer.Device, Primitive);
+
+				if (Primitive->AlbedoIndex >= 0) {
+					UINT BaseSlot = Engine->WorldRenderer.SrvCount;
+					R_Texture *AlbedoTexture = &Engine->Scene.Models[ModelIdx].Images[Primitive->AlbedoIndex];
+					Primitive->MaterialDescriptorBase = R_UploadTexture(&Engine->WorldRenderer, AlbedoTexture, BaseSlot);
+
+					// dirty hack
+					Engine->WorldRenderer.SrvCount += 1;
+				}
+			}
+		}
 	}
 }

@@ -77,11 +77,7 @@ CompileSceneVS(PCWSTR FilePath, ID3DBlob **VS)
 #else
 	const UINT CompileFlags = 0;
 #endif
-	HRESULT hr = D3DCompileFromFile(FilePath, NULL, NULL, "VSMain", "vs_5_0", CompileFlags, 0, VS, NULL);
-	if (FAILED(hr)) {
-		return FALSE;
-	}
-	return TRUE;
+	return SUCCEEDED(D3DCompileFromFile(FilePath, NULL, NULL, "VSMain", "vs_5_0", CompileFlags, 0, VS, NULL));
 }
 
 BOOL
@@ -92,11 +88,7 @@ CompileScenePS(PCWSTR FilePath, ID3DBlob **PS)
 #else
 	const UINT CompileFlags = 0;
 #endif
-	HRESULT hr = D3DCompileFromFile(FilePath, NULL, NULL, "PSMain", "ps_5_0", CompileFlags, 0, PS, NULL);
-	if (FAILED(hr)) {
-		return FALSE;
-	}
-	return TRUE;
+	return SUCCEEDED(D3DCompileFromFile(FilePath, NULL, NULL, "PSMain", "ps_5_0", CompileFlags, 0, PS, NULL));
 }
 
 void

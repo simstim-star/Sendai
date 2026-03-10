@@ -2,4 +2,4 @@
 
 #include "../core/pch.h"
 
-PWSTR SelectGLTFPath(void);
+PWSTR Win32SelectGLTFPath(void);

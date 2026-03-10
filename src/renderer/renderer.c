@@ -96,15 +96,14 @@ R_Init(R_World *const Renderer, HWND hWnd)
 	  .VisibleNodeMask = 1,
 	};
 
-	// Constant buffers must be 256-byte aligned size
-	UINT TransformBufferSize = (sizeof(R_TransformBuffer) + 255) & ~255;
+	UINT TransformBufferSize = GET_ALIGNED_SIZE(R_TransformBuffer, CB_ALIGNMENT);
 	const D3D12_RESOURCE_DESC CBDesc = CD3DX12_RESOURCE_DESC_BUFFER(TransformBufferSize, D3D12_RESOURCE_FLAG_NONE, 0);
 
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &HeapPropertyUpload, D3D12_HEAP_FLAG_NONE, &CBDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
 											  NULL, &IID_ID3D12Resource, &Renderer->TransformBuffer);
 	ExitIfFailed(hr);
 
-	UINT PBRBufferSize = (sizeof(R_PBRConstantBuffer) + 255) & ~255;
+	UINT PBRBufferSize = GET_ALIGNED_SIZE(R_PBRConstantBuffer, CB_ALIGNMENT);
 	const D3D12_RESOURCE_DESC PBRDesc = CD3DX12_RESOURCE_DESC_BUFFER(PBRBufferSize, D3D12_RESOURCE_FLAG_NONE, 0);
 
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &HeapPropertyUpload, D3D12_HEAP_FLAG_NONE, &PBRDesc,
