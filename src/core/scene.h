@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../core/pch.h"
-
 #include "arena.h"
 
 typedef struct R_World R_World;

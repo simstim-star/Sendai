@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../core/pch.h"
-
 #define CB_ALIGNMENT 256
 #define GET_ALIGNED_SIZE(TYPE, ALIGNMENT) (((sizeof(TYPE)) + ALIGNMENT) & ~ALIGNMENT)
 

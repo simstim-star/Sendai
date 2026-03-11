@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "camera.h"
 
 /*****************************************************************
@@ -100,7 +101,7 @@ R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 		Movement = XM_VEC_SCALE(Movement, Camera->MoveSpeed * ElapsedSeconds);
 
 		XMFLOAT3 Delta;
-		XMStoreFloat3(&Delta, &Movement);
+		XM_STORE_FLOAT3(&Delta, Movement);
 
 		Camera->Position.x += Delta.x;
 		Camera->Position.y += Delta.y;

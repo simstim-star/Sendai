@@ -1,3 +1,4 @@
+#include "../core/pch.h"
 #include "win_path.h"
 
 void

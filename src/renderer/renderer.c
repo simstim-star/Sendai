@@ -1,3 +1,4 @@
+#include "../core/pch.h"
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"
 #include "../ui/ui.h"

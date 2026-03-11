@@ -1,7 +1,6 @@
-#define COBJMACROS
-#define WIN32_LEAN_AND_MEAN
-#define USER_TEXTURES 6
+#include "../core/pch.h"
 
+#define USER_TEXTURES 6
 #define MAX_VERTEX_BUFFER 512 * 1024
 #define MAX_INDEX_BUFFER 128 * 1024
 

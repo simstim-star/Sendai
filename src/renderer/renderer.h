@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../assets/gltf.h"
-#include "../core/pch.h"
 #include "../core/scene.h"
 
 #define FRAME_COUNT 2

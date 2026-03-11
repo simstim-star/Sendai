@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../core/pch.h"
+
 #include "scene.h"
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../core/pch.h"
 #include "../renderer/render_types.h"
 
 typedef enum { UI_ACTION_NONE = 0, UI_ACTION_FILE_OPEN, UI_ACTION_EDIT_UNDO, UI_ACTION_HELP_ABOUT } UI_Action;

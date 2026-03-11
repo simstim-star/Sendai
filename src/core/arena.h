@@ -1,7 +1,5 @@
 #pragma once
 
-#include "pch.h"
-
 #define KILOBYTES(val) ((val) * 1024ULL)
 #define MEGABYTES(val) (KILOBYTES(val) * 1024ULL)
 #define GIGABYTES(val) (MEGABYTES(val) * 1024ULL)

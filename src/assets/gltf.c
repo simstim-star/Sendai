@@ -1,4 +1,6 @@
-﻿#define CGLTF_IMPLEMENTATION
+﻿#include "../core/pch.h"
+
+#define CGLTF_IMPLEMENTATION
 #include "../../deps/cgltf.h"
 
 #define STB_IMAGE_IMPLEMENTATION
