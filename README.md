@@ -20,7 +20,7 @@ cmake --build build-install --target INSTALL
 
 This will generate the folder `xmathc`, probably in `C:/`. This will allow us to use `xmathc` in other projects.
 
-Now we can build this project with CMake:
+We can build this project with CMake:
 
 ```
 cmake -S . -B build --debug-find-pkg=xmathc --fresh
@@ -29,7 +29,7 @@ cmake --build build
 
 This will already link `xmathc` if it is installed.
 
-We can also build with nmake. Open x64 Native Tools Command Prompt for VS 2022 and run the following on this folder to generate release build in the folder build_nmake:
+We can also build with nmake. Open `x64 Native Tools Command Prompt for VS 2022` and run the following on this folder to generate release build in the folder build_nmake:
 
 ```
 nmake 
