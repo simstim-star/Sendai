@@ -43,6 +43,8 @@ static void AppendFileNameToPath(_In_z_ PWSTR BasePath, _In_z_ char *FileName, _
 
 static int IsDataEmbedded(const cgltf_image *const BaseImage);
 
+static void FlipZInColMajor(float ColMajor[16]);
+
 // The below functions are to inject into gltf to use my arena
 static void *cgltf_arena_alloc(void *user, cgltf_size size);
 static void cgltf_arena_free(void *user, void *ptr);
@@ -100,16 +102,35 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 		PreloadImages(Scene, Data, Path);
 	}
 
-	for (size_t MeshId = 0; MeshId < Data->meshes_count; MeshId++) {
-		cgltf_mesh *MeshData = &Data->meshes[MeshId];
-		R_Mesh *Mesh = &Scene->Models[Scene->ModelsCount].Meshes[MeshId];
-		Mesh->Primitives = S_ArenaAlloc(&Scene->SceneArena, MeshData->primitives_count * sizeof(R_Primitive));
+	size_t NodeCount = Data->nodes_count;
+	Scene->Models[Scene->ModelsCount].Meshes = S_ArenaAlloc(&Scene->SceneArena, NodeCount * sizeof(R_Mesh));
+	Scene->Models[Scene->ModelsCount].MeshesCount = 0;
+
+	for (size_t i = 0; i < NodeCount; i++) {
+		cgltf_node *NodeData = &Data->nodes[i];
+		if (NodeData->mesh == NULL) {
+			continue;
+		}
+
+		R_Mesh *Mesh = &Scene->Models[Scene->ModelsCount].Meshes[Scene->Models[Scene->ModelsCount].MeshesCount];
+		cgltf_mesh *MeshData = NodeData->mesh;
+
+		float TransformColMajor[16];
+		cgltf_node_transform_world(NodeData, TransformColMajor);
+
+		// Note: Mesh->Transform is col-major, but XMLoadFloat4x4 expects row-major.
+		// This way, the matrix is automatically transposed already, because XMLoadFloat4x4
+		// will pick as row what is col and vice-versa. Therefore, ModelMatrix is Mesh->Transform
+		// converted to row-major.
+		Mesh->ModelMatrix = XMLoadFloat4x4(TransformColMajor);
+
 		Mesh->PrimitivesCount = MeshData->primitives_count;
+		Mesh->Primitives = S_ArenaAlloc(&Scene->SceneArena, Mesh->PrimitivesCount * sizeof(R_Primitive));
 
 		for (cgltf_size PrimitiveId = 0; PrimitiveId < MeshData->primitives_count; PrimitiveId++) {
 			cgltf_primitive *PrimitiveData = &MeshData->primitives[PrimitiveId];
 			cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum] = {0};
-			R_Primitive *Primitive = &Scene->Models[Scene->ModelsCount].Meshes[MeshId].Primitives[PrimitiveId];
+			R_Primitive *Primitive = &Mesh->Primitives[PrimitiveId];
 
 			for (int AttributeId = 0; AttributeId < PrimitiveData->attributes_count; ++AttributeId) {
 				cgltf_attribute *AttributeData = &PrimitiveData->attributes[AttributeId];
@@ -155,16 +176,17 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 			for (size_t i = 0; i < VertexCount; i++) {
 				float Position[3];
 				cgltf_accessor_read_float(PositionAccessor, i, Position, 3);
-				Vertices[i].Position = (R_Float4){Position[0], Position[1], -Position[2], 1.0f};
+				// DX is left-handed, GLTF is right-handed, so we need to negate Z
+				Vertices[i].Position = (R_Float4){Position[0], Position[1], Position[2], 1.0f};
 
 				cgltf_accessor *ColorAccessor = AccessorsData[cgltf_attribute_type_color];
 				if (ColorAccessor) {
-					float c[4];
-					cgltf_accessor_read_float(ColorAccessor, i, c, 4);
-					Vertices[i].Color.X = c[0];
-					Vertices[i].Color.Y = c[1];
-					Vertices[i].Color.Z = c[2];
-					Vertices[i].Color.W = 1.0f;
+					float Color[4];
+					cgltf_accessor_read_float(ColorAccessor, i, Color, 4);
+					Vertices[i].Color.X = Color[0];
+					Vertices[i].Color.Y = Color[1];
+					Vertices[i].Color.Z = Color[2];
+					Vertices[i].Color.W = Color[3];
 				} else {
 					Vertices[i].Color = (R_Float4){1.0f, 1.0f, 1.0f, 1.0f};
 				}
@@ -174,7 +196,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 					float UV[2];
 					cgltf_accessor_read_float(UVAccessor, i, UV, 2);
 					Vertices[i].UV.U = UV[0];
-					Vertices[i].UV.V = 1.0f - UV[1]; // DX Flip
+					Vertices[i].UV.V = UV[1];
 				} else {
 					Vertices[i].UV.U = 0.0f;
 					Vertices[i].UV.V = 0.0f;
@@ -199,6 +221,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 			Primitive->Indices = Indices;
 			Primitive->IndexCount = IndexCount;
 		}
+		Scene->Models[Scene->ModelsCount].MeshesCount++;
 	}
 
 	cgltf_free(Data);

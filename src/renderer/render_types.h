@@ -65,6 +65,9 @@ typedef struct R_Primitive {
 typedef struct R_Mesh {
 	R_Primitive *Primitives;
 	UINT PrimitivesCount;
+
+	// RH and Row-Major
+	XMMATRIX ModelMatrix;
 } R_Mesh;
 
 typedef struct R_Model {

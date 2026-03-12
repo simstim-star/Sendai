@@ -56,6 +56,9 @@ typedef struct R_World {
 	ID3D12Resource *IndexBuffer;
 	ID3D12Resource *UploadBuffer;
 
+	UINT8 *MVPUploadCpuAddress;
+	D3D12_GPU_VIRTUAL_ADDRESS MVPUploadGpuAddress;
+
 	/*****************************
 		Synchronization objects
 	*****************************/
@@ -69,7 +72,6 @@ typedef struct R_World {
 		Resources
 	*****************************/
 
-	ID3D12Resource *TransformBuffer;
 	ID3D12Resource *MaterialBuffer;
 	TextureLookup *Textures;
 	UINT SrvCount;
@@ -78,8 +80,7 @@ typedef struct R_World {
 void R_Init(R_World *const Renderer, HWND hWnd);
 
 void R_Destroy(R_World *Renderer);
-void R_Update(R_World *const Renderer, R_Camera *const Camera, SendaiScene *Scene);
-void R_Draw(R_World *const Renderer, SendaiScene *Scene);
+void R_Draw(R_World *const Renderer, SendaiScene *Scene, R_Camera *const Camera);
 void R_UpdateResource(ID3D12Resource *Resource, void *Data, size_t DataSize);
 void R_ExecuteCommands(R_World *const Renderer);
 void R_SwapchainResize(R_World *const Renderer, int Width, int Height);

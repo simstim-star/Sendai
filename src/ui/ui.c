@@ -13,11 +13,11 @@
 #define NK_INCLUDE_DEFAULT_FONT
 #define NK_IMPLEMENTATION
 #define NK_D3D12_IMPLEMENTATION
+#include "../../deps/nuklear.h"
+#include "../shaders/nuklear/nuklear_d3d12.h"
 
 #include "ui.h"
-#include "../../deps/nuklear.h"
 #include "../core/log.h"
-#include "../shaders/nuklear/nuklear_d3d12.h"
 #include "../win32/file_dialog.h"
 
 /****************************************************

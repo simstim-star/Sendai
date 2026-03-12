@@ -30,7 +30,7 @@ Sendai_run()
 						 {
 						   .SceneArena = S_ArenaInit(GIGABYTES(2)),
 						   .ModelsCount = 0,
-						   .ModelsCapacity = 1000,
+						   .ModelsCapacity = 10000,
 						 },
 					 .bRunning = true};
 
@@ -160,8 +160,7 @@ EngineUpdate(Sendai *Engine)
 static void
 EngineDraw(Sendai *Engine)
 {
-	R_Update(&Engine->WorldRenderer, &Engine->Camera, &Engine->Scene);
-	R_Draw(&Engine->WorldRenderer, &Engine->Scene);
+	R_Draw(&Engine->WorldRenderer, &Engine->Scene, &Engine->Camera);
 }
 
 void

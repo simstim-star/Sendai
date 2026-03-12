@@ -1,6 +1,6 @@
-cbuffer TransformData : register(b0)
+cbuffer MeshData : register(b0)
 {
-    float4x4 mvp;
+    row_major float4x4 mvp;
 };
 
 cbuffer PBRData : register(b1)

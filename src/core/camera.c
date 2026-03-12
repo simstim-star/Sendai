@@ -39,10 +39,10 @@ R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 	float RotateDelta = Camera->TurnSpeed * ElapsedSeconds;
 
 	if (Camera->KeysPressed.LeftArrow) {
-		Camera->Yaw += RotateDelta;
+		Camera->Yaw -= RotateDelta;
 	}
 	if (Camera->KeysPressed.RightArrow) {
-		Camera->Yaw -= RotateDelta;
+		Camera->Yaw += RotateDelta;
 	}
 	if (Camera->KeysPressed.UpArrow) {
 		Camera->Pitch += RotateDelta;
@@ -75,10 +75,10 @@ R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 	{
 		float RightInput = 0.f;
 		if (Camera->KeysPressed.A) {
-			RightInput -= 1.0f;
+			RightInput += 1.0f;
 		}
 		if (Camera->KeysPressed.D) {
-			RightInput += 1.0f;
+			RightInput -= 1.0f;
 		}
 
 		float ForwardInput = 0.f;
@@ -115,13 +115,13 @@ R_CameraViewMatrix(XMFLOAT3 pos, XMFLOAT3 look, XMFLOAT3 up)
 	XMVECTOR EyePosition = XMLoadFloat3(&pos);
 	XMVECTOR EyeDirection = XMLoadFloat3(&look);
 	XMVECTOR UpDirection = XMLoadFloat3(&up);
-	return XM_MAT_LOOK_RH(EyePosition, EyeDirection, UpDirection);
+	return XM_MAT_LOOK_LH(EyePosition, EyeDirection, UpDirection);
 }
 
 XMMATRIX
 R_CameraProjectionMatrix(float FOV, float AspectRatio, float NearPlane, float FarPlane)
 {
-	return XMMatrixPerspectiveFovRH(FOV, AspectRatio, NearPlane, FarPlane);
+	return XMMatrixPerspectiveFovLH(FOV, AspectRatio, NearPlane, FarPlane);
 }
 
 void
