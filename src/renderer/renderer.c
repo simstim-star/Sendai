@@ -449,20 +449,10 @@ RenderPrimitives(SendaiScene *Scene, R_World *const Renderer, R_Camera *const Ca
 
 			for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
 				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
-
-				R_PBRConstantBuffer PBRConstants = {0};
-				memcpy(PBRConstants.BaseColorFactor, Primitive->BaseColorFactor, sizeof(float) * 4);
-				PBRConstants.UVTransform[0] = Primitive->UVScale[0];
-				PBRConstants.UVTransform[1] = Primitive->UVScale[1];
-				PBRConstants.UVTransform[2] = Primitive->UVOffset[0];
-				PBRConstants.UVTransform[3] = Primitive->UVOffset[1];
-
-				ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES, &PBRConstants, 0);
-
+				ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES, &Primitive->cb, 0);
 				if (Primitive->AlbedoIndex >= 0) {
 					ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 2, Primitive->MaterialDescriptorBase);
 				}
-
 				ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Primitive->VertexBufferView);
 				ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
 				ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);

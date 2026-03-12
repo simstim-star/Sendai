@@ -129,12 +129,21 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 
 		for (cgltf_size PrimitiveId = 0; PrimitiveId < MeshData->primitives_count; PrimitiveId++) {
 			cgltf_primitive *PrimitiveData = &MeshData->primitives[PrimitiveId];
-			cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum] = {0};
 			R_Primitive *Primitive = &Mesh->Primitives[PrimitiveId];
+			cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum] = {0};
+			cgltf_accessor *UVAccessorsData[2] = {0};
 
 			for (int AttributeId = 0; AttributeId < PrimitiveData->attributes_count; ++AttributeId) {
 				cgltf_attribute *AttributeData = &PrimitiveData->attributes[AttributeId];
-				AccessorsData[AttributeData->type] = AttributeData->vertex_data;
+
+				if (AttributeData->type == cgltf_attribute_type_texcoord) {
+					if (AttributeData->index > 1) {
+						continue;
+					}
+					UVAccessorsData[AttributeData->index] = AttributeData->vertex_data;
+				} else {
+					AccessorsData[AttributeData->type] = AttributeData->vertex_data;
+				}
 			}
 
 			if (PrimitiveData->material) {
@@ -146,21 +155,26 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 						Primitive->AlbedoIndex = MetallicRoughnessData->base_color_texture.texture->image - Data->images;
 
 						if (MetallicRoughnessData->base_color_texture.has_transform) {
-							Primitive->UVScale[0] = MetallicRoughnessData->base_color_texture.transform.scale[0];
-							Primitive->UVScale[1] = MetallicRoughnessData->base_color_texture.transform.scale[1];
-							Primitive->UVOffset[0] = MetallicRoughnessData->base_color_texture.transform.offset[0];
-							Primitive->UVOffset[1] = MetallicRoughnessData->base_color_texture.transform.offset[1];
+							cgltf_texture_transform *Transform = &MetallicRoughnessData->base_color_texture.transform;
+							int uvIndex = MetallicRoughnessData->base_color_texture.texcoord;
+							Primitive->UVChannel = uvIndex;
+							Primitive->cb.UVScale[0] = Transform->scale[0];
+							Primitive->cb.UVScale[1] = Transform->scale[1];
+							Primitive->cb.UVOffset[0] = Transform->offset[0];
+							Primitive->cb.UVOffset[1] = Transform->offset[1];
+							Primitive->cb.UVRotation = Transform->rotation; 
 						} else {
-							Primitive->UVScale[0] = 1.0f;
-							Primitive->UVScale[1] = 1.0f;
-							Primitive->UVOffset[0] = 0.0f;
-							Primitive->UVOffset[1] = 0.0f;
+							Primitive->cb.UVScale[0] = 1.0f;
+							Primitive->cb.UVScale[1] = 1.0f;
+							Primitive->cb.UVOffset[0] = 0.0f;
+							Primitive->cb.UVOffset[1] = 0.0f;
+							Primitive->cb.UVRotation = 0.0f;
 						}
 					} else {
 						Primitive->AlbedoIndex = -1;
 					}
 
-					memcpy(Primitive->BaseColorFactor, MetallicRoughnessData->base_color_factor, sizeof(float) * 4);
+					memcpy(Primitive->cb.BaseColorFactor, MetallicRoughnessData->base_color_factor, sizeof(float) * 4);
 				}
 			}
 
@@ -176,7 +190,6 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 			for (size_t i = 0; i < VertexCount; i++) {
 				float Position[3];
 				cgltf_accessor_read_float(PositionAccessor, i, Position, 3);
-				// DX is left-handed, GLTF is right-handed, so we need to negate Z
 				Vertices[i].Position = (R_Float4){Position[0], Position[1], Position[2], 1.0f};
 
 				cgltf_accessor *ColorAccessor = AccessorsData[cgltf_attribute_type_color];
@@ -191,15 +204,21 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 					Vertices[i].Color = (R_Float4){1.0f, 1.0f, 1.0f, 1.0f};
 				}
 
-				cgltf_accessor *UVAccessor = AccessorsData[cgltf_attribute_type_texcoord];
-				if (UVAccessor) {
-					float UV[2];
-					cgltf_accessor_read_float(UVAccessor, i, UV, 2);
-					Vertices[i].UV.U = UV[0];
-					Vertices[i].UV.V = UV[1];
+				if (UVAccessorsData[0]) {
+					float uv[2];
+					cgltf_accessor_read_float(UVAccessorsData[0], i, uv, 2);
+					Vertices[i].UV0[0] = uv[0];
+					Vertices[i].UV0[1] = 1.0f - uv[1]; // Flip for DX
+				}
+
+				if (UVAccessorsData[1]) {
+					float uv[2];
+					cgltf_accessor_read_float(UVAccessorsData[1], i, uv, 2);
+					Vertices[i].UV1[0] = uv[0];
+					Vertices[i].UV1[1] = 1.0f - uv[1]; // Flip for DX
 				} else {
-					Vertices[i].UV.U = 0.0f;
-					Vertices[i].UV.V = 0.0f;
+					Vertices[i].UV1[0] = 0.0f;
+					Vertices[i].UV1[1] = 0.0f;
 				}
 			}
 
