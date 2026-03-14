@@ -255,7 +255,7 @@ ColorToNuklear(R_Color *Color)
 }
 
 void
-SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *Texture)
+UI_SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *Texture)
 {
 	if (nkSrvIndex >= NUM_USER_TEXTURES) {
 		return;

@@ -4,7 +4,6 @@
 #include "../renderer/renderer.h"
 #include "../ui/ui.h"
 #include "../win32/file_dialog.h"
-
 #include "../win32/win_path.h"
 
 /****************************************************
@@ -78,8 +77,16 @@ S_Run()
 		}
 	}
 
+	ID3D12RootSignature_Release(Engine.Scene.RootSign);
 	R_Destroy(&Engine.WorldRenderer);
 	S_ArenaRelease(&Engine.Scene.SceneArena);
+
+#if defined(_DEBUG)
+	IDXGIDebug1 *debugDev = NULL;
+	if (SUCCEEDED(DXGIGetDebugInterface1(0, &IID_IDXGIDebug1, &debugDev))) {
+		IDXGIDebug_ReportLiveObjects(debugDev, DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+	}
+#endif
 	return (int)(msg.wParam);
 }
 
@@ -240,8 +247,8 @@ LoadPrimitivesIntoBuffers(R_World *Renderer, SendaiScene *Scene)
 				if (Primitive->AlbedoIndex >= 0) {
 					UINT BaseSlot = Renderer->SrvCount;
 					R_Texture *AlbedoTexture = &Scene->Models[ModelIdx].Images[Primitive->AlbedoIndex];
-					Primitive->MaterialDescriptorBase = R_UploadTexture(Renderer, AlbedoTexture, BaseSlot);
-
+					GPUTexture Texture = R_UploadTexture(Renderer, AlbedoTexture, BaseSlot);
+					Primitive->MaterialDescriptorBase = Texture.SrvHandle;
 					// dirty hack
 					Renderer->SrvCount += 1;
 				}

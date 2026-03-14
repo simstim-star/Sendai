@@ -58,7 +58,4 @@ int UI_HandleEvent(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam);
 
 void UI_Destroy();
 
-
-ID3D12Resource *CreateGPUTexture(struct R_World *Renderer, struct R_Texture *Source, UINT nkSrvIndex);
-
-void SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *OutTexture);
+void UI_SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *OutTexture);

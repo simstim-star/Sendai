@@ -7,7 +7,7 @@ typedef struct R_Model R_Model;
 typedef struct ID3D12Device ID3D12Device;
 typedef struct ID3D12RootSignature ID3D12RootSignature;
 
-typedef struct SendaiScene {
+typedef struct S_Scene {
 	R_Model *Models;
 	UINT ModelsCount;
 	UINT ModelsCapacity;

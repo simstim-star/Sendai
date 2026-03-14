@@ -21,6 +21,13 @@ typedef struct {
 	GPUTexture Texture;
 } TextureLookup;
 
+typedef struct {
+	ID3D12Resource *Resource;
+	UINT8 *BaseMappedPtr;
+	UINT64 Size;
+	UINT64 CurrentOffset;
+} R_UploadBuffer;
+
 typedef struct R_World {
 	HWND hWnd;
 	UINT Width;
@@ -58,8 +65,10 @@ typedef struct R_World {
 	ID3D12Resource *IndexBuffer;
 	ID3D12Resource *UploadBuffer;
 
-	UINT8 *MVPUploadCpuAddress;
-	D3D12_GPU_VIRTUAL_ADDRESS MVPUploadGpuAddress;
+	UINT8 *DynamicDataUploadBufferCpuAddress;
+	ID3D12Resource *DynamicDataUploadBuffer;
+
+	R_UploadBuffer TextureUploadBuffer;
 
 	/*****************************
 		Synchronization objects
@@ -87,4 +96,4 @@ void R_UpdateResource(ID3D12Resource *Resource, void *Data, size_t DataSize);
 void R_ExecuteCommands(R_World *const Renderer);
 void R_SwapchainResize(R_World *const Renderer, int Width, int Height);
 void R_CreateUITexture(PCWSTR Path, R_World *Renderer, UINT nkSlotIndex);
-D3D12_GPU_DESCRIPTOR_HANDLE R_UploadTexture(R_World *Renderer, R_Texture *Source, UINT SlotIndex);
+GPUTexture R_UploadTexture(R_World *Renderer, R_Texture *Source, UINT SlotIndex);

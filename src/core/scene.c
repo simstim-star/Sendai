@@ -68,7 +68,7 @@ CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 	}
 
 	hr = ID3D12Device_CreateRootSignature(Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature),
-										  &IID_ID3D12RootSignature, (void **)RootSign);
+										  &IID_ID3D12RootSignature, RootSign);
 	ExitIfFailed(hr);
 }
 
