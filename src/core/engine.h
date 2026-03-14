@@ -22,4 +22,4 @@ typedef struct Sendai {
 	UINT FrameCounter;
 } Sendai;
 
-int Sendai_run();
+int S_Run();

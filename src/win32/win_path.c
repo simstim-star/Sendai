@@ -1,4 +1,5 @@
 #include "../core/pch.h"
+#include <strsafe.h>
 #include "win_path.h"
 
 void
@@ -17,5 +18,15 @@ Win32CurrPath(_Out_writes_(PathSize) PWSTR const Path, UINT PathSize)
 	PWSTR LastSlash = wcsrchr(Path, L'\\');
 	if (LastSlash) {
 		*(LastSlash + 1) = L'\0';
+	}
+}
+
+void
+Win32FullPath(PCWSTR SubPath, _Out_writes_(PathSize) PWSTR const Path, UINT PathSize)
+{
+	Win32CurrPath(Path, PathSize);
+	HRESULT hr = StringCchCatW(Path, PathSize, SubPath);
+	if (FAILED(hr)) {
+		exit(EXIT_FAILURE);
 	}
 }

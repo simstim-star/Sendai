@@ -1,6 +1,5 @@
 #include "../core/pch.h"
 
-#define USER_TEXTURES 6
 #define MAX_VERTEX_BUFFER 512 * 1024
 #define MAX_INDEX_BUFFER 128 * 1024
 
@@ -19,6 +18,11 @@
 #include "ui.h"
 #include "../core/log.h"
 #include "../win32/file_dialog.h"
+#include "../renderer/renderer.h"
+
+#include "../dx_helpers/desc_helpers.h"
+
+static struct nk_image UI_TEXTURES[NUM_USER_TEXTURES];
 
 /****************************************************
 	Forward declaration of private functions
@@ -33,14 +37,13 @@ static struct nk_colorf ColorToNuklear(R_Color *color);
 void
 UI_Init(UI_Renderer *const UI, int Width, int Height, ID3D12Device *Device, ID3D12GraphicsCommandList *CommandList)
 {
-	UI->Context = nk_d3d12_init(Device, Width, Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, USER_TEXTURES);
+	UI->Context = nk_d3d12_init(Device, Width, Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, NUM_USER_TEXTURES);
 	UI->Width = Width;
 	UI->Height = Height;
-	{
-		struct nk_font_atlas *Atlas;
-		nk_d3d12_font_stash_begin(&Atlas);
-		nk_d3d12_font_stash_end(CommandList);
-	}
+
+	struct nk_font_atlas *Atlas;
+	nk_d3d12_font_stash_begin(&Atlas);
+	nk_d3d12_font_stash_end(CommandList);
 }
 
 UI_Action
@@ -49,20 +52,44 @@ UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State)
 	const float BarHeight = UI->Height * 0.05f;
 	UI_Action Action = UI_ACTION_NONE;
 
-	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, UI->Width, BarHeight), NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
+	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, UI->Width, BarHeight), NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_dynamic(UI->Context, BarHeight * 0.8f, 3);
 		if (nk_button_label(UI->Context, "File")) {
 			Action = UI_ACTION_FILE_OPEN;
 		}
 		if (nk_button_label(UI->Context, "Logs")) {
 			State->ShowLog = !State->ShowLog;
+			Action = UI_ACTION_NONE;
 		}
 	}
 	nk_end(UI->Context);
 
 	if (State->ShowLog) {
-		Action = UI_LogWindow(UI);
+		UI_LogWindow(UI);
 	}
+
+	return Action;
+}
+
+UI_Action
+UI_DrawToolbarButton(UI_Renderer *UI, UI_ToolBarState *State)
+{
+	struct nk_context *Ctx = UI->Context;
+	UI_Action Action = UI_ACTION_NONE;
+
+	const float TopBarHeight = UI->Height * 0.05f;
+	const float BtnSize = 50.0f;
+	struct nk_rect WindowRect = nk_rect(10, TopBarHeight + 10, BtnSize, BtnSize);
+	nk_style_push_vec2(Ctx, &Ctx->style.window.padding, nk_vec2(0, 0));
+	if (nk_begin(Ctx, "IconButton", WindowRect, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_static(Ctx, BtnSize, BtnSize, 1);
+		if (nk_button_image(Ctx, UI_TEXTURES[TEXTURE_WIREFRAME])) {
+			Action = UI_ACTION_WIREFRAME_BUTTON_CLICKED;
+			State->Wireframe = !State->Wireframe;
+		}
+	}
+	nk_end(Ctx);
+	nk_style_pop_vec2(Ctx);
 
 	return Action;
 }
@@ -225,4 +252,20 @@ ColorToNuklear(R_Color *Color)
 	  .b = Color->B,
 	  .a = Color->A,
 	};
+}
+
+void
+SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *Texture)
+{
+	if (nkSrvIndex >= NUM_USER_TEXTURES) {
+		return;
+	}
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC SrvDesc = {.Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+											   .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+											   .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+											   .Texture2D.MipLevels = 1};
+	nk_handle Handle;
+	nk_d3d12_set_user_texture(nkSrvIndex, Texture, &SrvDesc, &Handle);
+	UI_TEXTURES[nkSrvIndex] = nk_image_handle(Handle);
 }

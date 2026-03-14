@@ -5,6 +5,8 @@
 #include "../ui/ui.h"
 #include "../win32/file_dialog.h"
 
+#include "../win32/win_path.h"
+
 /****************************************************
 	Forward declaration of private functions
 *****************************************************/
@@ -21,7 +23,7 @@ static void LoadPrimitivesIntoBuffers(R_World *Renderer, SendaiScene *Scene);
 *****************************************************/
 
 int
-Sendai_run()
+S_Run()
 {
 	Sendai Engine = {.Title = L"Sendai",
 					 .WorldRenderer = {.Width = 1280, .Height = 720},
@@ -42,12 +44,19 @@ Sendai_run()
 	R_Init(&Engine.WorldRenderer, Engine.hWnd);
 
 	CreateSceneRootSig(Engine.WorldRenderer.Device, &Engine.Scene.RootSign);
-	PCWSTR ShadersPath = wcscat(Engine.WorldRenderer.AssetsPath, L"/shaders/gltf/gltf.hlsl");
-	CompileSceneVS(ShadersPath, &Engine.Scene.VS);
-	CompileScenePS(ShadersPath, &Engine.Scene.PS);
+
+	WCHAR GLTFShadersPath[512];
+	Win32FullPath(L"/shaders/gltf/gltf.hlsl", GLTFShadersPath, _countof(GLTFShadersPath));
+	CompileSceneVS(GLTFShadersPath, &Engine.Scene.VS);
+	CompileScenePS(GLTFShadersPath, &Engine.Scene.PS);
 	CreateScenePipelineState(&Engine.WorldRenderer, &Engine.Scene);
 
 	UI_Init(&Engine.UI_Renderer, Engine.WorldRenderer.Width, Engine.WorldRenderer.Height, Engine.WorldRenderer.Device, Engine.WorldRenderer.CommandList);
+	
+	WCHAR WireframePath[512];
+	Win32FullPath(L"/assets/images/wireframe.png", WireframePath, _countof(WireframePath));
+	R_CreateUITexture(WireframePath, &Engine.WorldRenderer, TEXTURE_WIREFRAME);
+	
 	S_TimerInit(&Engine.Timer);
 
 	ShowWindow(Engine.hWnd, SW_MAXIMIZE);
@@ -168,7 +177,8 @@ UI_Update(Sendai *Engine)
 {
 	Engine->UI.BottomBar.FPS = Engine->Timer.FramesPerSecond;
 	Engine->UI.BottomBar.FrameCounter = Engine->FrameCounter;
-	UI_Action Action = UI_DrawTopBar(&Engine->UI_Renderer, &Engine->UI.TopBar) | UI_DrawBottomBar(&Engine->UI_Renderer, &Engine->UI.BottomBar);
+	UI_Action Action = UI_DrawTopBar(&Engine->UI_Renderer, &Engine->UI.TopBar) | UI_DrawToolbarButton(&Engine->UI_Renderer, &Engine->UI.ToolBar) |
+					   UI_DrawBottomBar(&Engine->UI_Renderer, &Engine->UI.BottomBar);
 
 	switch (Action) {
 	case UI_ACTION_FILE_OPEN: {
@@ -181,6 +191,13 @@ UI_Update(Sendai *Engine)
 		CoTaskMemFree(FilePath);
 		break;
 	}
+	case UI_ACTION_WIREFRAME_BUTTON_CLICKED:
+		if (Engine->WorldRenderer.State != RENDER_STATE_WIREFRAME) {
+			Engine->WorldRenderer.State = RENDER_STATE_WIREFRAME;
+		} else {
+			Engine->WorldRenderer.State = RENDER_STATE_GLTF;
+		}
+		break;
 	default:
 		break;
 	}

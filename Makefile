@@ -52,7 +52,7 @@ ALL_OBJS = \
 
 # --- Build Rules ---
 
-all: setup $(PCH_OBJ) $(OUT_DIR)\$(PROJECT_NAME).exe copy_shaders
+all: setup $(PCH_OBJ) $(OUT_DIR)\$(PROJECT_NAME).exe copy_shaders copy_assets
 
 setup:
 	@if not exist build_nmake mkdir build_nmake
@@ -69,6 +69,10 @@ setup:
 copy_shaders:
 	@if not exist $(OUT_DIR)\shaders\gltf mkdir $(OUT_DIR)\shaders\gltf
 	xcopy /Y /S src\shaders\gltf\* $(OUT_DIR)\shaders\gltf\
+
+copy_assets:
+	@if not exist $(OUT_DIR)\assets mkdir $(OUT_DIR)\assets
+	xcopy /Y /S assets\* $(OUT_DIR)\assets\
 
 debug:
 	$(MAKE) /NOLOGO DEBUG=1 all

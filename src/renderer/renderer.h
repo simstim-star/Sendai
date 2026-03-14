@@ -9,6 +9,8 @@ typedef struct R_Camera R_Camera;
 typedef struct R_Primitive R_Primitive;
 typedef struct R_Texture R_Texture;
 
+typedef enum RENDER_STATES { RENDER_STATE_GLTF, RENDER_STATE_WIREFRAME, N_RENDER_STATES } RENDER_STATE;
+
 typedef struct GPUTexture {
 	ID3D12Resource *GpuTexture;
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvHandle;
@@ -24,7 +26,6 @@ typedef struct R_World {
 	UINT Width;
 	UINT Height;
 	float AspectRatio;
-	WCHAR AssetsPath[512];
 
 	D3D12_VIEWPORT Viewport;
 	D3D12_RECT ScissorRect;
@@ -50,7 +51,8 @@ typedef struct R_World {
 	ID3D12CommandAllocator *CommandAllocator;
 	ID3D12GraphicsCommandList *CommandList;
 
-	ID3D12PipelineState *PipelineStateScene;
+	RENDER_STATE State;
+	ID3D12PipelineState *PipelineState[N_RENDER_STATES];
 
 	ID3D12Resource *VertexBuffer;
 	ID3D12Resource *IndexBuffer;
@@ -84,4 +86,5 @@ void R_Draw(R_World *const Renderer, SendaiScene *Scene, R_Camera *const Camera)
 void R_UpdateResource(ID3D12Resource *Resource, void *Data, size_t DataSize);
 void R_ExecuteCommands(R_World *const Renderer);
 void R_SwapchainResize(R_World *const Renderer, int Width, int Height);
+void R_CreateUITexture(PCWSTR Path, R_World *Renderer, UINT nkSlotIndex);
 D3D12_GPU_DESCRIPTOR_HANDLE R_UploadTexture(R_World *Renderer, R_Texture *Source, UINT SlotIndex);

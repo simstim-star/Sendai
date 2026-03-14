@@ -128,6 +128,10 @@ CreateScenePipelineState(R_World *renderer, SendaiScene *scene)
 	  .SampleDesc.Count = 1,
 	};
 
-	HRESULT hr = ID3D12Device_CreateGraphicsPipelineState(renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &renderer->PipelineStateScene);
+	HRESULT hr = ID3D12Device_CreateGraphicsPipelineState(renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &renderer->PipelineState[RENDER_STATE_GLTF]);
+	ExitIfFailed(hr);
+
+	PSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+	hr = ID3D12Device_CreateGraphicsPipelineState(renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &renderer->PipelineState[RENDER_STATE_WIREFRAME]);
 	ExitIfFailed(hr);
 }
