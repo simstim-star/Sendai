@@ -43,8 +43,6 @@ static void AppendFileNameToPath(_In_z_ PWSTR BasePath, _In_z_ char *FileName, _
 
 static int IsDataEmbedded(const cgltf_image *const BaseImage);
 
-static void FlipZInColMajor(float ColMajor[16]);
-
 // The below functions are to inject into gltf to use my arena
 static void *cgltf_arena_alloc(void *user, cgltf_size size);
 static void cgltf_arena_free(void *user, void *ptr);
@@ -208,14 +206,14 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 					float uv[2];
 					cgltf_accessor_read_float(UVAccessorsData[0], i, uv, 2);
 					Vertices[i].UV0[0] = uv[0];
-					Vertices[i].UV0[1] = 1.0f - uv[1]; // Flip for DX
+					Vertices[i].UV0[1] = uv[1];
 				}
 
 				if (UVAccessorsData[1]) {
 					float uv[2];
 					cgltf_accessor_read_float(UVAccessorsData[1], i, uv, 2);
 					Vertices[i].UV1[0] = uv[0];
-					Vertices[i].UV1[1] = 1.0f - uv[1]; // Flip for DX
+					Vertices[i].UV1[1] = uv[1];
 				} else {
 					Vertices[i].UV1[0] = 0.0f;
 					Vertices[i].UV1[1] = 0.0f;

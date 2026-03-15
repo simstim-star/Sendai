@@ -351,7 +351,6 @@ R_CreateUITexture(PCWSTR Path, R_World *Renderer, UINT nkSlotIndex)
 	TextureLookup Lookup = {.key = "ui_toolbar_wireframe", .Texture = NewTex};
 	shputs(Renderer->Textures, Lookup);
 	stbi_image_free(Pixels);
-	return NewTex;
 }
 
 void
