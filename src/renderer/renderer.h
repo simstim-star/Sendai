@@ -16,12 +16,12 @@ typedef struct GPUTexture {
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvHandle;
 } GPUTexture;
 
-typedef struct {
+typedef struct TextureLookup {
 	char *key;
 	GPUTexture Texture;
 } TextureLookup;
 
-typedef struct {
+typedef struct R_UploadBuffer {
 	ID3D12Resource *Resource;
 	UINT8 *BaseMappedPtr;
 	UINT64 Size;
@@ -52,6 +52,10 @@ typedef struct R_World {
 	ID3D12Device *Device;
 	ID3D12CommandQueue *CommandQueue;
 
+	ID3DBlob *VS;
+	ID3DBlob *PS;
+	ID3D12RootSignature *RootSign;
+
 	ID3D12Resource *DepthStencil;
 	ID3D12DescriptorHeap *DepthStencilHeap;
 
@@ -65,8 +69,11 @@ typedef struct R_World {
 	ID3D12Resource *IndexBuffer;
 	ID3D12Resource *UploadBuffer;
 
-	UINT8 *DynamicDataUploadBufferCpuAddress;
-	ID3D12Resource *DynamicDataUploadBuffer;
+	UINT8 *VertexDataUploadBufferCpuAddress;
+	ID3D12Resource *VertexDataUploadBuffer;
+
+	UINT8 *LightDataUploadBufferCpuAddress;
+	ID3D12Resource *LightDataUploadBuffer;
 
 	R_UploadBuffer TextureUploadBuffer;
 
@@ -91,7 +98,7 @@ typedef struct R_World {
 void R_Init(R_World *const Renderer, HWND hWnd);
 
 void R_Destroy(R_World *Renderer);
-void R_Draw(R_World *const Renderer, SendaiScene *Scene, R_Camera *const Camera);
+void R_Draw(R_World *const Renderer, S_Scene *Scene, R_Camera *const Camera);
 void R_UpdateResource(ID3D12Resource *Resource, void *Data, size_t DataSize);
 void R_ExecuteCommands(R_World *const Renderer);
 void R_SwapchainResize(R_World *const Renderer, int Width, int Height);

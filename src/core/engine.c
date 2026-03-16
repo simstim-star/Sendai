@@ -5,6 +5,9 @@
 #include "../ui/ui.h"
 #include "../win32/file_dialog.h"
 #include "../win32/win_path.h"
+#include "../renderer/shader.h"
+
+static const UINT8 BLACK_PIXEL[] = {0, 0, 0, 255};
 
 /****************************************************
 	Forward declaration of private functions
@@ -15,7 +18,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lPara
 static void EngineUpdate(Sendai *Engine);
 static void EngineDraw(Sendai *Engine);
 static void UI_Update(Sendai *Engine);
-static void LoadPrimitivesIntoBuffers(R_World *Renderer, SendaiScene *Scene);
+static void LoadPrimitivesIntoBuffers(R_World *Renderer, S_Scene *Scene);
 
 /****************************************************
 	Public functions
@@ -42,13 +45,13 @@ S_Run()
 	InitWindow(&Engine);
 	R_Init(&Engine.WorldRenderer, Engine.hWnd);
 
-	CreateSceneRootSig(Engine.WorldRenderer.Device, &Engine.Scene.RootSign);
+	R_CreateSceneRootSig(Engine.WorldRenderer.Device, &Engine.WorldRenderer.RootSign);
 
 	WCHAR GLTFShadersPath[512];
 	Win32FullPath(L"/shaders/gltf/gltf.hlsl", GLTFShadersPath, _countof(GLTFShadersPath));
-	CompileSceneVS(GLTFShadersPath, &Engine.Scene.VS);
-	CompileScenePS(GLTFShadersPath, &Engine.Scene.PS);
-	CreateScenePipelineState(&Engine.WorldRenderer, &Engine.Scene);
+	R_CompileSceneVS(GLTFShadersPath, &Engine.WorldRenderer.VS);
+	R_CompileScenePS(GLTFShadersPath, &Engine.WorldRenderer.PS);
+	R_CreateScenePipelineState(&Engine.WorldRenderer);
 
 	UI_Init(&Engine.UI_Renderer, Engine.WorldRenderer.Width, Engine.WorldRenderer.Height, Engine.WorldRenderer.Device, Engine.WorldRenderer.CommandList);
 	
@@ -77,7 +80,7 @@ S_Run()
 		}
 	}
 
-	ID3D12RootSignature_Release(Engine.Scene.RootSign);
+	ID3D12RootSignature_Release(Engine.WorldRenderer.RootSign);
 	R_Destroy(&Engine.WorldRenderer);
 	S_ArenaRelease(&Engine.Scene.SceneArena);
 
@@ -211,7 +214,7 @@ UI_Update(Sendai *Engine)
 }
 
 void
-LoadPrimitivesIntoBuffers(R_World *Renderer, SendaiScene *Scene)
+LoadPrimitivesIntoBuffers(R_World *Renderer, S_Scene *Scene)
 {
 	void *pData;
 	ID3D12Resource_Map(Renderer->UploadBuffer, 0, NULL, &pData);
@@ -246,11 +249,25 @@ LoadPrimitivesIntoBuffers(R_World *Renderer, SendaiScene *Scene)
 
 				if (Primitive->AlbedoIndex >= 0) {
 					UINT BaseSlot = Renderer->SrvCount;
+
 					R_Texture *AlbedoTexture = &Scene->Models[ModelIdx].Images[Primitive->AlbedoIndex];
-					GPUTexture Texture = R_UploadTexture(Renderer, AlbedoTexture, BaseSlot);
-					Primitive->MaterialDescriptorBase = Texture.SrvHandle;
-					// dirty hack
-					Renderer->SrvCount += 1;
+					GPUTexture Albedo = R_UploadTexture(Renderer, AlbedoTexture, BaseSlot);
+					GPUTexture Specular;
+					if (Primitive->SpecularIndex >= 0) {
+						R_Texture *SpecTexture = &Scene->Models[ModelIdx].Images[Primitive->SpecularIndex];
+						Specular = R_UploadTexture(Renderer, SpecTexture, BaseSlot + 1);
+					} else {
+						R_Texture Dummy = {
+						  .Pixels = (void *)BLACK_PIXEL,
+						  .Width = 1,
+						  .Height = 1,
+						  .Name = "__black_dummy_specular",
+						};
+						Specular = R_UploadTexture(Renderer, &Dummy, BaseSlot + 1);
+					}
+
+					Primitive->MaterialDescriptorBase = Albedo.SrvHandle;
+					Renderer->SrvCount += 2;
 				}
 			}
 		}

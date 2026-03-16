@@ -18,6 +18,7 @@ typedef struct R_Float4 {
 typedef struct R_Vertex {
 	R_Float4 Position;
 	R_Float4 Color;
+	R_Float4 Normal;
 	float UV0[2];
 	float UV1[2];
 } R_Vertex;
@@ -29,6 +30,24 @@ typedef struct R_PBRConstantBuffer {
 	float UVRotation;
 	float Padding[3];
 } R_PBRConstantBuffer;
+
+typedef struct R_PointLight {
+	float LightPosition[4];
+	float DiffuseColor[4];
+	float AmbientColor[4];
+	float SpecularColor[4];
+} R_Light;
+
+typedef struct R_SceneData {
+	XMFLOAT3 ViewPosition;
+	R_Light Light;
+	float Shininess;
+	float Padding[3];
+} R_SceneData;
+
+typedef struct R_MeshConstants {
+	XMFLOAT4X4 Model;
+} R_MeshConstants;
 
 #define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 4
 
@@ -49,6 +68,7 @@ typedef struct R_Primitive {
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView;
 
 	INT AlbedoIndex;
+	INT SpecularIndex;
 
 	int UVChannel;
 	R_PBRConstantBuffer cb;
@@ -61,7 +81,7 @@ typedef struct R_Mesh {
 	UINT PrimitivesCount;
 
 	// RH and Row-Major
-	XMMATRIX ModelMatrix;
+	XMFLOAT4X4 ModelMatrix;
 } R_Mesh;
 
 typedef struct R_Model {

@@ -14,13 +14,11 @@
 #include "../renderer/render_types.h"
 #include "gltf.h"
 
-static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
-
 /****************************************************
 	Forward declaration of private functions
 *****************************************************/
 
-static void PreloadImages(SendaiScene *Scene, cgltf_data *Data, PCWSTR Path);
+static void PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path);
 
 static BOOL ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 							 _In_ cgltf_image *Img,
@@ -52,7 +50,7 @@ static void cgltf_arena_free(void *user, void *ptr);
 *****************************************************/
 
 BOOL
-SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
+SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 {
 	S_Arena LocalArena = S_ArenaInit(GIGABYTES(1));
 
@@ -113,14 +111,14 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 		R_Mesh *Mesh = &Scene->Models[Scene->ModelsCount].Meshes[Scene->Models[Scene->ModelsCount].MeshesCount];
 		cgltf_mesh *MeshData = NodeData->mesh;
 
-		float TransformColMajor[16];
+		float TransformColMajor[4][4];
 		cgltf_node_transform_world(NodeData, TransformColMajor);
 
 		// Note: Mesh->Transform is col-major, but XMLoadFloat4x4 expects row-major.
 		// This way, the matrix is automatically transposed already, because XMLoadFloat4x4
 		// will pick as row what is col and vice-versa. Therefore, ModelMatrix is Mesh->Transform
 		// converted to row-major.
-		Mesh->ModelMatrix = XMLoadFloat4x4(TransformColMajor);
+		memcpy(&Mesh->ModelMatrix, TransformColMajor, sizeof(XMFLOAT4X4));
 
 		Mesh->PrimitivesCount = MeshData->primitives_count;
 		Mesh->Primitives = S_ArenaAlloc(&Scene->SceneArena, Mesh->PrimitivesCount * sizeof(R_Primitive));
@@ -174,6 +172,14 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 
 					memcpy(Primitive->cb.BaseColorFactor, MetallicRoughnessData->base_color_factor, sizeof(float) * 4);
 				}
+				if (MaterialData->has_specular) {
+					cgltf_specular *Specular = &MaterialData->specular;
+					if (Specular->specular_texture.texture) {
+						Primitive->SpecularIndex = Specular->specular_texture.texture->image - Data->images;
+					}
+				} else {
+					Primitive->SpecularIndex = -1;
+				}
 			}
 
 			cgltf_accessor *PositionAccessor = AccessorsData[cgltf_attribute_type_position];
@@ -189,6 +195,16 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 				float Position[3];
 				cgltf_accessor_read_float(PositionAccessor, i, Position, 3);
 				Vertices[i].Position = (R_Float4){Position[0], Position[1], Position[2], 1.0f};
+
+				cgltf_accessor *NormalAccessor = AccessorsData[cgltf_attribute_type_normal];
+				if (NormalAccessor) {
+					float Normal[4];
+					cgltf_accessor_read_float(NormalAccessor, i, Normal, 3);
+					Vertices[i].Normal.X = Normal[0];
+					Vertices[i].Normal.Y = Normal[1];
+					Vertices[i].Normal.Z = Normal[2];
+					Vertices[i].Normal.W = 1;
+				}
 
 				cgltf_accessor *ColorAccessor = AccessorsData[cgltf_attribute_type_color];
 				if (ColorAccessor) {
@@ -254,7 +270,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, SendaiScene *Scene)
 *****************************************************/
 
 void
-PreloadImages(SendaiScene *Scene, cgltf_data *Data, PCWSTR Path)
+PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path)
 {
 	Scene->Models[Scene->ModelsCount].Images = S_ArenaAlloc(&Scene->SceneArena, Data->images_count * sizeof(R_Texture));
 	Scene->Models[Scene->ModelsCount].ImagesCount = Data->images_count;

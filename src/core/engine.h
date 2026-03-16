@@ -18,7 +18,7 @@ typedef struct Sendai {
 	R_Camera Camera;
 	R_World WorldRenderer;
 	S_StepTimer Timer;
-	SendaiScene Scene;
+	S_Scene Scene;
 	UINT FrameCounter;
 } Sendai;
 

@@ -2,17 +2,17 @@
 
 #include "../core/pch.h"
 
-#include "scene.h"
+#include "../core/log.h"
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"
-#include "../renderer/render_types.h"
-#include "../renderer/renderer.h"
-#include "../core/log.h"
+#include "render_types.h"
+#include "renderer.h"
+#include "shader.h"
 
 void
-CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
+R_CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 {
-	D3D12_ROOT_PARAMETER RootParameters[3] = {0};
+	D3D12_ROOT_PARAMETER RootParameters[4] = {0};
 
 	RootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	RootParameters[0].Descriptor.ShaderRegister = 0;
@@ -24,6 +24,10 @@ CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 	RootParameters[1].Constants.Num32BitValues = NUM_32BITS_PBR_VALUES;
 	RootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
+	RootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	RootParameters[2].Descriptor.ShaderRegister = 2;
+	RootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
 	D3D12_DESCRIPTOR_RANGE SrvRange = {
 	  .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 	  .NumDescriptors = 2,
@@ -32,10 +36,10 @@ CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 	  .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
 	};
 
-	RootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	RootParameters[2].DescriptorTable.NumDescriptorRanges = 1;
-	RootParameters[2].DescriptorTable.pDescriptorRanges = &SrvRange;
-	RootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	RootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	RootParameters[3].DescriptorTable.NumDescriptorRanges = 1;
+	RootParameters[3].DescriptorTable.pDescriptorRanges = &SrvRange;
+	RootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	D3D12_STATIC_SAMPLER_DESC Sampler = {
 	  .Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
@@ -49,7 +53,7 @@ CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 	};
 
 	D3D12_ROOT_SIGNATURE_DESC RootSignatureDesc = {
-	  .NumParameters = 3,
+	  .NumParameters = 4,
 	  .pParameters = RootParameters,
 	  .NumStaticSamplers = 1,
 	  .pStaticSamplers = &Sampler,
@@ -73,7 +77,7 @@ CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 }
 
 BOOL
-CompileSceneVS(PCWSTR FilePath, ID3DBlob **VS)
+R_CompileSceneVS(PCWSTR FilePath, ID3DBlob **VS)
 {
 #if defined(_DEBUG)
 	const UINT CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
@@ -84,7 +88,7 @@ CompileSceneVS(PCWSTR FilePath, ID3DBlob **VS)
 }
 
 BOOL
-CompileScenePS(PCWSTR FilePath, ID3DBlob **PS)
+R_CompileScenePS(PCWSTR FilePath, ID3DBlob **PS)
 {
 #if defined(_DEBUG)
 	const UINT CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
@@ -95,27 +99,27 @@ CompileScenePS(PCWSTR FilePath, ID3DBlob **PS)
 }
 
 void
-CreateScenePipelineState(R_World *renderer, SendaiScene *scene)
+R_CreateScenePipelineState(R_World *Renderer)
 {
 	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
 	  {"POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 	  {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	  {"NORMAL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 	  {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-	  {"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
-	};
+	  {"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
-	  .pRootSignature = scene->RootSign,
+	  .pRootSignature = Renderer->RootSign,
 	  .InputLayout = (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
 	  .VS =
 		  (D3D12_SHADER_BYTECODE){
-			.pShaderBytecode = ID3D10Blob_GetBufferPointer(scene->VS),
-			.BytecodeLength = ID3D10Blob_GetBufferSize(scene->VS),
+			.pShaderBytecode = ID3D10Blob_GetBufferPointer(Renderer->VS),
+			.BytecodeLength = ID3D10Blob_GetBufferSize(Renderer->VS),
 		  },
 	  .PS =
 		  (D3D12_SHADER_BYTECODE){
-			.pShaderBytecode = ID3D10Blob_GetBufferPointer(scene->PS),
-			.BytecodeLength = ID3D10Blob_GetBufferSize(scene->PS),
+			.pShaderBytecode = ID3D10Blob_GetBufferPointer(Renderer->PS),
+			.BytecodeLength = ID3D10Blob_GetBufferSize(Renderer->PS),
 		  },
 	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
 	  .BlendState = CD3DX12_DEFAULT_BLEND_DESC(),
@@ -128,10 +132,20 @@ CreateScenePipelineState(R_World *renderer, SendaiScene *scene)
 	  .SampleDesc.Count = 1,
 	};
 
-	HRESULT hr = ID3D12Device_CreateGraphicsPipelineState(renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &renderer->PipelineState[RENDER_STATE_GLTF]);
+	HRESULT hr =
+		ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[RENDER_STATE_GLTF]);
 	ExitIfFailed(hr);
 
 	PSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
-	hr = ID3D12Device_CreateGraphicsPipelineState(renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &renderer->PipelineState[RENDER_STATE_WIREFRAME]);
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState,
+												  &Renderer->PipelineState[RENDER_STATE_WIREFRAME]);
 	ExitIfFailed(hr);
+}
+
+XMMATRIX
+R_NormalMatrix(XMFLOAT4X4 Model)
+{
+	XMMATRIX ModelMatrix = XMLoadFloat4x4(&Model);
+	XMMATRIX ModelInv = XM_MAT_INV(NULL, ModelMatrix);
+	return XM_MAT_TRANSP(ModelInv);
 }

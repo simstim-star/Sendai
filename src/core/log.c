@@ -1,3 +1,5 @@
+#include "pch.h"
+
 #include "log.h"
 
 S_Log SENDAI_LOG = {.Buffer = {0}, .Len = 0};
@@ -9,19 +11,14 @@ S_LogAppend(PCWSTR Text)
 		return;
 	}
 
-	size_t TextLen = wcslen(Text);
-	size_t RemainingSpace = LOG_CAPACITY - SENDAI_LOG.Len;
+	HRESULT hr = StringCchCatW(SENDAI_LOG.Buffer, LOG_CAPACITY, Text);
 
-	if (TextLen + 1 > RemainingSpace) {
-		TextLen = RemainingSpace - 1;
-		if (TextLen <= 0) {
-			return;
+	if (SUCCEEDED(hr) || hr == STRSAFE_E_INSUFFICIENT_BUFFER) {
+		size_t NewLen = 0;
+		if (SUCCEEDED(StringCchLengthW(SENDAI_LOG.Buffer, LOG_CAPACITY, &NewLen))) {
+			SENDAI_LOG.Len = (int)NewLen;
 		}
 	}
-
-	wcsncat(SENDAI_LOG.Buffer, Text, TextLen);
-	SENDAI_LOG.Len += TextLen;
-	SENDAI_LOG.Buffer[SENDAI_LOG.Len] = L'\0';
 }
 
 void
@@ -31,25 +28,15 @@ S_LogAppendf(PCWSTR Format, ...)
 		return;
 	}
 
-	int RemainingSpace = LOG_CAPACITY - SENDAI_LOG.Len;
-
-	if (RemainingSpace <= 1) {
-		return;
-	}
-
 	va_list Args;
 	va_start(Args, Format);
-	int CharsWouldWrite = vswprintf(SENDAI_LOG.Buffer + SENDAI_LOG.Len, RemainingSpace, Format, Args);
+	HRESULT hr = StringCchVPrintfW(SENDAI_LOG.Buffer + SENDAI_LOG.Len, LOG_CAPACITY - SENDAI_LOG.Len, Format, Args);
 	va_end(Args);
 
-	if (CharsWouldWrite < 0)
-		return;
-
-	if (CharsWouldWrite < RemainingSpace) {
-		SENDAI_LOG.Len += CharsWouldWrite;
-	} else {
-		SENDAI_LOG.Len += RemainingSpace - 1;
+	if (SUCCEEDED(hr) || hr == STRSAFE_E_INSUFFICIENT_BUFFER) {
+		size_t NewLen = 0;
+		if (SUCCEEDED(StringCchLengthW(SENDAI_LOG.Buffer, LOG_CAPACITY, &NewLen))) {
+			SENDAI_LOG.Len = (int)NewLen;
+		}
 	}
-
-	SENDAI_LOG.Buffer[SENDAI_LOG.Len] = L'\0';
 }

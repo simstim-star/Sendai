@@ -42,11 +42,11 @@ ALL_OBJS = \
     $(OBJ_DIR)\win32\win_path.obj \
     $(OBJ_DIR)\win32\file_dialog.obj \
     $(OBJ_DIR)\renderer\renderer.obj \
+    $(OBJ_DIR)\renderer\shader.obj \
     $(OBJ_DIR)\ui\ui.obj \
     $(OBJ_DIR)\error\error.obj \
     $(OBJ_DIR)\core\engine.obj \
     $(OBJ_DIR)\core\log.obj \
-    $(OBJ_DIR)\core\scene.obj \
     $(OBJ_DIR)\assets\gltf.obj \
     $(OBJ_DIR)\core\arena.obj
 
