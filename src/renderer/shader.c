@@ -76,26 +76,24 @@ R_CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 	ExitIfFailed(hr);
 }
 
-BOOL
-R_CompileSceneVS(PCWSTR FilePath, ID3DBlob **VS)
+HRESULT
+R_CompileShader(PCWSTR FilePath, ID3DBlob **Blob, EShaderType ShaderType)
 {
 #if defined(_DEBUG)
 	const UINT CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #else
 	const UINT CompileFlags = 0;
 #endif
-	return SUCCEEDED(D3DCompileFromFile(FilePath, NULL, NULL, "VSMain", "vs_5_0", CompileFlags, 0, VS, NULL));
-}
-
-BOOL
-R_CompileScenePS(PCWSTR FilePath, ID3DBlob **PS)
-{
-#if defined(_DEBUG)
-	const UINT CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-	const UINT CompileFlags = 0;
-#endif
-	return SUCCEEDED(D3DCompileFromFile(FilePath, NULL, NULL, "PSMain", "ps_5_0", CompileFlags, 0, PS, NULL));
+	HRESULT hr;
+	switch (ShaderType) {
+	case EST_VERTEX_SHADER:
+		hr = D3DCompileFromFile(FilePath, NULL, NULL, "VSMain", "vs_5_0", CompileFlags, 0, Blob, NULL);
+		break;
+	case EST_PIXEL_SHADER:
+		hr = D3DCompileFromFile(FilePath, NULL, NULL, "PSMain", "ps_5_0", CompileFlags, 0, Blob, NULL);
+		break;
+	}
+	return hr;
 }
 
 void

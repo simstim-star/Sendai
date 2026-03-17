@@ -24,7 +24,7 @@ static void LoadPrimitivesIntoBuffers(R_World *Renderer, S_Scene *Scene);
 	Public functions
 *****************************************************/
 
-int
+INT
 S_Run()
 {
 	Sendai Engine = {.Title = L"Sendai",
@@ -36,23 +36,13 @@ S_Run()
 						   .ModelsCount = 0,
 						   .ModelsCapacity = 10000,
 						 },
-					 .bRunning = true};
+					 .bRunning = TRUE};
 
 	Engine.Scene.Models = S_ArenaAlloc(&Engine.Scene.SceneArena, sizeof(R_Model) * Engine.Scene.ModelsCapacity);
-
 	Engine.Camera.Yaw = 2 * XM_PI;
 
 	InitWindow(&Engine);
 	R_Init(&Engine.WorldRenderer, Engine.hWnd);
-
-	R_CreateSceneRootSig(Engine.WorldRenderer.Device, &Engine.WorldRenderer.RootSign);
-
-	WCHAR GLTFShadersPath[512];
-	Win32FullPath(L"/shaders/gltf/gltf.hlsl", GLTFShadersPath, _countof(GLTFShadersPath));
-	R_CompileSceneVS(GLTFShadersPath, &Engine.WorldRenderer.VS);
-	R_CompileScenePS(GLTFShadersPath, &Engine.WorldRenderer.PS);
-	R_CreateScenePipelineState(&Engine.WorldRenderer);
-
 	UI_Init(&Engine.UI_Renderer, Engine.WorldRenderer.Width, Engine.WorldRenderer.Height, Engine.WorldRenderer.Device, Engine.WorldRenderer.CommandList);
 	
 	WCHAR WireframePath[512];

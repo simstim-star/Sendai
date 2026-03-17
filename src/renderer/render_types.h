@@ -18,6 +18,8 @@ typedef struct R_PBRConstantBuffer {
 	XMFLOAT3 Padding;
 } R_PBRConstantBuffer;
 
+#define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 4
+
 typedef struct R_PointLight {
 	XMFLOAT4 LightPosition;
 	XMFLOAT4 DiffuseColor;
@@ -38,8 +40,6 @@ typedef struct R_MeshConstants {
 	XMMATRIX Proj;
 	XMMATRIX Normal;
 } R_MeshConstants;
-
-#define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 4
 
 typedef struct R_Texture {
 	UINT8 *Pixels;

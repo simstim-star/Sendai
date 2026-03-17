@@ -36,18 +36,16 @@ typedef struct R_World {
 
 	D3D12_VIEWPORT Viewport;
 	D3D12_RECT ScissorRect;
-
-	DXGI_MODE_DESC FullscreenMode;
-	BOOL bFullscreen;
-	DXGI_MODE_DESC *DisplayModes;
-
 	IDXGISwapChain1 *SwapChain;
 	ID3D12DescriptorHeap *RtvDescriptorHeap;
-	ID3D12DescriptorHeap *SrvHeap;
-	D3D12_CPU_DESCRIPTOR_HANDLE RtvHandles[FRAME_COUNT];
+
 	ID3D12Resource *RtvBuffers[FRAME_COUNT];
+	D3D12_CPU_DESCRIPTOR_HANDLE RtvHandles[FRAME_COUNT];
 	UINT RtvDescIncrement;
 	UINT RtvIndex;
+	
+	ID3D12DescriptorHeap *SrvHeap;
+	UINT SrvCount;
 
 	ID3D12Device *Device;
 	ID3D12CommandQueue *CommandQueue;
@@ -65,18 +63,6 @@ typedef struct R_World {
 	RENDER_STATE State;
 	ID3D12PipelineState *PipelineState[N_RENDER_STATES];
 
-	ID3D12Resource *VertexBufferDefault;
-	ID3D12Resource *IndexBufferDefault;
-	ID3D12Resource *VertexBufferUpload;
-
-	UINT8 *MeshDataUploadBufferCpuAddress;
-	ID3D12Resource *MeshDataUploadBuffer;
-
-	UINT8 *LightDataUploadBufferCpuAddress;
-	ID3D12Resource *LightDataUploadBuffer;
-
-	R_UploadBuffer TextureUploadBuffer;
-
 	/*****************************
 		Synchronization objects
 	*****************************/
@@ -90,13 +76,23 @@ typedef struct R_World {
 		Resources
 	*****************************/
 
+	ID3D12Resource *VertexBufferDefault;
+	ID3D12Resource *IndexBufferDefault;
+	ID3D12Resource *VertexBufferUpload;
+
+	UINT8 *MeshDataUploadBufferCpuAddress;
+	ID3D12Resource *MeshDataUploadBuffer;
+
+	UINT8 *LightDataUploadBufferCpuAddress;
+	ID3D12Resource *LightDataUploadBuffer;
+
+	R_UploadBuffer TextureUploadBuffer;
+
 	ID3D12Resource *MaterialBuffer;
 	TextureLookup *Textures;
-	UINT SrvCount;
 } R_World;
 
 void R_Init(R_World *const Renderer, HWND hWnd);
-
 void R_Destroy(R_World *Renderer);
 void R_Draw(R_World *const Renderer, S_Scene *Scene, R_Camera *const Camera);
 void R_UpdateResource(ID3D12Resource *Resource, void *Data, size_t DataSize);

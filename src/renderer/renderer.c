@@ -24,13 +24,14 @@ static const FLOAT CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 static HRESULT CreateCommandQueue(const R_World *const Renderer);
 static void SetRtvBuffers(R_World *const Renderer, UINT NumBuffers);
 static void CreateSceneResources(const R_World *const Renderer);
-
-static void SignalAndWait(R_World *const Renderer);
-static void RenderPrimitives(S_Scene *Scene, R_World *const Renderer, R_Camera *const Camera);
 static void CreateDepthStencilBuffer(R_World *const Renderer);
+static void CreateShaders(R_World *const Renderer);
 static ID3D12Resource *CreateGPUTexture(R_World *Renderer, R_Texture *Source);
 static UINT64 SuballocateTextureUpload(R_World *Renderer, UINT64 Size);
 static void UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize);
+
+static void SignalAndWait(R_World *const Renderer);
+static void RenderPrimitives(S_Scene *Scene, R_World *const Renderer, R_Camera *const Camera);
 
 /****************************************************
 Public functions
@@ -127,6 +128,7 @@ R_Init(R_World *const Renderer, HWND hWnd)
 	SetRtvBuffers(Renderer, FRAME_COUNT);
 	CreateSceneResources(Renderer);
 	CreateDepthStencilBuffer(Renderer);
+	CreateShaders(Renderer);
 
 	IDXGIFactory2_Release(Factory);
 }
@@ -457,9 +459,7 @@ CreateDepthStencilBuffer(R_World *const Renderer)
 
 	D3D12_RESOURCE_DESC TextureDesc = CD3DX12_TEX2D(DXGI_FORMAT_D32_FLOAT, Renderer->Width, Renderer->Height, 1, 0, 1, 0,
 													D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_TEXTURE_LAYOUT_UNKNOWN, 0);
-
 	D3D12_CLEAR_VALUE DepthOptimizedClearValue = {.Format = DXGI_FORMAT_D32_FLOAT, .DepthStencil.Depth = 1.0f};
-
 	D3D12_HEAP_PROPERTIES DefaultHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 
 	ID3D12Device_CreateCommittedResource(Renderer->Device, &DefaultHeap, D3D12_HEAP_FLAG_NONE, &TextureDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE,
@@ -553,4 +553,18 @@ CreateSceneResources(R_World *const Renderer)
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &HeapProps, D3D12_HEAP_FLAG_NONE, &PBRDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL,
 											  &IID_ID3D12Resource, &Renderer->MaterialBuffer);
 	ExitIfFailed(hr);
+}
+
+void
+CreateShaders(R_World *const Renderer)
+{
+	R_CreateSceneRootSig(Renderer->Device, &Renderer->RootSign);
+
+	WCHAR GLTFShadersPath[512];
+	Win32FullPath(L"/shaders/gltf/gltf.hlsl", GLTFShadersPath, _countof(GLTFShadersPath));
+	HRESULT hr = R_CompileShader(GLTFShadersPath, &Renderer->VS, EST_VERTEX_SHADER);
+	ExitIfFailed(hr);
+	hr = R_CompileShader(GLTFShadersPath, &Renderer->PS, EST_PIXEL_SHADER);
+	ExitIfFailed(hr);
+	R_CreateScenePipelineState(Renderer);
 }
