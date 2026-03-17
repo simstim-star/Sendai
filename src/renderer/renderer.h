@@ -22,7 +22,7 @@ typedef struct TextureLookup {
 } TextureLookup;
 
 typedef struct R_UploadBuffer {
-	ID3D12Resource *Resource;
+	ID3D12Resource *Buffer;
 	UINT8 *BaseMappedPtr;
 	UINT64 Size;
 	UINT64 CurrentOffset;
@@ -65,12 +65,12 @@ typedef struct R_World {
 	RENDER_STATE State;
 	ID3D12PipelineState *PipelineState[N_RENDER_STATES];
 
-	ID3D12Resource *VertexBuffer;
-	ID3D12Resource *IndexBuffer;
-	ID3D12Resource *UploadBuffer;
+	ID3D12Resource *VertexBufferDefault;
+	ID3D12Resource *IndexBufferDefault;
+	ID3D12Resource *VertexBufferUpload;
 
-	UINT8 *VertexDataUploadBufferCpuAddress;
-	ID3D12Resource *VertexDataUploadBuffer;
+	UINT8 *MeshDataUploadBufferCpuAddress;
+	ID3D12Resource *MeshDataUploadBuffer;
 
 	UINT8 *LightDataUploadBufferCpuAddress;
 	ID3D12Resource *LightDataUploadBuffer;

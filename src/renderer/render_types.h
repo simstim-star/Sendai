@@ -33,7 +33,10 @@ typedef struct R_SceneData {
 } R_SceneData;
 
 typedef struct R_MeshConstants {
-	XMFLOAT4X4 Model;
+	XMMATRIX Model;
+	XMMATRIX View;
+	XMMATRIX Proj;
+	XMMATRIX Normal;
 } R_MeshConstants;
 
 #define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 4
@@ -81,3 +84,4 @@ typedef struct R_Model {
 	R_Texture *Images;
 	UINT ImagesCount;
 } R_Model;
+
