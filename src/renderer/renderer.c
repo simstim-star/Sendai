@@ -1,8 +1,9 @@
+#include "../core/pch.h"
+
 #include "renderer.h"
 #include "render_types.h"
 #include "shader.h"
 
-#include "../core/pch.h"
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"
 #include "../ui/ui.h"
@@ -14,7 +15,7 @@
 
 #include "../../deps/stb_image.h"
 
-static const float CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
+static const FLOAT CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
 /****************************************************
 	Forward declaration of private functions
@@ -35,27 +36,27 @@ void
 R_Init(R_World *const Renderer, HWND hWnd)
 {
 	Renderer->hWnd = hWnd;
-	Renderer->AspectRatio = (float)(Renderer->Width) / (Renderer->Height);
+	Renderer->AspectRatio = (FLOAT)(Renderer->Width) / (Renderer->Height);
 	Renderer->Viewport = (D3D12_VIEWPORT){
-	  .TopLeftX = 0.0f, .TopLeftY = 0.0f, .Width = (float)(Renderer->Width), .Height = (float)(Renderer->Height), .MinDepth = 0.0f, .MaxDepth = 1.0f};
+	  .TopLeftX = 0.0f, .TopLeftY = 0.0f, .Width = (FLOAT)(Renderer->Width), .Height = (FLOAT)(Renderer->Height), .MinDepth = 0.0f, .MaxDepth = 1.0f};
 	Renderer->ScissorRect = (D3D12_RECT){0, 0, (LONG)(Renderer->Width), (LONG)(Renderer->Height)};
 	Renderer->State = RENDER_STATE_GLTF;
 
 	/* D3D12 setup */
 
-	int isDebugFactory = 0;
+	INT bIsDebugFactory = 0;
 #if defined(_DEBUG)
 	ID3D12Debug1 *DebugController = NULL;
 	if (SUCCEEDED(D3D12GetDebugInterface(&IID_ID3D12Debug, (void **)&DebugController))) {
 		ID3D12Debug1_EnableDebugLayer(DebugController);
 		// ID3D12Debug1_SetEnableGPUBasedValidation(debug_controller, 1);
-		isDebugFactory |= DXGI_CREATE_FACTORY_DEBUG;
+		bIsDebugFactory |= DXGI_CREATE_FACTORY_DEBUG;
 		ID3D12Debug1_Release(DebugController);
 	}
 #endif
 
 	IDXGIFactory2 *Factory = NULL;
-	HRESULT hr = CreateDXGIFactory2(isDebugFactory, &IID_IDXGIFactory2, (void **)&Factory);
+	HRESULT hr = CreateDXGIFactory2(bIsDebugFactory, &IID_IDXGIFactory2, (void **)&Factory);
 	ExitIfFailed(hr);
 
 	hr = D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_11_0, &IID_ID3D12Device, &Renderer->Device);
@@ -265,9 +266,9 @@ R_ExecuteCommands(R_World *const Renderer)
 }
 
 void
-R_SwapchainResize(R_World *const Renderer, int Width, int Height)
+R_SwapchainResize(R_World *const Renderer, INT Width, INT Height)
 {
-	for (int i = 0; i < FRAME_COUNT; ++i) {
+	for (INT i = 0; i < FRAME_COUNT; ++i) {
 		SignalAndWait(Renderer);
 		ID3D12Resource_Release(Renderer->RtvBuffers[i]);
 	}
@@ -290,9 +291,9 @@ R_SwapchainResize(R_World *const Renderer, int Width, int Height)
 
 	Renderer->Width = Width;
 	Renderer->Height = Height;
-	Renderer->AspectRatio = (float)Width / (float)Height;
+	Renderer->AspectRatio = (FLOAT)Width / (FLOAT)Height;
 	Renderer->Viewport =
-		(D3D12_VIEWPORT){.TopLeftX = 0.0f, .TopLeftY = 0.0f, .Width = (float)Width, .Height = (float)Height, .MinDepth = 0.0f, .MaxDepth = 1.0f};
+		(D3D12_VIEWPORT){.TopLeftX = 0.0f, .TopLeftY = 0.0f, .Width = (FLOAT)Width, .Height = (FLOAT)Height, .MinDepth = 0.0f, .MaxDepth = 1.0f};
 	Renderer->ScissorRect = (D3D12_RECT){0, 0, (LONG)Width, (LONG)Height};
 
 	if (Renderer->DepthStencil) {
@@ -340,8 +341,8 @@ void
 R_CreateUITexture(PCWSTR Path, R_World *Renderer, UINT nkSlotIndex)
 {
 	char PathUTF8[MAX_PATH * 4];
-	WideCharToMultiByte(CP_UTF8, 0, Path, -1, PathUTF8, (int)sizeof(PathUTF8), NULL, NULL);
-	int W, H, Ch;
+	WideCharToMultiByte(CP_UTF8, 0, Path, -1, PathUTF8, (INT)sizeof(PathUTF8), NULL, NULL);
+	INT W, H, Ch;
 	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, &Ch, 4);
 	size_t Size = (size_t)(W) * (size_t)(H) * 4;
 	R_Texture Source = (R_Texture){
@@ -376,7 +377,7 @@ R_Destroy(R_World *Renderer)
 	IDXGISwapChain1_Release(Renderer->SwapChain);
 	ID3D12DescriptorHeap_Release(Renderer->RtvDescriptorHeap);
 	ID3D12Device_Release(Renderer->SrvHeap);
-	for (int i = 0; i < FRAME_COUNT; ++i) {
+	for (INT i = 0; i < FRAME_COUNT; ++i) {
 		SignalAndWait(Renderer);
 		ID3D12Resource_Release(Renderer->RtvBuffers[i]);
 	}
@@ -396,7 +397,7 @@ R_Destroy(R_World *Renderer)
 	ID3D12Resource_Release(Renderer->LightDataUploadBuffer);
 	CloseHandle(Renderer->FenceEvent);
 
-	for (int i = 0; i < hmlen(Renderer->Textures); ++i) {
+	for (INT i = 0; i < hmlen(Renderer->Textures); ++i) {
 		GPUTexture *Value = &Renderer->Textures[i].Texture;
 		ID3D12Resource_Release(Value->GpuTexture);
 	}
@@ -441,17 +442,17 @@ CreateGPUTexture(R_World *Renderer, R_Texture *Source)
 	UINT NumRows;
 	UINT64 RowSize;
 	UINT64 TotalUploadSize = 0;
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT Footprint;
-	ID3D12Device_GetCopyableFootprints(Renderer->Device, &TexDesc, 0, 1, 0, &Footprint, &NumRows, &RowSize, &TotalUploadSize);
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT FootprINT;
+	ID3D12Device_GetCopyableFootprints(Renderer->Device, &TexDesc, 0, 1, 0, &FootprINT, &NumRows, &RowSize, &TotalUploadSize);
 	UINT64 Offset = SuballocateTextureUpload(Renderer, TotalUploadSize);
-	Footprint.Offset += Offset;
-	UINT8 *DestPtr = Renderer->TextureUploadBuffer.BaseMappedPtr + Footprint.Offset;
+	FootprINT.Offset += Offset;
+	UINT8 *DestPtr = Renderer->TextureUploadBuffer.BaseMappedPtr + FootprINT.Offset;
 	for (UINT i = 0; i < NumRows; ++i) {
-		memcpy(DestPtr + i * Footprint.Footprint.RowPitch, (UINT8 *)Source->Pixels + i * (Source->Width * 4), Source->Width * 4);
+		memcpy(DestPtr + i * FootprINT.Footprint.RowPitch, (UINT8 *)Source->Pixels + i * (Source->Width * 4), Source->Width * 4);
 	}
 	D3D12_TEXTURE_COPY_LOCATION DstLocation = {.pResource = Texture, .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = 0};
 	D3D12_TEXTURE_COPY_LOCATION SrcLocation = {
-	  .pResource = Renderer->TextureUploadBuffer.Resource, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = Footprint};
+	  .pResource = Renderer->TextureUploadBuffer.Resource, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = FootprINT};
 	ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->CommandList, &DstLocation, 0, 0, 0, &SrcLocation, NULL);
 	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
 									  .Transition = {
@@ -502,9 +503,9 @@ RenderPrimitives(S_Scene *Scene, R_World *const Renderer, R_Camera *const Camera
 	D3D12_GPU_VIRTUAL_ADDRESS LightGpuBaseAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->LightDataUploadBuffer);
 	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2, LightGpuBaseAddress);
 
-	for (int ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
+	for (INT ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
 		R_Model *Model = &Scene->Models[ModelIdx];
-		for (int MeshIdx = 0; MeshIdx < Model->MeshesCount; ++MeshIdx) {
+		for (INT MeshIdx = 0; MeshIdx < Model->MeshesCount; ++MeshIdx) {
 			R_Mesh *Mesh = &Model->Meshes[MeshIdx];
 			MeshData[0] = XMLoadFloat4x4(&Mesh->ModelMatrix);
 			MeshData[3] = R_NormalMatrix(Mesh->ModelMatrix);
@@ -512,7 +513,7 @@ RenderPrimitives(S_Scene *Scene, R_World *const Renderer, R_Camera *const Camera
 			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, UploadGpuBaseAddress + UploadCpuOffset);
 			UploadCpuOffset += (sizeof(XMMATRIX) + 255) & ~255;
 			
-			for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
+			for (INT PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
 				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
 				ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES, &Primitive->cb, 0);
 				if (Primitive->AlbedoIndex >= 0) {

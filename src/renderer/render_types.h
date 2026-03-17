@@ -1,48 +1,35 @@
 #pragma once
 
-#include "../core/pch.h"
 #include "DirectXMathC.h"
 
-typedef struct R_Color {
-	float R, G, B, A;
-} R_Color;
-
-typedef struct R_Float2 {
-	float X, Y;
-} R_Float2;
-
-typedef struct R_Float4 {
-	float X, Y, Z, W;
-} R_Float4;
-
 typedef struct R_Vertex {
-	R_Float4 Position;
-	R_Float4 Color;
-	R_Float4 Normal;
-	float UV0[2];
-	float UV1[2];
+	XMFLOAT4 Position;
+	XMFLOAT4 Color;
+	XMFLOAT4 Normal;
+	XMFLOAT2 UV0;
+	XMFLOAT2 UV1;
 } R_Vertex;
 
 typedef struct R_PBRConstantBuffer {
-	float BaseColorFactor[4];
-	float UVOffset[2];
-	float UVScale[2];
-	float UVRotation;
-	float Padding[3];
+	XMFLOAT4 BaseColorFactor;
+	XMFLOAT2 UVOffset;
+	XMFLOAT2 UVScale;
+	FLOAT UVRotation;
+	XMFLOAT3 Padding;
 } R_PBRConstantBuffer;
 
 typedef struct R_PointLight {
-	float LightPosition[4];
-	float DiffuseColor[4];
-	float AmbientColor[4];
-	float SpecularColor[4];
+	XMFLOAT4 LightPosition;
+	XMFLOAT4 DiffuseColor;
+	XMFLOAT4 AmbientColor;
+	XMFLOAT4 SpecularColor;
 } R_Light;
 
 typedef struct R_SceneData {
 	XMFLOAT3 ViewPosition;
 	R_Light Light;
-	float Shininess;
-	float Padding[3];
+	FLOAT Shininess;
+	XMFLOAT3 Padding;
 } R_SceneData;
 
 typedef struct R_MeshConstants {
@@ -52,10 +39,10 @@ typedef struct R_MeshConstants {
 #define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 4
 
 typedef struct R_Texture {
-	uint8_t *Pixels; // RGBA8
-	int Width;
-	int Height;
-	char *Name;
+	UINT8 *Pixels;
+	INT Width;
+	INT Height;
+	PSTR Name;
 } R_Texture;
 
 typedef struct R_Primitive {
@@ -70,7 +57,7 @@ typedef struct R_Primitive {
 	INT AlbedoIndex;
 	INT SpecularIndex;
 
-	int UVChannel;
+	INT UVChannel;
 	R_PBRConstantBuffer cb;
 
 	D3D12_GPU_DESCRIPTOR_HANDLE MaterialDescriptorBase;
@@ -85,7 +72,7 @@ typedef struct R_Mesh {
 } R_Mesh;
 
 typedef struct R_Model {
-	char* Name;
+	PSTR Name;
 	UINT Id;
 	XMFLOAT3 Position;
 	R_Mesh *Meshes;

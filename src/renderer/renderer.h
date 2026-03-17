@@ -32,7 +32,7 @@ typedef struct R_World {
 	HWND hWnd;
 	UINT Width;
 	UINT Height;
-	float AspectRatio;
+	FLOAT AspectRatio;
 
 	D3D12_VIEWPORT Viewport;
 	D3D12_RECT ScissorRect;
@@ -101,6 +101,6 @@ void R_Destroy(R_World *Renderer);
 void R_Draw(R_World *const Renderer, S_Scene *Scene, R_Camera *const Camera);
 void R_UpdateResource(ID3D12Resource *Resource, void *Data, size_t DataSize);
 void R_ExecuteCommands(R_World *const Renderer);
-void R_SwapchainResize(R_World *const Renderer, int Width, int Height);
+void R_SwapchainResize(R_World *const Renderer, INT Width, INT Height);
 void R_CreateUITexture(PCWSTR Path, R_World *Renderer, UINT nkSlotIndex);
 GPUTexture R_UploadTexture(R_World *Renderer, R_Texture *Source, UINT SlotIndex);

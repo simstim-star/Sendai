@@ -28,7 +28,7 @@ static struct nk_image UI_TEXTURES[NUM_USER_TEXTURES];
 	Forward declaration of private functions
 *****************************************************/
 
-static struct nk_colorf ColorToNuklear(R_Color *color);
+static struct nk_colorf ColorToNuklear(XMFLOAT4 *color);
 
 /****************************************************
 	Public functions
@@ -244,13 +244,13 @@ UI_Destroy()
 }
 
 static struct nk_colorf
-ColorToNuklear(R_Color *Color)
+ColorToNuklear(XMFLOAT4 *Color)
 {
 	return (struct nk_colorf){
-	  .r = Color->R,
-	  .g = Color->G,
-	  .b = Color->B,
-	  .a = Color->A,
+	  .r = Color->x,
+	  .g = Color->y,
+	  .b = Color->z,
+	  .a = Color->w,
 	};
 }
 

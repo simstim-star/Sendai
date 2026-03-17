@@ -154,23 +154,23 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 							cgltf_texture_transform *Transform = &MetallicRoughnessData->base_color_texture.transform;
 							int uvIndex = MetallicRoughnessData->base_color_texture.texcoord;
 							Primitive->UVChannel = uvIndex;
-							Primitive->cb.UVScale[0] = Transform->scale[0];
-							Primitive->cb.UVScale[1] = Transform->scale[1];
-							Primitive->cb.UVOffset[0] = Transform->offset[0];
-							Primitive->cb.UVOffset[1] = Transform->offset[1];
+							Primitive->cb.UVScale.x = Transform->scale[0];
+							Primitive->cb.UVScale.y = Transform->scale[1];
+							Primitive->cb.UVOffset.x = Transform->offset[0];
+							Primitive->cb.UVOffset.y = Transform->offset[1];
 							Primitive->cb.UVRotation = Transform->rotation; 
 						} else {
-							Primitive->cb.UVScale[0] = 1.0f;
-							Primitive->cb.UVScale[1] = 1.0f;
-							Primitive->cb.UVOffset[0] = 0.0f;
-							Primitive->cb.UVOffset[1] = 0.0f;
+							Primitive->cb.UVScale.x = 1.0f;
+							Primitive->cb.UVScale.y = 1.0f;
+							Primitive->cb.UVOffset.x = 0.0f;
+							Primitive->cb.UVOffset.y = 0.0f;
 							Primitive->cb.UVRotation = 0.0f;
 						}
 					} else {
 						Primitive->AlbedoIndex = -1;
 					}
 
-					memcpy(Primitive->cb.BaseColorFactor, MetallicRoughnessData->base_color_factor, sizeof(float) * 4);
+					memcpy(&Primitive->cb.BaseColorFactor, MetallicRoughnessData->base_color_factor, sizeof(float) * 4);
 				}
 				if (MaterialData->has_specular) {
 					cgltf_specular *Specular = &MaterialData->specular;
@@ -194,45 +194,45 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 			for (size_t i = 0; i < VertexCount; i++) {
 				float Position[3];
 				cgltf_accessor_read_float(PositionAccessor, i, Position, 3);
-				Vertices[i].Position = (R_Float4){Position[0], Position[1], Position[2], 1.0f};
+				Vertices[i].Position = (XMFLOAT4){Position[0], Position[1], Position[2], 1.0f};
 
 				cgltf_accessor *NormalAccessor = AccessorsData[cgltf_attribute_type_normal];
 				if (NormalAccessor) {
 					float Normal[4];
 					cgltf_accessor_read_float(NormalAccessor, i, Normal, 3);
-					Vertices[i].Normal.X = Normal[0];
-					Vertices[i].Normal.Y = Normal[1];
-					Vertices[i].Normal.Z = Normal[2];
-					Vertices[i].Normal.W = 1;
+					Vertices[i].Normal.x = Normal[0];
+					Vertices[i].Normal.y = Normal[1];
+					Vertices[i].Normal.z = Normal[2];
+					Vertices[i].Normal.w = 1;
 				}
 
 				cgltf_accessor *ColorAccessor = AccessorsData[cgltf_attribute_type_color];
 				if (ColorAccessor) {
 					float Color[4];
 					cgltf_accessor_read_float(ColorAccessor, i, Color, 4);
-					Vertices[i].Color.X = Color[0];
-					Vertices[i].Color.Y = Color[1];
-					Vertices[i].Color.Z = Color[2];
-					Vertices[i].Color.W = Color[3];
+					Vertices[i].Color.x = Color[0];
+					Vertices[i].Color.y = Color[1];
+					Vertices[i].Color.z = Color[2];
+					Vertices[i].Color.w = Color[3];
 				} else {
-					Vertices[i].Color = (R_Float4){1.0f, 1.0f, 1.0f, 1.0f};
+					Vertices[i].Color = (XMFLOAT4){1.0f, 1.0f, 1.0f, 1.0f};
 				}
 
 				if (UVAccessorsData[0]) {
 					float uv[2];
 					cgltf_accessor_read_float(UVAccessorsData[0], i, uv, 2);
-					Vertices[i].UV0[0] = uv[0];
-					Vertices[i].UV0[1] = uv[1];
+					Vertices[i].UV0.x = uv[0];
+					Vertices[i].UV0.y = uv[1];
 				}
 
 				if (UVAccessorsData[1]) {
 					float uv[2];
 					cgltf_accessor_read_float(UVAccessorsData[1], i, uv, 2);
-					Vertices[i].UV1[0] = uv[0];
-					Vertices[i].UV1[1] = uv[1];
+					Vertices[i].UV1.x = uv[0];
+					Vertices[i].UV1.y = uv[1];
 				} else {
-					Vertices[i].UV1[0] = 0.0f;
-					Vertices[i].UV1[1] = 0.0f;
+					Vertices[i].UV1.x = 0.0f;
+					Vertices[i].UV1.y = 0.0f;
 				}
 			}
 

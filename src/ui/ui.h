@@ -16,7 +16,7 @@ typedef struct UI_Renderer {
 
 
 typedef struct UI_BottomBarState {
-	float BottomBarHeight;
+	FLOAT BottomBarHeight;
 	BOOL bIsDraggingBottom;
 	UINT32 FPS;
 	UINT FrameCounter;
