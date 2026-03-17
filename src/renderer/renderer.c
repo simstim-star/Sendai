@@ -45,7 +45,7 @@ R_Init(R_World *const Renderer, HWND hWnd)
 	Renderer->Viewport = (D3D12_VIEWPORT){
 	  .TopLeftX = 0.0f, .TopLeftY = 0.0f, .Width = (FLOAT)(Renderer->Width), .Height = (FLOAT)(Renderer->Height), .MinDepth = 0.0f, .MaxDepth = 1.0f};
 	Renderer->ScissorRect = (D3D12_RECT){0, 0, (LONG)(Renderer->Width), (LONG)(Renderer->Height)};
-	Renderer->State = RENDER_STATE_GLTF;
+	Renderer->State = ERS_GLTF;
 
 	/* D3D12 setup */
 
@@ -312,7 +312,7 @@ R_Destroy(R_World *Renderer)
 	ID3D12GraphicsCommandList_Release(Renderer->CommandList);
 	ID3D12CommandQueue_Release(Renderer->CommandQueue);
 	ID3D12Fence_Release(Renderer->Fence);
-	for (RENDER_STATE State = RENDER_STATE_GLTF; State < N_RENDER_STATES; ++State) {
+	for (ERenderState State = ERS_GLTF; State < ERS_N_RENDER_STATES; ++State) {
 		ID3D12PipelineState_Release(Renderer->PipelineState[State]);
 	}
 	ID3D12Resource_Release(Renderer->VertexBufferDefault);

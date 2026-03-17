@@ -47,7 +47,7 @@ S_Run()
 	
 	WCHAR WireframePath[512];
 	Win32FullPath(L"/assets/images/wireframe.png", WireframePath, _countof(WireframePath));
-	R_CreateUITexture(WireframePath, &Engine.WorldRenderer, TEXTURE_WIREFRAME);
+	R_CreateUITexture(WireframePath, &Engine.WorldRenderer, UI_EUT_WIREFRAME);
 	
 	S_TimerInit(&Engine.Timer);
 
@@ -177,7 +177,7 @@ UI_Update(Sendai *Engine)
 {
 	Engine->UI.BottomBar.FPS = Engine->Timer.FramesPerSecond;
 	Engine->UI.BottomBar.FrameCounter = Engine->FrameCounter;
-	UI_Action Action = UI_DrawTopBar(&Engine->UI_Renderer, &Engine->UI.TopBar) | UI_DrawToolbarButton(&Engine->UI_Renderer, &Engine->UI.ToolBar) |
+	UI_EAction Action = UI_DrawTopBar(&Engine->UI_Renderer, &Engine->UI.TopBar) | UI_DrawToolbarButton(&Engine->UI_Renderer, &Engine->UI.ToolBar) |
 					   UI_DrawBottomBar(&Engine->UI_Renderer, &Engine->UI.BottomBar);
 
 	switch (Action) {
@@ -192,10 +192,10 @@ UI_Update(Sendai *Engine)
 		break;
 	}
 	case UI_ACTION_WIREFRAME_BUTTON_CLICKED:
-		if (Engine->WorldRenderer.State != RENDER_STATE_WIREFRAME) {
-			Engine->WorldRenderer.State = RENDER_STATE_WIREFRAME;
+		if (Engine->WorldRenderer.State != ERS_WIREFRAME) {
+			Engine->WorldRenderer.State = ERS_WIREFRAME;
 		} else {
-			Engine->WorldRenderer.State = RENDER_STATE_GLTF;
+			Engine->WorldRenderer.State = ERS_GLTF;
 		}
 		break;
 	default:

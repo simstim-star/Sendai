@@ -131,12 +131,12 @@ R_CreateScenePipelineState(R_World *Renderer)
 	};
 
 	HRESULT hr =
-		ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[RENDER_STATE_GLTF]);
+		ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_GLTF]);
 	ExitIfFailed(hr);
 
 	PSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
 	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState,
-												  &Renderer->PipelineState[RENDER_STATE_WIREFRAME]);
+												  &Renderer->PipelineState[ERS_WIREFRAME]);
 	ExitIfFailed(hr);
 }
 

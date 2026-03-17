@@ -9,7 +9,7 @@ typedef struct R_Camera R_Camera;
 typedef struct R_Primitive R_Primitive;
 typedef struct R_Texture R_Texture;
 
-typedef enum RENDER_STATES { RENDER_STATE_GLTF, RENDER_STATE_WIREFRAME, N_RENDER_STATES } RENDER_STATE;
+typedef enum ERenderState { ERS_GLTF, ERS_WIREFRAME, ERS_N_RENDER_STATES } ERenderState;
 
 typedef struct GPUTexture {
 	ID3D12Resource *GpuTexture;
@@ -60,8 +60,8 @@ typedef struct R_World {
 	ID3D12CommandAllocator *CommandAllocator;
 	ID3D12GraphicsCommandList *CommandList;
 
-	RENDER_STATE State;
-	ID3D12PipelineState *PipelineState[N_RENDER_STATES];
+	ERenderState State;
+	ID3D12PipelineState *PipelineState[ERS_N_RENDER_STATES];
 
 	/*****************************
 		Synchronization objects

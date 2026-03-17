@@ -2,9 +2,9 @@
 
 #include "../renderer/render_types.h"
 
-typedef enum { UI_ACTION_NONE = 0, UI_ACTION_FILE_OPEN, UI_ACTION_WIREFRAME_BUTTON_CLICKED } UI_Action;
+typedef enum { UI_ACTION_NONE = 0, UI_ACTION_FILE_OPEN, UI_ACTION_WIREFRAME_BUTTON_CLICKED } UI_EAction;
 
-typedef enum { TEXTURE_WIREFRAME, NUM_USER_TEXTURES } USER_TEXTURES;
+typedef enum { UI_EUT_WIREFRAME, UI_EUT_NUM_USER_TEXTURES } UI_EUserTextures;
 
 typedef struct UI_Renderer {
 	struct nk_context *Context;
@@ -42,13 +42,13 @@ void UI_InputBegin(const UI_Renderer *UI);
 
 void UI_InputEnd(const UI_Renderer *UI);
 
-UI_Action UI_LogWindow(UI_Renderer *const UI);
+UI_EAction UI_LogWindow(UI_Renderer *const UI);
 
-UI_Action UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State);
+UI_EAction UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State);
 
-UI_Action UI_DrawToolbarButton(UI_Renderer *UI, UI_ToolBarState *State);
+UI_EAction UI_DrawToolbarButton(UI_Renderer *UI, UI_ToolBarState *State);
 
-UI_Action UI_DrawBottomBar(UI_Renderer *UI, UI_BottomBarState *State);
+UI_EAction UI_DrawBottomBar(UI_Renderer *UI, UI_BottomBarState *State);
 
 void UI_Draw(struct ID3D12GraphicsCommandList *CommandList);
 

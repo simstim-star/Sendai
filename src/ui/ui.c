@@ -22,7 +22,7 @@
 
 #include "../dx_helpers/desc_helpers.h"
 
-static struct nk_image UI_TEXTURES[NUM_USER_TEXTURES];
+static struct nk_image UI_TEXTURES[UI_EUT_NUM_USER_TEXTURES];
 
 /****************************************************
 	Forward declaration of private functions
@@ -37,7 +37,7 @@ static struct nk_colorf ColorToNuklear(XMFLOAT4 *color);
 void
 UI_Init(UI_Renderer *const UI, int Width, int Height, ID3D12Device *Device, ID3D12GraphicsCommandList *CommandList)
 {
-	UI->Context = nk_d3d12_init(Device, Width, Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, NUM_USER_TEXTURES);
+	UI->Context = nk_d3d12_init(Device, Width, Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, UI_EUT_NUM_USER_TEXTURES);
 	UI->Width = Width;
 	UI->Height = Height;
 
@@ -46,11 +46,11 @@ UI_Init(UI_Renderer *const UI, int Width, int Height, ID3D12Device *Device, ID3D
 	nk_d3d12_font_stash_end(CommandList);
 }
 
-UI_Action
+UI_EAction
 UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State)
 {
 	const float BarHeight = UI->Height * 0.05f;
-	UI_Action Action = UI_ACTION_NONE;
+	UI_EAction Action = UI_ACTION_NONE;
 
 	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, UI->Width, BarHeight), NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_dynamic(UI->Context, BarHeight * 0.8f, 3);
@@ -71,11 +71,11 @@ UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State)
 	return Action;
 }
 
-UI_Action
+UI_EAction
 UI_DrawToolbarButton(UI_Renderer *UI, UI_ToolBarState *State)
 {
 	struct nk_context *Ctx = UI->Context;
-	UI_Action Action = UI_ACTION_NONE;
+	UI_EAction Action = UI_ACTION_NONE;
 
 	const float TopBarHeight = UI->Height * 0.05f;
 	const float BtnSize = 50.0f;
@@ -83,7 +83,7 @@ UI_DrawToolbarButton(UI_Renderer *UI, UI_ToolBarState *State)
 	nk_style_push_vec2(Ctx, &Ctx->style.window.padding, nk_vec2(0, 0));
 	if (nk_begin(Ctx, "IconButton", WindowRect, NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_static(Ctx, BtnSize, BtnSize, 1);
-		if (nk_button_image(Ctx, UI_TEXTURES[TEXTURE_WIREFRAME])) {
+		if (nk_button_image(Ctx, UI_TEXTURES[UI_EUT_WIREFRAME])) {
 			Action = UI_ACTION_WIREFRAME_BUTTON_CLICKED;
 			State->Wireframe = !State->Wireframe;
 		}
@@ -94,7 +94,7 @@ UI_DrawToolbarButton(UI_Renderer *UI, UI_ToolBarState *State)
 	return Action;
 }
 
-UI_Action
+UI_EAction
 UI_DrawBottomBar(UI_Renderer *UI, UI_BottomBarState *State)
 {
 	struct nk_context *Ctx = UI->Context;
@@ -179,7 +179,7 @@ UI_DrawBottomBar(UI_Renderer *UI, UI_BottomBarState *State)
 	return UI_ACTION_NONE;
 }
 
-UI_Action
+UI_EAction
 UI_LogWindow(UI_Renderer *const UI)
 {
 	struct nk_context *Context = UI->Context;
@@ -257,7 +257,7 @@ ColorToNuklear(XMFLOAT4 *Color)
 void
 UI_SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *Texture)
 {
-	if (nkSrvIndex >= NUM_USER_TEXTURES) {
+	if (nkSrvIndex >= UI_EUT_NUM_USER_TEXTURES) {
 		return;
 	}
 
