@@ -143,10 +143,13 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 			}
 
 			if (PrimitiveData->material) {
-				cgltf_material *MaterialData = PrimitiveData->material;
-				if (MaterialData->has_pbr_metallic_roughness) {
-					cgltf_pbr_metallic_roughness *MetallicRoughnessData = &MaterialData->pbr_metallic_roughness;
-
+				cgltf_material *PrimitiveMaterialData = PrimitiveData->material;
+				if (PrimitiveMaterialData->has_pbr_metallic_roughness) {
+					cgltf_pbr_metallic_roughness *MetallicRoughnessData = &PrimitiveMaterialData->pbr_metallic_roughness;
+					memcpy(&Primitive->cb.BaseColorFactor, MetallicRoughnessData->base_color_factor, sizeof(float) * 4);
+					Primitive->cb.MetallicFactor = MetallicRoughnessData->metallic_factor;
+					Primitive->cb.RoughnessFactor = MetallicRoughnessData->roughness_factor;
+					
 					if (MetallicRoughnessData->base_color_texture.texture) {
 						Primitive->AlbedoIndex = MetallicRoughnessData->base_color_texture.texture->image - Data->images;
 
@@ -170,15 +173,30 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 						Primitive->AlbedoIndex = -1;
 					}
 
-					memcpy(&Primitive->cb.BaseColorFactor, MetallicRoughnessData->base_color_factor, sizeof(float) * 4);
-				}
-				if (MaterialData->has_specular) {
-					cgltf_specular *Specular = &MaterialData->specular;
-					if (Specular->specular_texture.texture) {
-						Primitive->SpecularIndex = Specular->specular_texture.texture->image - Data->images;
+					if (MetallicRoughnessData->metallic_roughness_texture.texture) {
+						Primitive->MetallicIndex = MetallicRoughnessData->metallic_roughness_texture.texture->image - Data->images;
+					} else {
+						Primitive->MetallicIndex = -1;
 					}
+				}
+
+				cgltf_texture_view *NormalTextureView = &PrimitiveMaterialData->normal_texture;
+				if (NormalTextureView->texture) {
+					Primitive->NormalIndex = NormalTextureView->texture->image - Data->images;
 				} else {
-					Primitive->SpecularIndex = -1;
+					Primitive->NormalIndex = -1;
+				}
+
+				if (PrimitiveMaterialData->pbr_metallic_roughness.metallic_roughness_texture.texture) {
+					Primitive->RoughnessIndex = PrimitiveMaterialData->pbr_metallic_roughness.metallic_roughness_texture.texture->image - Data->images;
+				} else {
+					Primitive->RoughnessIndex = -1;
+				}
+
+				if (PrimitiveMaterialData->occlusion_texture.texture) {
+					Primitive->OcclusionIndex = PrimitiveMaterialData->occlusion_texture.texture->image - Data->images;
+				} else {
+					Primitive->OcclusionIndex = -1;
 				}
 			}
 
@@ -194,7 +212,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 			for (size_t i = 0; i < VertexCount; i++) {
 				float Position[3];
 				cgltf_accessor_read_float(PositionAccessor, i, Position, 3);
-				Vertices[i].Position = (XMFLOAT4){Position[0], Position[1], Position[2], 1.0f};
+				Vertices[i].Position = (XMFLOAT3){Position[0], Position[1], Position[2]};
 
 				cgltf_accessor *NormalAccessor = AccessorsData[cgltf_attribute_type_normal];
 				if (NormalAccessor) {
@@ -203,19 +221,6 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 					Vertices[i].Normal.x = Normal[0];
 					Vertices[i].Normal.y = Normal[1];
 					Vertices[i].Normal.z = Normal[2];
-					Vertices[i].Normal.w = 1;
-				}
-
-				cgltf_accessor *ColorAccessor = AccessorsData[cgltf_attribute_type_color];
-				if (ColorAccessor) {
-					float Color[4];
-					cgltf_accessor_read_float(ColorAccessor, i, Color, 4);
-					Vertices[i].Color.x = Color[0];
-					Vertices[i].Color.y = Color[1];
-					Vertices[i].Color.z = Color[2];
-					Vertices[i].Color.w = Color[3];
-				} else {
-					Vertices[i].Color = (XMFLOAT4){1.0f, 1.0f, 1.0f, 1.0f};
 				}
 
 				if (UVAccessorsData[0]) {

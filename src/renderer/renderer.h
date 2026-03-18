@@ -85,8 +85,8 @@ typedef struct R_Core {
 	UINT8 *MeshDataUploadBufferCpuAddress;
 	ID3D12Resource *MeshDataUploadBuffer;
 
-	UINT8 *LightDataUploadBufferCpuAddress;
-	ID3D12Resource *LightDataUploadBuffer;
+	UINT8 *SceneDataUploadBufferCpuAddress;
+	ID3D12Resource *SceneDataUploadBuffer;
 
 	R_UploadBuffer TextureUploadBuffer;
 

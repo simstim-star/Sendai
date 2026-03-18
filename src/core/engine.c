@@ -8,6 +8,7 @@
 #include "../renderer/shader.h"
 
 static const UINT8 BLACK_PIXEL[] = {0, 0, 0, 255};
+static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
 
 /****************************************************
 	Forward declaration of private functions
@@ -19,6 +20,9 @@ static void EngineUpdate(Sendai *Engine);
 static void EngineDraw(Sendai *Engine);
 static void LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene);
 
+void LoadPBRTextures(R_Primitive *Primitive, R_Core *Renderer, S_Scene *Scene, int ModelIdx);
+void R_BindTextureToSlot(R_Core *Renderer, S_Scene *Scene, int ModelIdx, int TextureIdx, UINT HeapSlot, UINT32 FallbackColor);
+
 /****************************************************
 	Public functions
 *****************************************************/
@@ -28,7 +32,7 @@ S_Run()
 {
 	Sendai Engine = {.Title = L"Sendai",
 					 .RendererCore = {.Width = 1280, .Height = 720},
-					 .Camera = R_CameraSpawn((XMFLOAT3){0, 25, -100}),
+					 .Camera = R_CameraSpawn((XMFLOAT3){0, 0, 0}),
 					 .Scene =
 						 {
 						   .SceneArena = S_ArenaInit(GIGABYTES(2)),
@@ -203,7 +207,6 @@ LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 			R_Mesh *Mesh = &Scene->Models[ModelIdx].Meshes[MeshIdx];
 			for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
 				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
-
 				UINT VertexBufferSize = sizeof(R_Vertex) * Primitive->VertexCount;
 				memcpy((BYTE *)pData + CurrentUploadBufferOffset, Primitive->Vertices, VertexBufferSize);
 				Primitive->VertexBufferView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Renderer->VertexBufferDefault) + CurrentVertexBufferOffset;
@@ -223,28 +226,7 @@ LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 				CurrentIndexBufferOffset += IndexBufferSize;
 				CurrentUploadBufferOffset += IndexBufferSize;
 
-				if (Primitive->AlbedoIndex >= 0) {
-					UINT BaseSlot = Renderer->SrvCount;
-
-					R_Texture *AlbedoTexture = &Scene->Models[ModelIdx].Images[Primitive->AlbedoIndex];
-					GPUTexture Albedo = R_UploadTexture(Renderer, AlbedoTexture, BaseSlot);
-					GPUTexture Specular;
-					if (Primitive->SpecularIndex >= 0) {
-						R_Texture *SpecTexture = &Scene->Models[ModelIdx].Images[Primitive->SpecularIndex];
-						Specular = R_UploadTexture(Renderer, SpecTexture, BaseSlot + 1);
-					} else {
-						R_Texture Dummy = {
-						  .Pixels = (void *)BLACK_PIXEL,
-						  .Width = 1,
-						  .Height = 1,
-						  .Name = "__black_dummy_specular",
-						};
-						Specular = R_UploadTexture(Renderer, &Dummy, BaseSlot + 1);
-					}
-
-					Primitive->MaterialDescriptorBase = Albedo.SrvHandle;
-					Renderer->SrvCount += 2;
-				}
+				LoadPBRTextures(Primitive, Renderer, Scene, ModelIdx);
 			}
 		}
 	}
@@ -264,4 +246,49 @@ LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &BarrierIndexBuffer);
 
 	ID3D12Resource_Unmap(Renderer->VertexBufferUpload, 0, NULL);
+}
+
+void
+LoadPBRTextures(R_Primitive *Primitive, R_Core *Renderer, S_Scene *Scene, int ModelIdx)
+{
+	UINT BaseDescriptorIndex = Renderer->SrvCount;
+	Renderer->SrvCount += 6;
+
+	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->SrvHeap, &Primitive->MaterialDescriptorBase);
+	UINT DescriptorSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	Primitive->MaterialDescriptorBase.ptr += (UINT64)BaseDescriptorIndex * DescriptorSize;
+
+	// Albedo (t0)
+	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->AlbedoIndex, BaseDescriptorIndex + 0, BLACK_PIXEL);
+
+	// Normal (t1)
+	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->NormalIndex, BaseDescriptorIndex + 1, WHITE_PIXEL);
+
+	// Metallic (t2)
+	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->MetallicIndex, BaseDescriptorIndex + 2, BLACK_PIXEL);
+
+	// Roughness (t3)
+	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->RoughnessIndex, BaseDescriptorIndex + 3, WHITE_PIXEL);
+
+	// AO (t4)
+	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->OcclusionIndex, BaseDescriptorIndex + 4, BLACK_PIXEL);
+}
+
+void
+R_BindTextureToSlot(R_Core *Renderer, S_Scene *Scene, int ModelIdx, int TextureIdx, UINT HeapSlot, UINT32 FallbackColor)
+{
+	R_Texture *Target;
+	R_Texture Dummy = {0};
+	char DummyName[64];
+	if (TextureIdx >= 0) {
+		Target = &Scene->Models[ModelIdx].Images[TextureIdx];
+	} else {
+		snprintf(DummyName, sizeof(DummyName), "Fallback_M%d_S%u", ModelIdx, HeapSlot);
+		Dummy.Pixels = &FallbackColor;
+		Dummy.Width = 1;
+		Dummy.Height = 1;
+		Dummy.Name = DummyName;
+		Target = &Dummy;
+	}
+	 R_UploadTexture(Renderer, Target, HeapSlot);
 }

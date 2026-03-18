@@ -319,7 +319,7 @@ R_Destroy(R_Core *Renderer)
 	ID3D12Resource_Release(Renderer->VertexBufferDefault);
 	ID3D12Resource_Release(Renderer->IndexBufferDefault);
 	ID3D12Resource_Release(Renderer->VertexBufferUpload);
-	ID3D12Resource_Release(Renderer->LightDataUploadBuffer);
+	ID3D12Resource_Release(Renderer->SceneDataUploadBuffer);
 	CloseHandle(Renderer->FenceEvent);
 
 	for (INT i = 0; i < hmlen(Renderer->Textures); ++i) {
@@ -412,19 +412,22 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 	MeshData.View = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection);
 	MeshData.Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f);
 
+	XMFLOAT3 LP, LC;
+	LP.x = 15.f;
+	LP.y = 25.f;
+	LP.z = 15.f;
+	LC.x = 300.f;
+	LC.y = 300.f;
+	LC.z = 300.f;
 	R_SceneData SceneData = {
-	  .ViewPosition = Camera->Position,
-	  .Light = {.LightPosition = {10.0f, 20.0f, 50.0f, 1.0f},
-				.AmbientColor = {.1f, .1f, .1f, 1.0f},
-				.DiffuseColor = {.7f, .85f, .25f, 1.0f},
-				.SpecularColor = {1.0f, 1.0f, 1.0f, 1.0f}},
-	  .Shininess = 64,
+	  .CameraPosition = Camera->Position,
+	  .LightPosition = LP,
+	  .LightColor = LC,
 	};
-	R_Light Light = (R_Light){.LightPosition = {10.0f, 20.0f, 10.0f, 1.0f}, .DiffuseColor = {1.0f, 1.0f, 1.0f, 1.0f}};
-	UpdateResourceData(Renderer->LightDataUploadBuffer, &SceneData, sizeof(R_SceneData));
+	UpdateResourceData(Renderer->SceneDataUploadBuffer, &SceneData, sizeof(R_SceneData));
 
-	D3D12_GPU_VIRTUAL_ADDRESS LightGpuBaseAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->LightDataUploadBuffer);
-	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2, LightGpuBaseAddress);
+	D3D12_GPU_VIRTUAL_ADDRESS SceneDataGpuBaseAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->SceneDataUploadBuffer);
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2, SceneDataGpuBaseAddress);
 
 	for (INT ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
 		R_Model *Model = &Scene->Models[ModelIdx];
@@ -439,9 +442,7 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 			for (INT PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
 				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
 				ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES, &Primitive->cb, 0);
-				if (Primitive->AlbedoIndex >= 0) {
-					ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 3, Primitive->MaterialDescriptorBase);
-				}
+				ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 3, Primitive->MaterialDescriptorBase);
 				ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Primitive->VertexBufferView);
 				ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
 				ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);
@@ -536,7 +537,7 @@ CreateSceneResources(R_Core *const Renderer)
 
 	BufferDesc.Width = KILOBYTES(1);
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc,
-											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Renderer->LightDataUploadBuffer);
+											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Renderer->SceneDataUploadBuffer);
 	ExitIfFailed(hr);
 
 	D3D12_HEAP_PROPERTIES HeapProps = {.Type = D3D12_HEAP_TYPE_UPLOAD};
@@ -562,7 +563,7 @@ CreateShaders(R_Core *const Renderer)
 	R_CreateSceneRootSig(Renderer->Device, &Renderer->RootSign);
 
 	WCHAR GLTFShadersPath[512];
-	Win32FullPath(L"/shaders/gltf/gltf.hlsl", GLTFShadersPath, _countof(GLTFShadersPath));
+	Win32FullPath(L"/shaders/gltf/pbr.hlsl", GLTFShadersPath, _countof(GLTFShadersPath));
 	HRESULT hr = R_CompileShader(GLTFShadersPath, &Renderer->VS, EST_VERTEX_SHADER);
 	ExitIfFailed(hr);
 	hr = R_CompileShader(GLTFShadersPath, &Renderer->PS, EST_PIXEL_SHADER);

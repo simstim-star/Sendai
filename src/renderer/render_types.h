@@ -3,35 +3,34 @@
 #include "DirectXMathC.h"
 
 typedef struct R_Vertex {
-	XMFLOAT4 Position;
-	XMFLOAT4 Color;
-	XMFLOAT4 Normal;
+	XMFLOAT3 Position;
+	XMFLOAT3 Normal;
 	XMFLOAT2 UV0;
 	XMFLOAT2 UV1;
 } R_Vertex;
 
 typedef struct R_PBRConstantBuffer {
 	XMFLOAT4 BaseColorFactor;
+	FLOAT MetallicFactor;
+	FLOAT RoughnessFactor;
+
 	XMFLOAT2 UVOffset;
 	XMFLOAT2 UVScale;
 	FLOAT UVRotation;
-	XMFLOAT3 Padding;
+	FLOAT Padding;
 } R_PBRConstantBuffer;
 
 #define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 4
 
-typedef struct R_PointLight {
-	XMFLOAT4 LightPosition;
-	XMFLOAT4 DiffuseColor;
-	XMFLOAT4 AmbientColor;
-	XMFLOAT4 SpecularColor;
-} R_Light;
-
 typedef struct R_SceneData {
-	XMFLOAT3 ViewPosition;
-	R_Light Light;
-	FLOAT Shininess;
-	XMFLOAT3 Padding;
+	XMFLOAT3 LightPosition;
+	float Padding0;
+
+	XMFLOAT3 LightColor;
+	float Padding1;
+
+	XMFLOAT3 CameraPosition;
+	float Padding2;
 } R_SceneData;
 
 typedef struct R_MeshConstants {
@@ -58,7 +57,10 @@ typedef struct R_Primitive {
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView;
 
 	INT AlbedoIndex;
-	INT SpecularIndex;
+	INT NormalIndex;
+	INT MetallicIndex;
+	INT RoughnessIndex;
+	INT OcclusionIndex;
 
 	INT UVChannel;
 	R_PBRConstantBuffer cb;

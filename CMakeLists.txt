@@ -13,9 +13,19 @@ set(HEADER_FILES "src/core/camera.h" "src/core/timer.h" "src/win32/win_path.h" "
 
 set(DEPS_FILES "deps/b64.h" "deps/cgltf.h" "deps/nuklear.h" "deps/stb_ds.h" "deps/stb_image.h")
 
-set(SHADER_FILES "src/shaders/gltf/gltf.hlsl")
+set(SHADER_FILES "src/shaders/gltf/gltf.hlsl" "src/shaders/gltf/pbr.hlsl")
 
 set_source_files_properties(${SHADER_FILES} PROPERTIES LANGUAGE HLSL)
+set_source_files_properties("src/shaders/gltf/pbr.hlsl" PROPERTIES 
+    VS_ENTRY_POINT "VSMain"
+    VS_SHADER_MODEL "5.0"
+)
+
+# Define the Pixel Shader
+set_source_files_properties("src/shaders/gltf/pbr.hlsl" PROPERTIES 
+    PS_ENTRY_POINT "PSMain"
+    PS_SHADER_MODEL "5.0"
+)
 
 source_group("Sources" FILES ${SOURCE_FILES})
 source_group("Headers" FILES ${HEADER_FILES})

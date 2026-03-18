@@ -28,7 +28,7 @@ R_CameraSpawn(XMFLOAT3 Position)
 	  .Pitch = 0.0f,
 	  .LookDirection = {0, 0, -1},
 	  .UpDirection = {0, 1, 0},
-	  .MoveSpeed = {25.0f},
+	  .MoveSpeed = {5.0f},
 	  .TurnSpeed = XM_PIDIV4,
 	};
 }

@@ -14,23 +14,26 @@ R_CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 {
 	D3D12_ROOT_PARAMETER RootParameters[4] = {0};
 
+	// MeshData (b0)
 	RootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	RootParameters[0].Descriptor.ShaderRegister = 0;
 	RootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
+	// PBRData (b1)
 	RootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
 	RootParameters[1].Constants.ShaderRegister = 1;
-	RootParameters[1].Constants.RegisterSpace = 0;
 	RootParameters[1].Constants.Num32BitValues = NUM_32BITS_PBR_VALUES;
 	RootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
+	// SceneData (b2)
 	RootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	RootParameters[2].Descriptor.ShaderRegister = 2;
 	RootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
+	// Texture Table
 	D3D12_DESCRIPTOR_RANGE SrvRange = {
 	  .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-	  .NumDescriptors = 2,
+	  .NumDescriptors = 5,
 	  .BaseShaderRegister = 0,
 	  .RegisterSpace = 0,
 	  .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
@@ -41,19 +44,18 @@ R_CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 	RootParameters[3].DescriptorTable.pDescriptorRanges = &SrvRange;
 	RootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
+	// Sampler 
 	D3D12_STATIC_SAMPLER_DESC Sampler = {
 	  .Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
 	  .AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
 	  .AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
 	  .AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-	  .ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
-	  .MaxLOD = D3D12_FLOAT32_MAX,
 	  .ShaderRegister = 0,
 	  .ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
 	};
 
 	D3D12_ROOT_SIGNATURE_DESC RootSignatureDesc = {
-	  .NumParameters = 4,
+	  .NumParameters = _countof(RootParameters),
 	  .pParameters = RootParameters,
 	  .NumStaticSamplers = 1,
 	  .pStaticSamplers = &Sampler,
@@ -84,15 +86,22 @@ R_CompileShader(PCWSTR FilePath, ID3DBlob **Blob, EShaderType ShaderType)
 #else
 	const UINT CompileFlags = 0;
 #endif
-	HRESULT hr;
+	ID3DBlob *ErrorBlob = NULL;
+	HRESULT hr = S_OK;
+
 	switch (ShaderType) {
 	case EST_VERTEX_SHADER:
-		hr = D3DCompileFromFile(FilePath, NULL, NULL, "VSMain", "vs_5_0", CompileFlags, 0, Blob, NULL);
+		hr = D3DCompileFromFile(FilePath, NULL, NULL, "VSMain", "vs_5_0", CompileFlags, 0, Blob, &ErrorBlob);
 		break;
 	case EST_PIXEL_SHADER:
-		hr = D3DCompileFromFile(FilePath, NULL, NULL, "PSMain", "ps_5_0", CompileFlags, 0, Blob, NULL);
+		hr = D3DCompileFromFile(FilePath, NULL, NULL, "PSMain", "ps_5_0", CompileFlags, 0, Blob, &ErrorBlob);
 		break;
 	}
+
+	if (ErrorBlob) {
+		OutputDebugStringA(ID3D10Blob_GetBufferPointer(ErrorBlob));
+	}
+
 	return hr;
 }
 
@@ -100,9 +109,8 @@ void
 R_CreateScenePipelineState(R_Core *Renderer)
 {
 	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
-	  {"POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-	  {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-	  {"NORMAL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	  {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 	  {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 	  {"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
 
