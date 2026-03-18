@@ -18,9 +18,11 @@
 #include "ui.h"
 #include "../core/log.h"
 #include "../win32/file_dialog.h"
+#include "../win32/win_path.h"
 #include "../renderer/renderer.h"
 
 #include "../dx_helpers/desc_helpers.h"
+#include "../core/engine.h"
 
 static struct nk_image UI_TEXTURES[UI_EUT_NUM_USER_TEXTURES];
 
@@ -28,6 +30,7 @@ static struct nk_image UI_TEXTURES[UI_EUT_NUM_USER_TEXTURES];
 	Forward declaration of private functions
 *****************************************************/
 
+static void LoadCustomTextures(R_Core *Renderer);
 static struct nk_colorf ColorToNuklear(XMFLOAT4 *color);
 
 /****************************************************
@@ -35,15 +38,16 @@ static struct nk_colorf ColorToNuklear(XMFLOAT4 *color);
 *****************************************************/
 
 void
-UI_Init(UI_Renderer *const UI, int Width, int Height, ID3D12Device *Device, ID3D12GraphicsCommandList *CommandList)
+UI_Init(UI_Renderer *const UI, R_Core *Renderer)
 {
-	UI->Context = nk_d3d12_init(Device, Width, Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, UI_EUT_NUM_USER_TEXTURES);
-	UI->Width = Width;
-	UI->Height = Height;
+	UI->Context = nk_d3d12_init(Renderer->Device, Renderer->Width, Renderer->Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, UI_EUT_NUM_USER_TEXTURES);
+	UI->Width = Renderer->Width;
+	UI->Height = Renderer->Height;
 
 	struct nk_font_atlas *Atlas;
 	nk_d3d12_font_stash_begin(&Atlas);
-	nk_d3d12_font_stash_end(CommandList);
+	nk_d3d12_font_stash_end(Renderer->CommandList);
+	LoadCustomTextures(Renderer);
 }
 
 UI_EAction
@@ -179,6 +183,28 @@ UI_DrawBottomBar(UI_Renderer *UI, UI_BottomBarState *State)
 	return UI_ACTION_NONE;
 }
 
+void
+UI_Update(Sendai *Engine)
+{
+	Engine->UIState.BottomBar.FPS = Engine->Timer.FramesPerSecond;
+	Engine->UIState.BottomBar.FrameCounter = Engine->FrameCounter;
+	UI_EAction Action = UI_DrawTopBar(&Engine->RendererUI, &Engine->UIState.TopBar) |
+						UI_DrawToolbarButton(&Engine->RendererUI, &Engine->UIState.ToolBar) |
+						UI_DrawBottomBar(&Engine->RendererUI, &Engine->UIState.BottomBar);
+
+	switch (Action) {
+	case UI_ACTION_FILE_OPEN: {
+		S_FileOpen(Engine);
+		break;
+	}
+	case UI_ACTION_WIREFRAME_BUTTON_CLICKED:
+		S_WireframeMode(Engine);
+		break;
+	default:
+		break;
+	}
+}
+
 UI_EAction
 UI_LogWindow(UI_Renderer *const UI)
 {
@@ -243,17 +269,6 @@ UI_Destroy()
 	nk_d3d12_shutdown();
 }
 
-static struct nk_colorf
-ColorToNuklear(XMFLOAT4 *Color)
-{
-	return (struct nk_colorf){
-	  .r = Color->x,
-	  .g = Color->y,
-	  .b = Color->z,
-	  .a = Color->w,
-	};
-}
-
 void
 UI_SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *Texture)
 {
@@ -268,4 +283,27 @@ UI_SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *Texture)
 	nk_handle Handle;
 	nk_d3d12_set_user_texture(nkSrvIndex, Texture, &SrvDesc, &Handle);
 	UI_TEXTURES[nkSrvIndex] = nk_image_handle(Handle);
+}
+
+/****************************************************
+	Implementation of private functions
+*****************************************************/
+
+void
+LoadCustomTextures(R_Core *Renderer)
+{
+	WCHAR WireframePath[512];
+	Win32FullPath(L"/assets/images/wireframe.png", WireframePath, _countof(WireframePath));
+	R_CreateUITexture(WireframePath, Renderer, UI_EUT_WIREFRAME);
+}
+
+static struct nk_colorf
+ColorToNuklear(XMFLOAT4 *Color)
+{
+	return (struct nk_colorf){
+	  .r = Color->x,
+	  .g = Color->y,
+	  .b = Color->z,
+	  .a = Color->w,
+	};
 }

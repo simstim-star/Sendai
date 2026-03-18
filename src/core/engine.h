@@ -13,13 +13,17 @@ typedef struct Sendai {
 	HWND hWnd;
 	BOOL bRunning;
 
-	UI_Renderer UI_Renderer;
-	UI_State UI;
+	R_Core RendererCore;
+	UI_Renderer RendererUI;
+	UI_State UIState;
+
 	R_Camera Camera;
-	R_World WorldRenderer;
 	S_StepTimer Timer;
 	S_Scene Scene;
 	UINT FrameCounter;
 } Sendai;
 
 INT S_Run();
+
+void S_FileOpen(Sendai *Engine);
+void S_WireframeMode(Sendai *Engine);

@@ -2,6 +2,7 @@
 
 #include "../assets/gltf.h"
 #include "../core/scene.h"
+#include "render_types.h"
 
 #define FRAME_COUNT 2
 
@@ -28,7 +29,7 @@ typedef struct R_UploadBuffer {
 	UINT64 CurrentOffset;
 } R_UploadBuffer;
 
-typedef struct R_World {
+typedef struct R_Core {
 	HWND hWnd;
 	UINT Width;
 	UINT Height;
@@ -36,6 +37,8 @@ typedef struct R_World {
 
 	D3D12_VIEWPORT Viewport;
 	D3D12_RECT ScissorRect;
+
+	ID3D12Device *Device;
 	IDXGISwapChain1 *SwapChain;
 	ID3D12DescriptorHeap *RtvDescriptorHeap;
 
@@ -47,8 +50,6 @@ typedef struct R_World {
 	ID3D12DescriptorHeap *SrvHeap;
 	UINT SrvCount;
 
-	ID3D12Device *Device;
-	ID3D12CommandQueue *CommandQueue;
 
 	ID3DBlob *VS;
 	ID3DBlob *PS;
@@ -57,6 +58,7 @@ typedef struct R_World {
 	ID3D12Resource *DepthStencil;
 	ID3D12DescriptorHeap *DepthStencilHeap;
 
+	ID3D12CommandQueue *CommandQueue;
 	ID3D12CommandAllocator *CommandAllocator;
 	ID3D12GraphicsCommandList *CommandList;
 
@@ -90,13 +92,13 @@ typedef struct R_World {
 
 	ID3D12Resource *MaterialBuffer;
 	TextureLookup *Textures;
-} R_World;
+} R_Core;
 
-void R_Init(R_World *const Renderer, HWND hWnd);
-void R_Destroy(R_World *Renderer);
-void R_Draw(R_World *const Renderer, S_Scene *Scene, R_Camera *const Camera);
+void R_Init(R_Core *const Renderer, HWND hWnd);
+void R_Destroy(R_Core *Renderer);
+void R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera);
 void R_UpdateResource(ID3D12Resource *Resource, void *Data, size_t DataSize);
-void R_ExecuteCommands(R_World *const Renderer);
-void R_SwapchainResize(R_World *const Renderer, INT Width, INT Height);
-void R_CreateUITexture(PCWSTR Path, R_World *Renderer, UINT nkSlotIndex);
-GPUTexture R_UploadTexture(R_World *Renderer, R_Texture *Source, UINT SlotIndex);
+void R_ExecuteCommands(R_Core *const Renderer);
+void R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height);
+void R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex);
+GPUTexture R_UploadTexture(R_Core *Renderer, R_Texture *Source, UINT SlotIndex);

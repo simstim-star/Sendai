@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../renderer/render_types.h"
-
 typedef enum { UI_ACTION_NONE = 0, UI_ACTION_FILE_OPEN, UI_ACTION_WIREFRAME_BUTTON_CLICKED } UI_EAction;
 
 typedef enum { UI_EUT_WIREFRAME, UI_EUT_NUM_USER_TEXTURES } UI_EUserTextures;
@@ -36,7 +34,9 @@ typedef struct UI_State {
 	UI_ToolBarState ToolBar;
 } UI_State;
 
-void UI_Init(UI_Renderer *const UI, int Width, int Height, struct ID3D12Device *Device, struct ID3D12GraphicsCommandList *CommandList);
+void UI_Init(UI_Renderer *const UI, struct R_Core *Renderer);
+
+void UI_Update(struct Sendai *Engine);
 
 void UI_InputBegin(const UI_Renderer *UI);
 

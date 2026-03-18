@@ -17,8 +17,7 @@ static void InitWindow(Sendai *Engine);
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam);
 static void EngineUpdate(Sendai *Engine);
 static void EngineDraw(Sendai *Engine);
-static void UI_Update(Sendai *Engine);
-static void LoadPrimitivesIntoBuffers(R_World *Renderer, S_Scene *Scene);
+static void LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene);
 
 /****************************************************
 	Public functions
@@ -28,7 +27,7 @@ INT
 S_Run()
 {
 	Sendai Engine = {.Title = L"Sendai",
-					 .WorldRenderer = {.Width = 1280, .Height = 720},
+					 .RendererCore = {.Width = 1280, .Height = 720},
 					 .Camera = R_CameraSpawn((XMFLOAT3){0, 25, -100}),
 					 .Scene =
 						 {
@@ -42,20 +41,15 @@ S_Run()
 	Engine.Camera.Yaw = 2 * XM_PI;
 
 	InitWindow(&Engine);
-	R_Init(&Engine.WorldRenderer, Engine.hWnd);
-	UI_Init(&Engine.UI_Renderer, Engine.WorldRenderer.Width, Engine.WorldRenderer.Height, Engine.WorldRenderer.Device, Engine.WorldRenderer.CommandList);
-	
-	WCHAR WireframePath[512];
-	Win32FullPath(L"/assets/images/wireframe.png", WireframePath, _countof(WireframePath));
-	R_CreateUITexture(WireframePath, &Engine.WorldRenderer, UI_EUT_WIREFRAME);
-	
+	R_Init(&Engine.RendererCore, Engine.hWnd);
+	UI_Init(&Engine.RendererUI, &Engine.RendererCore);
 	S_TimerInit(&Engine.Timer);
 
 	ShowWindow(Engine.hWnd, SW_MAXIMIZE);
 
 	MSG msg = {0};
 	while (Engine.bRunning) {
-		UI_InputBegin(&Engine.UI_Renderer);
+		UI_InputBegin(&Engine.RendererUI);
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
 			if (msg.message == WM_QUIT) {
 				Engine.bRunning = false;
@@ -63,15 +57,16 @@ S_Run()
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		UI_InputEnd(&Engine.UI_Renderer);
+		UI_InputEnd(&Engine.RendererUI);
+
 		if (Engine.bRunning) {
 			EngineUpdate(&Engine);
 			EngineDraw(&Engine);
 		}
 	}
 
-	ID3D12RootSignature_Release(Engine.WorldRenderer.RootSign);
-	R_Destroy(&Engine.WorldRenderer);
+	ID3D12RootSignature_Release(Engine.RendererCore.RootSign);
+	R_Destroy(&Engine.RendererCore);
 	S_ArenaRelease(&Engine.Scene.SceneArena);
 
 #if defined(_DEBUG)
@@ -81,6 +76,28 @@ S_Run()
 	}
 #endif
 	return (int)(msg.wParam);
+}
+
+void
+S_FileOpen(Sendai *Engine)
+{
+	PWSTR FilePath = Win32SelectGLTFPath();
+	if (FilePath == NULL) {
+		return;
+	}
+	SendaiGLTF_LoadModel(FilePath, &Engine->Scene);
+	LoadPrimitivesIntoBuffers(&Engine->RendererCore, &Engine->Scene);
+	CoTaskMemFree(FilePath);
+}
+
+void
+S_WireframeMode(Sendai *Engine)
+{
+	if (Engine->RendererCore.State != ERS_WIREFRAME) {
+		Engine->RendererCore.State = ERS_WIREFRAME;
+	} else {
+		Engine->RendererCore.State = ERS_GLTF;
+	}
 }
 
 /****************************************************
@@ -100,7 +117,7 @@ InitWindow(Sendai *engine)
 	wc.hIconSm = LoadIcon(NULL, IDI_WINLOGO);
 	wc.lpszClassName = L"SendaiClass";
 	RegisterClassEx(&wc);
-	RECT rect = {0, 0, (LONG)(engine->WorldRenderer.Width), (LONG)(engine->WorldRenderer.Height)};
+	RECT rect = {0, 0, (LONG)(engine->RendererCore.Width), (LONG)(engine->RendererCore.Height)};
 	AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
 	engine->hWnd = CreateWindow(wc.lpszClassName, engine->Title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
 								rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, engine->hInstance, engine);
@@ -118,11 +135,11 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		return 0;
 	}
 	case WM_SIZE:
-		if (Engine && Engine->WorldRenderer.SwapChain) {
+		if (Engine && Engine->RendererCore.SwapChain) {
 			int width = LOWORD(lParam);
 			int height = HIWORD(lParam);
-			R_SwapchainResize(&Engine->WorldRenderer, width, height);
-			UI_Resize(&Engine->UI_Renderer, width, height);
+			R_SwapchainResize(&Engine->RendererCore, width, height);
+			UI_Resize(&Engine->RendererUI, width, height);
 		}
 		return 0;
 
@@ -169,42 +186,11 @@ EngineUpdate(Sendai *Engine)
 static void
 EngineDraw(Sendai *Engine)
 {
-	R_Draw(&Engine->WorldRenderer, &Engine->Scene, &Engine->Camera);
+	R_Draw(&Engine->RendererCore, &Engine->Scene, &Engine->Camera);
 }
 
 void
-UI_Update(Sendai *Engine)
-{
-	Engine->UI.BottomBar.FPS = Engine->Timer.FramesPerSecond;
-	Engine->UI.BottomBar.FrameCounter = Engine->FrameCounter;
-	UI_EAction Action = UI_DrawTopBar(&Engine->UI_Renderer, &Engine->UI.TopBar) | UI_DrawToolbarButton(&Engine->UI_Renderer, &Engine->UI.ToolBar) |
-					   UI_DrawBottomBar(&Engine->UI_Renderer, &Engine->UI.BottomBar);
-
-	switch (Action) {
-	case UI_ACTION_FILE_OPEN: {
-		PWSTR FilePath = Win32SelectGLTFPath();
-		if (FilePath == NULL) {
-			break;
-		}
-		SendaiGLTF_LoadModel(FilePath, &Engine->Scene);
-		LoadPrimitivesIntoBuffers(&Engine->WorldRenderer, &Engine->Scene);
-		CoTaskMemFree(FilePath);
-		break;
-	}
-	case UI_ACTION_WIREFRAME_BUTTON_CLICKED:
-		if (Engine->WorldRenderer.State != ERS_WIREFRAME) {
-			Engine->WorldRenderer.State = ERS_WIREFRAME;
-		} else {
-			Engine->WorldRenderer.State = ERS_GLTF;
-		}
-		break;
-	default:
-		break;
-	}
-}
-
-void
-LoadPrimitivesIntoBuffers(R_World *Renderer, S_Scene *Scene)
+LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 {
 	void *pData;
 	ID3D12Resource_Map(Renderer->VertexBufferUpload, 0, NULL, &pData);

@@ -21,24 +21,24 @@ static const FLOAT CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	Forward declaration of private functions
 *****************************************************/
 
-static HRESULT CreateCommandQueue(const R_World *const Renderer);
-static void SetRtvBuffers(R_World *const Renderer, UINT NumBuffers);
-static void CreateSceneResources(const R_World *const Renderer);
-static void CreateDepthStencilBuffer(R_World *const Renderer);
-static void CreateShaders(R_World *const Renderer);
-static ID3D12Resource *CreateGPUTexture(R_World *Renderer, R_Texture *Source);
-static UINT64 SuballocateTextureUpload(R_World *Renderer, UINT64 Size);
+static HRESULT CreateCommandQueue(const R_Core *const Renderer);
+static void SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers);
+static void CreateSceneResources(const R_Core *const Renderer);
+static void CreateDepthStencilBuffer(R_Core *const Renderer);
+static void CreateShaders(R_Core *const Renderer);
+static ID3D12Resource *CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Source);
+static UINT64 SuballocateTextureUpload(R_Core *Renderer, UINT64 Size);
 static void UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize);
 
-static void SignalAndWait(R_World *const Renderer);
-static void RenderPrimitives(S_Scene *Scene, R_World *const Renderer, R_Camera *const Camera);
+static void SignalAndWait(R_Core *const Renderer);
+static void RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera);
 
 /****************************************************
 Public functions
 *****************************************************/
 
 void
-R_Init(R_World *const Renderer, HWND hWnd)
+R_Init(R_Core *const Renderer, HWND hWnd)
 {
 	Renderer->hWnd = hWnd;
 	Renderer->AspectRatio = (FLOAT)(Renderer->Width) / (Renderer->Height);
@@ -134,7 +134,7 @@ R_Init(R_World *const Renderer, HWND hWnd)
 }
 
 void
-R_Draw(R_World *const Renderer, S_Scene *Scene, R_Camera *const Camera)
+R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSign);
 	ID3D12GraphicsCommandList_RSSetViewports(Renderer->CommandList, 1, &Renderer->Viewport);
@@ -179,7 +179,7 @@ R_Draw(R_World *const Renderer, S_Scene *Scene, R_Camera *const Camera)
 }
 
 void
-R_ExecuteCommands(R_World *const Renderer)
+R_ExecuteCommands(R_Core *const Renderer)
 {
 	ID3D12GraphicsCommandList_Close(Renderer->CommandList);
 	ID3D12CommandList *CmdLists[] = {(ID3D12CommandList *)Renderer->CommandList};
@@ -190,7 +190,7 @@ R_ExecuteCommands(R_World *const Renderer)
 }
 
 void
-R_SwapchainResize(R_World *const Renderer, INT Width, INT Height)
+R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height)
 {
 	for (INT i = 0; i < FRAME_COUNT; ++i) {
 		SignalAndWait(Renderer);
@@ -228,7 +228,7 @@ R_SwapchainResize(R_World *const Renderer, INT Width, INT Height)
 }
 
 GPUTexture
-R_UploadTexture(R_World *Renderer, R_Texture *Source, UINT SlotIndex)
+R_UploadTexture(R_Core *Renderer, R_Texture *Source, UINT SlotIndex)
 {
 	GPUTexture NewTex = {0};
 
@@ -236,7 +236,7 @@ R_UploadTexture(R_World *Renderer, R_Texture *Source, UINT SlotIndex)
 	if (Index != -1) {
 		NewTex.GpuTexture = Renderer->Textures[Index].Texture.GpuTexture;
 	} else {
-		NewTex.GpuTexture = CreateGPUTexture(Renderer, Source);
+		NewTex.GpuTexture = CommandCreateTextureGPU(Renderer, Source);
 		TextureLookup Lookup = {.key = _strdup(Source->Name), .Texture = NewTex};
 		shputs(Renderer->Textures, Lookup);
 	}
@@ -262,13 +262,12 @@ R_UploadTexture(R_World *Renderer, R_Texture *Source, UINT SlotIndex)
 }
 
 void
-R_CreateUITexture(PCWSTR Path, R_World *Renderer, UINT nkSlotIndex)
+R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
 {
 	char PathUTF8[MAX_PATH * 4];
 	WideCharToMultiByte(CP_UTF8, 0, Path, -1, PathUTF8, (INT)sizeof(PathUTF8), NULL, NULL);
-	INT W, H, Ch;
-	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, &Ch, 4);
-	size_t Size = (size_t)(W) * (size_t)(H) * 4;
+	INT W, H;
+	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
 	R_Texture Source = (R_Texture){
 	  .Height = H,
 	  .Width = W,
@@ -276,10 +275,12 @@ R_CreateUITexture(PCWSTR Path, R_World *Renderer, UINT nkSlotIndex)
 	};
 
 	GPUTexture NewTex = {0};
-	NewTex.GpuTexture = CreateGPUTexture(Renderer, &Source);
+	NewTex.GpuTexture = CommandCreateTextureGPU(Renderer, &Source);
 	UI_SetTextureInNkHeap(nkSlotIndex, NewTex.GpuTexture);
+	
 	TextureLookup Lookup = {.key = Path, .Texture = NewTex};
 	shputs(Renderer->Textures, Lookup);
+	
 	stbi_image_free(Pixels);
 }
 
@@ -295,7 +296,7 @@ R_UpdateResource(ID3D12Resource *Resource, void *Data, size_t DataSize)
 }
 
 void
-R_Destroy(R_World *Renderer)
+R_Destroy(R_Core *Renderer)
 {
 	UI_Destroy();
 	IDXGISwapChain1_Release(Renderer->SwapChain);
@@ -336,7 +337,7 @@ R_Destroy(R_World *Renderer)
 *****************************************************/
 
 static void
-SignalAndWait(R_World *const Renderer)
+SignalAndWait(R_Core *const Renderer)
 {
 	HRESULT hr = ID3D12CommandQueue_Signal(Renderer->CommandQueue, Renderer->Fence, ++Renderer->FenceValue);
 	ExitIfFailed(hr);
@@ -345,7 +346,7 @@ SignalAndWait(R_World *const Renderer)
 }
 
 ID3D12Resource *
-CreateGPUTexture(R_World *Renderer, R_Texture *Source)
+CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Source)
 {
 	ID3D12Resource *Texture = NULL;
 	D3D12_RESOURCE_DESC TexDesc = {.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
@@ -401,7 +402,7 @@ UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize)
 }
 
 void
-RenderPrimitives(S_Scene *Scene, R_World *const Renderer, R_Camera *const Camera)
+RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 {
 	UINT64 MeshDataOffset = 0;
 	UINT8 *MeshDataCpuAddress = Renderer->MeshDataUploadBufferCpuAddress;
@@ -450,7 +451,7 @@ RenderPrimitives(S_Scene *Scene, R_World *const Renderer, R_Camera *const Camera
 }
 
 void
-CreateDepthStencilBuffer(R_World *const Renderer)
+CreateDepthStencilBuffer(R_Core *const Renderer)
 {
 	D3D12_DESCRIPTOR_HEAP_DESC DepthStencilHeapDesc = {
 	  .NumDescriptors = 1, .Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE};
@@ -471,7 +472,7 @@ CreateDepthStencilBuffer(R_World *const Renderer)
 }
 
 UINT64
-SuballocateTextureUpload(R_World *Renderer, UINT64 Size)
+SuballocateTextureUpload(R_Core *Renderer, UINT64 Size)
 {
 	UINT64 AlignedOffset =
 		(Renderer->TextureUploadBuffer.CurrentOffset + (D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT - 1)) & ~(D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT - 1);
@@ -485,7 +486,7 @@ SuballocateTextureUpload(R_World *Renderer, UINT64 Size)
 }
 
 HRESULT
-CreateCommandQueue(const R_World *const Renderer)
+CreateCommandQueue(const R_Core *const Renderer)
 {
 	D3D12_COMMAND_QUEUE_DESC CommandQueueDesc = {
 	  .Type = D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -497,7 +498,7 @@ CreateCommandQueue(const R_World *const Renderer)
 }
 
 void
-SetRtvBuffers(R_World *const Renderer, UINT NumBuffers)
+SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers)
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE RtvDescriptorHandle;
 	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->RtvDescriptorHeap, &RtvDescriptorHandle);
@@ -511,7 +512,7 @@ SetRtvBuffers(R_World *const Renderer, UINT NumBuffers)
 }
 
 void
-CreateSceneResources(R_World *const Renderer)
+CreateSceneResources(R_Core *const Renderer)
 {
 	HRESULT hr;
 	D3D12_RESOURCE_DESC BufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(MEGABYTES(128), D3D12_RESOURCE_FLAG_NONE, 0);
@@ -556,7 +557,7 @@ CreateSceneResources(R_World *const Renderer)
 }
 
 void
-CreateShaders(R_World *const Renderer)
+CreateShaders(R_Core *const Renderer)
 {
 	R_CreateSceneRootSig(Renderer->Device, &Renderer->RootSign);
 
