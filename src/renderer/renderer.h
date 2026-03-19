@@ -10,7 +10,7 @@ typedef struct R_Camera R_Camera;
 typedef struct R_Primitive R_Primitive;
 typedef struct R_Texture R_Texture;
 
-typedef enum ERenderState { ERS_GLTF, ERS_WIREFRAME, ERS_N_RENDER_STATES } ERenderState;
+typedef enum ERenderState { ERS_GLTF, ERS_WIREFRAME, ERS_BILLBOARD, ERS_N_RENDER_STATES } ERenderState;
 
 typedef struct GPUTexture {
 	ID3D12Resource *GpuTexture;
@@ -55,6 +55,10 @@ typedef struct R_Core {
 	ID3DBlob *PS;
 	ID3D12RootSignature *RootSign;
 
+	ID3DBlob *BillboardVS;
+	ID3DBlob *BillboardPS;
+	ID3D12RootSignature *BillboardRootSign;
+
 	ID3D12Resource *DepthStencil;
 	ID3D12DescriptorHeap *DepthStencilHeap;
 
@@ -84,9 +88,10 @@ typedef struct R_Core {
 
 	UINT8 *MeshDataUploadBufferCpuAddress;
 	ID3D12Resource *MeshDataUploadBuffer;
+	UINT64 MeshDataOffset;
 
-	UINT8 *SceneDataUploadBufferCpuAddress;
 	ID3D12Resource *SceneDataUploadBuffer;
+	ID3D12Resource *TesteDataUploadBuffer;
 
 	R_UploadBuffer TextureUploadBuffer;
 
@@ -97,7 +102,6 @@ typedef struct R_Core {
 void R_Init(R_Core *const Renderer, HWND hWnd);
 void R_Destroy(R_Core *Renderer);
 void R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera);
-void R_UpdateResource(ID3D12Resource *Resource, void *Data, size_t DataSize);
 void R_ExecuteCommands(R_Core *const Renderer);
 void R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height);
 void R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex);

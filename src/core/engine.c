@@ -1,11 +1,12 @@
 #include "pch.h"
+
 #include "engine.h"
 #include "../assets/gltf.h"
 #include "../renderer/renderer.h"
+#include "../renderer/shader.h"
 #include "../ui/ui.h"
 #include "../win32/file_dialog.h"
 #include "../win32/win_path.h"
-#include "../renderer/shader.h"
 
 static const UINT8 BLACK_PIXEL[] = {0, 0, 0, 255};
 static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
@@ -184,6 +185,8 @@ EngineUpdate(Sendai *Engine)
 
 	S_Tick(&Engine->Timer);
 	R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
+	Engine->Scene.Data =
+		(R_SceneData){.CameraPosition = Engine->Camera.Position, .LightPosition = {1.0f, 1.0f, 1.0f}, .LightColor = {100.0f, 1.0f, 1.0f}};
 	UI_Update(Engine);
 }
 
@@ -201,7 +204,7 @@ LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 	UINT64 CurrentUploadBufferOffset = 0;
 	UINT64 CurrentVertexBufferOffset = 0;
 	UINT64 CurrentIndexBufferOffset = 0;
-	
+
 	for (int ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
 		for (int MeshIdx = 0; MeshIdx < Scene->Models[ModelIdx].MeshesCount; ++MeshIdx) {
 			R_Mesh *Mesh = &Scene->Models[ModelIdx].Meshes[MeshIdx];
@@ -209,16 +212,19 @@ LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
 				UINT VertexBufferSize = sizeof(R_Vertex) * Primitive->VertexCount;
 				memcpy((BYTE *)pData + CurrentUploadBufferOffset, Primitive->Vertices, VertexBufferSize);
-				Primitive->VertexBufferView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Renderer->VertexBufferDefault) + CurrentVertexBufferOffset;
+				Primitive->VertexBufferView.BufferLocation =
+					ID3D12Resource_GetGPUVirtualAddress(Renderer->VertexBufferDefault) + CurrentVertexBufferOffset;
 				Primitive->VertexBufferView.SizeInBytes = VertexBufferSize;
 				Primitive->VertexBufferView.StrideInBytes = sizeof(R_Vertex);
-				ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->VertexBufferDefault, CurrentVertexBufferOffset, Renderer->VertexBufferUpload, CurrentUploadBufferOffset, VertexBufferSize);
+				ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->VertexBufferDefault, CurrentVertexBufferOffset,
+														   Renderer->VertexBufferUpload, CurrentUploadBufferOffset, VertexBufferSize);
 				CurrentVertexBufferOffset += VertexBufferSize;
 				CurrentUploadBufferOffset += VertexBufferSize;
 
 				UINT IndexBufferSize = Primitive->IndexCount * sizeof(UINT16);
 				memcpy((BYTE *)pData + CurrentUploadBufferOffset, Primitive->Indices, IndexBufferSize);
-				Primitive->IndexBufferView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Renderer->IndexBufferDefault) + CurrentIndexBufferOffset;
+				Primitive->IndexBufferView.BufferLocation =
+					ID3D12Resource_GetGPUVirtualAddress(Renderer->IndexBufferDefault) + CurrentIndexBufferOffset;
 				Primitive->IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
 				Primitive->IndexBufferView.SizeInBytes = IndexBufferSize;
 				ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->IndexBufferDefault, CurrentIndexBufferOffset,
@@ -232,17 +238,17 @@ LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 	}
 
 	D3D12_RESOURCE_BARRIER BarrierVertexBuffer = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-									  .Transition.pResource = Renderer->VertexBufferDefault,
-									  .Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
-									  .Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
-									  .Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES};
+												  .Transition.pResource = Renderer->VertexBufferDefault,
+												  .Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+												  .Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
+												  .Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES};
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &BarrierVertexBuffer);
 
-		D3D12_RESOURCE_BARRIER BarrierIndexBuffer = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-									  .Transition.pResource = Renderer->IndexBufferDefault,
-									  .Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
-									  .Transition.StateAfter = D3D12_RESOURCE_STATE_INDEX_BUFFER,
-									  .Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES};
+	D3D12_RESOURCE_BARRIER BarrierIndexBuffer = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+												 .Transition.pResource = Renderer->IndexBufferDefault,
+												 .Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+												 .Transition.StateAfter = D3D12_RESOURCE_STATE_INDEX_BUFFER,
+												 .Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES};
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &BarrierIndexBuffer);
 
 	ID3D12Resource_Unmap(Renderer->VertexBufferUpload, 0, NULL);
@@ -268,7 +274,7 @@ LoadPBRTextures(R_Primitive *Primitive, R_Core *Renderer, S_Scene *Scene, int Mo
 	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->MetallicIndex, BaseDescriptorIndex + 2, BLACK_PIXEL);
 
 	// Roughness (t3)
-	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->RoughnessIndex, BaseDescriptorIndex + 3, WHITE_PIXEL);
+	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->RoughnessIndex, BaseDescriptorIndex + 3, BLACK_PIXEL);
 
 	// AO (t4)
 	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->OcclusionIndex, BaseDescriptorIndex + 4, BLACK_PIXEL);
@@ -290,5 +296,5 @@ R_BindTextureToSlot(R_Core *Renderer, S_Scene *Scene, int ModelIdx, int TextureI
 		Dummy.Name = DummyName;
 		Target = &Dummy;
 	}
-	 R_UploadTexture(Renderer, Target, HeapSlot);
+	R_UploadTexture(Renderer, Target, HeapSlot);
 }

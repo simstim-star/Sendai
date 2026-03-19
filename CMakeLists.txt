@@ -13,7 +13,7 @@ set(HEADER_FILES "src/core/camera.h" "src/core/timer.h" "src/win32/win_path.h" "
 
 set(DEPS_FILES "deps/b64.h" "deps/cgltf.h" "deps/nuklear.h" "deps/stb_ds.h" "deps/stb_image.h")
 
-set(SHADER_FILES "src/shaders/gltf/gltf.hlsl" "src/shaders/gltf/pbr.hlsl")
+set(SHADER_FILES "src/shaders/gltf/gltf.hlsl" "src/shaders/gltf/pbr.hlsl" "src/shaders/gltf/billboard.hlsl")
 
 set_source_files_properties(${SHADER_FILES} PROPERTIES LANGUAGE HLSL)
 set_source_files_properties("src/shaders/gltf/pbr.hlsl" PROPERTIES 

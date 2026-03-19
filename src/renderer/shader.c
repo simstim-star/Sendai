@@ -44,7 +44,7 @@ R_CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign)
 	RootParameters[3].DescriptorTable.pDescriptorRanges = &SrvRange;
 	RootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-	// Sampler 
+	// Sampler
 	D3D12_STATIC_SAMPLER_DESC Sampler = {
 	  .Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
 	  .AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
@@ -138,13 +138,11 @@ R_CreateScenePipelineState(R_Core *Renderer)
 	  .SampleDesc.Count = 1,
 	};
 
-	HRESULT hr =
-		ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_GLTF]);
+	HRESULT hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_GLTF]);
 	ExitIfFailed(hr);
 
 	PSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
-	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState,
-												  &Renderer->PipelineState[ERS_WIREFRAME]);
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_WIREFRAME]);
 	ExitIfFailed(hr);
 }
 
@@ -154,4 +152,100 @@ R_NormalMatrix(XMFLOAT4X4 Model)
 	XMMATRIX ModelMatrix = XMLoadFloat4x4(&Model);
 	XMMATRIX ModelInv = XM_MAT_INV(NULL, ModelMatrix);
 	return XM_MAT_TRANSP(ModelInv);
+}
+
+void
+R_CreateBillboardPipelineState(R_Core *Renderer)
+{
+	D3D12_ROOT_PARAMETER RootParameters[2];
+
+	// MeshData (b0)
+	RootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	RootParameters[0].Descriptor.ShaderRegister = 0;
+	RootParameters[0].Descriptor.RegisterSpace = 0;
+	RootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+	// Texture (t0)
+	D3D12_DESCRIPTOR_RANGE Range = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+	RootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	RootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
+	RootParameters[1].DescriptorTable.pDescriptorRanges = &Range;
+	RootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+	// Sampler
+	D3D12_STATIC_SAMPLER_DESC Sampler = {
+	  .Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+	  .AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+	  .AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+	  .AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+	  .ShaderRegister = 0,
+	  .ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
+	};
+
+	D3D12_ROOT_SIGNATURE_DESC RootSignatureDesc = {
+	  .NumParameters = _countof(RootParameters),
+	  .pParameters = RootParameters,
+	  .NumStaticSamplers = 1,
+	  .pStaticSamplers = &Sampler,
+	  .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
+	};
+
+	ID3DBlob *Signature = NULL;
+	ID3DBlob *Error = NULL;
+	HRESULT hr = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &Error);
+
+	if (FAILED(hr)) {
+		if (Error) {
+			S_LogAppend((PWSTR)ID3D10Blob_GetBufferPointer(Error));
+		}
+		ExitIfFailed(hr);
+	}
+
+	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature),
+										  &IID_ID3D12RootSignature, &Renderer->BillboardRootSign);
+
+	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
+	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	  {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
+	  .pRootSignature = Renderer->BillboardRootSign,
+	  .InputLayout = (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
+	  .VS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(Renderer->BillboardVS),
+									.BytecodeLength = ID3D10Blob_GetBufferSize(Renderer->BillboardVS)},
+	  .PS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(Renderer->BillboardPS),
+									.BytecodeLength = ID3D10Blob_GetBufferSize(Renderer->BillboardPS)},
+	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
+	  .DSVFormat = DXGI_FORMAT_D32_FLOAT,
+	  .SampleMask = UINT_MAX,
+	  .PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+	  .NumRenderTargets = 1,
+	  .RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM,
+	  .SampleDesc.Count = 1,
+	};
+	PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	D3D12_RENDER_TARGET_BLEND_DESC TransparencyBlend = {
+	  .BlendEnable = TRUE,
+	  .LogicOpEnable = FALSE,
+	  .SrcBlend = D3D12_BLEND_SRC_ALPHA,
+	  .DestBlend = D3D12_BLEND_INV_SRC_ALPHA,
+	  .BlendOp = D3D12_BLEND_OP_ADD,
+	  .SrcBlendAlpha = D3D12_BLEND_ONE,
+	  .DestBlendAlpha = D3D12_BLEND_ZERO,
+	  .BlendOpAlpha = D3D12_BLEND_OP_ADD,
+	  .LogicOp = D3D12_LOGIC_OP_NOOP,
+	  .RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+	};
+	PSODesc.BlendState.RenderTarget[0] = TransparencyBlend;
+
+	PSODesc.DepthStencilState = (D3D12_DEPTH_STENCIL_DESC){
+	  .DepthEnable = TRUE,
+	  .DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO,
+	  .DepthFunc = D3D12_COMPARISON_FUNC_LESS,
+	  .StencilEnable = FALSE,
+	};
+
+	hr =
+		ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_BILLBOARD]);
+	ExitIfFailed(hr);
 }

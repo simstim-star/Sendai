@@ -17,18 +17,23 @@
 
 static const FLOAT CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
+typedef enum EReservedSrvIndex {
+	ERSI_BILLBOARD_LAMP = 0,
+} EReservedSrvIndex;
+
 /****************************************************
 	Forward declaration of private functions
 *****************************************************/
 
-static HRESULT CreateCommandQueue(const R_Core *const Renderer);
 static void SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers);
 static void CreateSceneResources(const R_Core *const Renderer);
 static void CreateDepthStencilBuffer(R_Core *const Renderer);
 static void CreateShaders(R_Core *const Renderer);
 static ID3D12Resource *CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Source);
 static UINT64 SuballocateTextureUpload(R_Core *Renderer, UINT64 Size);
-static void UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize);
+static void UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize, UINT64 Offset);
+static void CreateCustomTexture(PCWSTR Path, R_Core *Renderer);
+static void RenderBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, EReservedSrvIndex SrvIndex);
 
 static void SignalAndWait(R_Core *const Renderer);
 static void RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera);
@@ -67,7 +72,13 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	hr = D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_11_0, &IID_ID3D12Device, &Renderer->Device);
 	ExitIfFailed(hr);
 
-	hr = CreateCommandQueue(Renderer);
+	D3D12_COMMAND_QUEUE_DESC CommandQueueDesc = {
+	  .Type = D3D12_COMMAND_LIST_TYPE_DIRECT,
+	  .Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL,
+	  .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
+	  .NodeMask = 0,
+	};
+	hr = ID3D12Device_CreateCommandQueue(Renderer->Device, &CommandQueueDesc, &IID_ID3D12CommandQueue, &Renderer->CommandQueue);
 	ExitIfFailed(hr);
 
 	Renderer->FenceValue = 0;
@@ -129,7 +140,6 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	CreateSceneResources(Renderer);
 	CreateDepthStencilBuffer(Renderer);
 	CreateShaders(Renderer);
-
 	IDXGIFactory2_Release(Factory);
 }
 
@@ -159,7 +169,15 @@ R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera)
 	ID3D12DescriptorHeap *Heaps[] = {Renderer->SrvHeap};
 	ID3D12GraphicsCommandList_SetDescriptorHeaps(Renderer->CommandList, 1, Heaps);
 
+	Renderer->MeshDataOffset = 0;
 	RenderPrimitives(Scene, Renderer, Camera);
+	XMVECTOR LightPos = XMLoadFloat3(&Scene->Data.LightPosition);
+	R_MeshConstants LightMeshData = {
+	  .View = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection),
+	  .Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f),
+	  .Model = XMMatrixTranslationFromVector(XM_REF_1V(LightPos)),
+	};
+	RenderBillboard(&LightMeshData, Renderer, ERSI_BILLBOARD_LAMP);
 	UI_Draw(Renderer->CommandList);
 
 	// Bring the rtv resource back to present state
@@ -237,8 +255,6 @@ R_UploadTexture(R_Core *Renderer, R_Texture *Source, UINT SlotIndex)
 		NewTex.GpuTexture = Renderer->Textures[Index].Texture.GpuTexture;
 	} else {
 		NewTex.GpuTexture = CommandCreateTextureGPU(Renderer, Source);
-		TextureLookup Lookup = {.key = _strdup(Source->Name), .Texture = NewTex};
-		shputs(Renderer->Textures, Lookup);
 	}
 
 	UINT IncrementSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -254,9 +270,11 @@ R_UploadTexture(R_Core *Renderer, R_Texture *Source, UINT SlotIndex)
 	  .Texture2D.MipLevels = 1,
 	};
 	ID3D12Device_CreateShaderResourceView(Renderer->Device, NewTex.GpuTexture, &SrvDesc, CpuDescHandle);
-
 	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->SrvHeap, &NewTex.SrvHandle);
 	NewTex.SrvHandle.ptr += (UINT64)SlotIndex * IncrementSize;
+
+	TextureLookup Lookup = {.key = _strdup(Source->Name), .Texture = NewTex};
+	shputs(Renderer->Textures, Lookup);
 
 	return NewTex;
 }
@@ -277,22 +295,24 @@ R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
 	GPUTexture NewTex = {0};
 	NewTex.GpuTexture = CommandCreateTextureGPU(Renderer, &Source);
 	UI_SetTextureInNkHeap(nkSlotIndex, NewTex.GpuTexture);
-	
+
 	TextureLookup Lookup = {.key = Path, .Texture = NewTex};
 	shputs(Renderer->Textures, Lookup);
-	
+
 	stbi_image_free(Pixels);
 }
 
 void
-R_UpdateResource(ID3D12Resource *Resource, void *Data, size_t DataSize)
+CreateCustomTexture(PCWSTR Path, R_Core *Renderer)
 {
-	UINT8 *Begin = NULL;
-	const D3D12_RANGE ReadRange = {0, 0};
-	HRESULT hr = ID3D12Resource_Map(Resource, 0, &ReadRange, (void **)&Begin);
-	ExitIfFailed(hr);
-	memcpy(Begin, Data, DataSize);
-	ID3D12Resource_Unmap(Resource, 0, NULL);
+	char PathUTF8[MAX_PATH * 4];
+	WideCharToMultiByte(CP_UTF8, 0, Path, -1, PathUTF8, (INT)sizeof(PathUTF8), NULL, NULL);
+	INT W, H;
+	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
+	R_Texture Source = (R_Texture){.Height = H, .Width = W, .Pixels = Pixels, .Name = "teste"};
+	GPUTexture NewTex = R_UploadTexture(Renderer, &Source, 0);
+	Renderer->SrvCount = 1;
+	stbi_image_free(Pixels);
 }
 
 void
@@ -367,17 +387,26 @@ CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Source)
 	UINT NumRows;
 	UINT64 RowSize;
 	UINT64 TotalUploadSize = 0;
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT FootprINT;
-	ID3D12Device_GetCopyableFootprints(Renderer->Device, &TexDesc, 0, 1, 0, &FootprINT, &NumRows, &RowSize, &TotalUploadSize);
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT Footprint;
+
+	ID3D12Device_GetCopyableFootprints(Renderer->Device, &TexDesc, 0, 1, 0, &Footprint, &NumRows, &RowSize, &TotalUploadSize);
 	UINT64 Offset = SuballocateTextureUpload(Renderer, TotalUploadSize);
-	FootprINT.Offset += Offset;
-	UINT8 *DestPtr = Renderer->TextureUploadBuffer.BaseMappedPtr + FootprINT.Offset;
+	Footprint.Offset += Offset;
+	UINT8 *DestPtr = Renderer->TextureUploadBuffer.BaseMappedPtr + Footprint.Offset;
 	for (UINT i = 0; i < NumRows; ++i) {
-		memcpy(DestPtr + i * FootprINT.Footprint.RowPitch, (UINT8 *)Source->Pixels + i * (Source->Width * 4), Source->Width * 4);
+		memcpy(DestPtr + i * Footprint.Footprint.RowPitch, (UINT8 *)Source->Pixels + i * (Source->Width * 4), Source->Width * 4);
 	}
 	D3D12_TEXTURE_COPY_LOCATION DstLocation = {.pResource = Texture, .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = 0};
 	D3D12_TEXTURE_COPY_LOCATION SrcLocation = {
-	  .pResource = Renderer->TextureUploadBuffer.Buffer, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = FootprINT};
+	  .pResource = Renderer->TextureUploadBuffer.Buffer, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = Footprint};
+	D3D12_RESOURCE_BARRIER ToCopyDest = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+										 .Transition = {
+										   .pResource = Texture,
+										   .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+										   .StateBefore = D3D12_RESOURCE_STATE_COMMON,
+										   .StateAfter = D3D12_RESOURCE_STATE_COPY_DEST,
+										 }};
+	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &ToCopyDest);
 	ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->CommandList, &DstLocation, 0, 0, 0, &SrcLocation, NULL);
 	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
 									  .Transition = {
@@ -391,20 +420,19 @@ CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Source)
 }
 
 void
-UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize)
+UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize, UINT64 Offset)
 {
 	UINT8 *Begin = NULL;
 	const D3D12_RANGE ReadRange = {0, 0};
 	HRESULT hr = ID3D12Resource_Map(Resource, 0, &ReadRange, &Begin);
 	ExitIfFailed(hr);
-	memcpy(Begin, Data, DataSize);
+	memcpy(Begin + Offset, Data, DataSize);
 	ID3D12Resource_Unmap(Resource, 0, NULL);
 }
 
 void
 RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 {
-	UINT64 MeshDataOffset = 0;
 	UINT8 *MeshDataCpuAddress = Renderer->MeshDataUploadBufferCpuAddress;
 	D3D12_GPU_VIRTUAL_ADDRESS MeshDataGpuAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->MeshDataUploadBuffer);
 
@@ -412,20 +440,7 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 	MeshData.View = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection);
 	MeshData.Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f);
 
-	XMFLOAT3 LP, LC;
-	LP.x = 15.f;
-	LP.y = 25.f;
-	LP.z = 15.f;
-	LC.x = 300.f;
-	LC.y = 300.f;
-	LC.z = 300.f;
-	R_SceneData SceneData = {
-	  .CameraPosition = Camera->Position,
-	  .LightPosition = LP,
-	  .LightColor = LC,
-	};
-	UpdateResourceData(Renderer->SceneDataUploadBuffer, &SceneData, sizeof(R_SceneData));
-
+	UpdateResourceData(Renderer->SceneDataUploadBuffer, &Scene->Data, sizeof(R_SceneData), 0);
 	D3D12_GPU_VIRTUAL_ADDRESS SceneDataGpuBaseAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->SceneDataUploadBuffer);
 	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2, SceneDataGpuBaseAddress);
 
@@ -435,9 +450,9 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 			R_Mesh *Mesh = &Model->Meshes[MeshIdx];
 			MeshData.Model = XMLoadFloat4x4(&Mesh->ModelMatrix);
 			MeshData.Normal = R_NormalMatrix(Mesh->ModelMatrix);
-			memcpy(MeshDataCpuAddress + MeshDataOffset, &MeshData, sizeof(R_MeshConstants));
-			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + MeshDataOffset);
-			MeshDataOffset += (sizeof(R_MeshConstants) + 255) & ~255;
+			memcpy(MeshDataCpuAddress + Renderer->MeshDataOffset, &MeshData, sizeof(R_MeshConstants));
+			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + Renderer->MeshDataOffset);
+			Renderer->MeshDataOffset += (sizeof(R_MeshConstants) + 255) & ~255;
 
 			for (INT PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
 				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
@@ -486,18 +501,6 @@ SuballocateTextureUpload(R_Core *Renderer, UINT64 Size)
 	return AlignedOffset;
 }
 
-HRESULT
-CreateCommandQueue(const R_Core *const Renderer)
-{
-	D3D12_COMMAND_QUEUE_DESC CommandQueueDesc = {
-	  .Type = D3D12_COMMAND_LIST_TYPE_DIRECT,
-	  .Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL,
-	  .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
-	  .NodeMask = 0,
-	};
-	return ID3D12Device_CreateCommandQueue(Renderer->Device, &CommandQueueDesc, &IID_ID3D12CommandQueue, &Renderer->CommandQueue);
-}
-
 void
 SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers)
 {
@@ -540,6 +543,10 @@ CreateSceneResources(R_Core *const Renderer)
 											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Renderer->SceneDataUploadBuffer);
 	ExitIfFailed(hr);
 
+	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc,
+											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Renderer->TesteDataUploadBuffer);
+	ExitIfFailed(hr);
+
 	D3D12_HEAP_PROPERTIES HeapProps = {.Type = D3D12_HEAP_TYPE_UPLOAD};
 	Renderer->TextureUploadBuffer.Size = MEGABYTES(128);
 	Renderer->TextureUploadBuffer.CurrentOffset = 0;
@@ -555,6 +562,10 @@ CreateSceneResources(R_Core *const Renderer)
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &HeapProps, D3D12_HEAP_FLAG_NONE, &PBRDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL,
 											  &IID_ID3D12Resource, &Renderer->MaterialBuffer);
 	ExitIfFailed(hr);
+
+	WCHAR LampImagePath[512];
+	Win32FullPath(L"/assets/images/lamp.png", LampImagePath, _countof(LampImagePath));
+	CreateCustomTexture(LampImagePath, Renderer);
 }
 
 void
@@ -569,4 +580,53 @@ CreateShaders(R_Core *const Renderer)
 	hr = R_CompileShader(GLTFShadersPath, &Renderer->PS, EST_PIXEL_SHADER);
 	ExitIfFailed(hr);
 	R_CreateScenePipelineState(Renderer);
+
+	WCHAR LightShadersPath[512];
+	Win32FullPath(L"/shaders/gltf/billboard.hlsl", LightShadersPath, _countof(LightShadersPath));
+	hr = R_CompileShader(LightShadersPath, &Renderer->BillboardVS, EST_VERTEX_SHADER);
+	ExitIfFailed(hr);
+	hr = R_CompileShader(LightShadersPath, &Renderer->BillboardPS, EST_PIXEL_SHADER);
+	ExitIfFailed(hr);
+
+	R_CreateBillboardPipelineState(Renderer);
+}
+
+void
+RenderBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, EReservedSrvIndex SrvIndex)
+{
+	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->BillboardRootSign);
+	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[ERS_BILLBOARD]);
+	ID3D12GraphicsCommandList_IASetPrimitiveTopology(Renderer->CommandList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	UpdateResourceData(Renderer->MeshDataUploadBuffer, MeshConstants, sizeof(R_MeshConstants), Renderer->MeshDataOffset);
+
+	UINT IncrementSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	D3D12_GPU_DESCRIPTOR_HANDLE LampHandle;
+	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->SrvHeap, &LampHandle);
+	LampHandle.ptr += (UINT64)SrvIndex * IncrementSize;
+
+	D3D12_GPU_VIRTUAL_ADDRESS MeshDataGpuAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->MeshDataUploadBuffer);
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + Renderer->MeshDataOffset);
+	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, LampHandle);
+
+	struct BillboardVertex {
+		XMFLOAT3 Position;
+		XMFLOAT2 UV;
+	} BillboardVertices[] = {
+	  {{-1.0f, -1.0f, 0.0f}, {0.0f, 1.0f}},
+	  {{-1.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+	  {{1.0f, -1.0f, 0.0f}, {1.0f, 1.0f}},
+	  {{1.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	};
+	UpdateResourceData(Renderer->TesteDataUploadBuffer, &BillboardVertices, sizeof(BillboardVertices), 0);
+
+	D3D12_VERTEX_BUFFER_VIEW VBV = {
+	  .BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Renderer->TesteDataUploadBuffer),
+	  .SizeInBytes = sizeof(BillboardVertices),
+	  .StrideInBytes = sizeof(struct BillboardVertex),
+	};
+	ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &VBV);
+	ID3D12GraphicsCommandList_DrawInstanced(Renderer->CommandList, 4, 1, 0, 0);
+
+	Renderer->MeshDataOffset += (sizeof(R_MeshConstants) + 255) & ~255;
 }
