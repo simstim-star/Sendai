@@ -15,6 +15,7 @@ typedef enum ERenderState { ERS_GLTF, ERS_WIREFRAME, ERS_BILLBOARD, ERS_N_RENDER
 typedef struct GPUTexture {
 	ID3D12Resource *GpuTexture;
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvHandle;
+	UINT HeapIndex;
 } GPUTexture;
 
 typedef struct TextureLookup {
@@ -47,17 +48,13 @@ typedef struct R_Core {
 	UINT RtvDescIncrement;
 	UINT RtvIndex;
 	
-	ID3D12DescriptorHeap *SrvHeap;
-	UINT SrvCount;
+	ID3D12DescriptorHeap *TexturesHeap;
+	UINT TexturesCount;
+	R_UploadBuffer TextureUploadBuffer;
+	TextureLookup *Textures;
 
-
-	ID3DBlob *VS;
-	ID3DBlob *PS;
-	ID3D12RootSignature *RootSign;
-
-	ID3DBlob *BillboardVS;
-	ID3DBlob *BillboardPS;
-	ID3D12RootSignature *BillboardRootSign;
+	ID3D12RootSignature *RootSignPBR;
+	ID3D12RootSignature *RootSignBillboard;
 
 	ID3D12Resource *DepthStencil;
 	ID3D12DescriptorHeap *DepthStencilHeap;
@@ -91,12 +88,7 @@ typedef struct R_Core {
 	UINT64 MeshDataOffset;
 
 	ID3D12Resource *SceneDataUploadBuffer;
-	ID3D12Resource *TesteDataUploadBuffer;
-
-	R_UploadBuffer TextureUploadBuffer;
-
-	ID3D12Resource *MaterialBuffer;
-	TextureLookup *Textures;
+	UINT64 SceneDataOffset;
 } R_Core;
 
 void R_Init(R_Core *const Renderer, HWND hWnd);

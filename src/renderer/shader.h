@@ -9,8 +9,7 @@ typedef enum EShaderType {
 	EST_PIXEL_SHADER,
 } EShaderType;
 
-void R_CreateSceneRootSig(ID3D12Device *Device, ID3D12RootSignature **RootSign);
 HRESULT R_CompileShader(PCWSTR FilePath, ID3DBlob **Blob, EShaderType ShaderType);
-void R_CreateScenePipelineState(R_Core *Renderer);
+void R_CreatePBRPipelineState(R_Core *Renderer);
 void R_CreateBillboardPipelineState(R_Core *Renderer);
 XMMATRIX R_NormalMatrix(XMFLOAT4X4 Model);

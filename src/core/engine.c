@@ -70,7 +70,7 @@ S_Run()
 		}
 	}
 
-	ID3D12RootSignature_Release(Engine.RendererCore.RootSign);
+	ID3D12RootSignature_Release(Engine.RendererCore.RootSignPBR);
 	R_Destroy(&Engine.RendererCore);
 	S_ArenaRelease(&Engine.Scene.SceneArena);
 
@@ -186,7 +186,7 @@ EngineUpdate(Sendai *Engine)
 	S_Tick(&Engine->Timer);
 	R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
 	Engine->Scene.Data =
-		(R_SceneData){.CameraPosition = Engine->Camera.Position, .LightPosition = {1.0f, 1.0f, 1.0f}, .LightColor = {100.0f, 1.0f, 1.0f}};
+		(R_SceneData){.CameraPosition = Engine->Camera.Position, .LightPosition = {10.0f, 1.0f, 1.0f}, .LightColor = {100.0f, 1.0f, 1.0f}};
 	UI_Update(Engine);
 }
 
@@ -257,10 +257,9 @@ LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 void
 LoadPBRTextures(R_Primitive *Primitive, R_Core *Renderer, S_Scene *Scene, int ModelIdx)
 {
-	UINT BaseDescriptorIndex = Renderer->SrvCount;
-	Renderer->SrvCount += 6;
+	UINT BaseDescriptorIndex = Renderer->TexturesCount;
 
-	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->SrvHeap, &Primitive->MaterialDescriptorBase);
+	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &Primitive->MaterialDescriptorBase);
 	UINT DescriptorSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	Primitive->MaterialDescriptorBase.ptr += (UINT64)BaseDescriptorIndex * DescriptorSize;
 
