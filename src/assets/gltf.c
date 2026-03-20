@@ -22,6 +22,7 @@ static void PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path);
 
 static BOOL ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 							 _In_ cgltf_image *Img,
+							 _In_ S_Arena *SceneArena,
 							 _Outptr_result_bytebuffer_(*Size) UINT8 **Pixels,
 							 _Out_ size_t *Size,
 							 _Out_ int *W,
@@ -52,10 +53,8 @@ static void cgltf_arena_free(void *user, void *ptr);
 BOOL
 SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 {
-	S_Arena LocalArena = S_ArenaInit(GIGABYTES(1));
-
 	void *FileData = NULL;
-	LONG Size = LoadGLTFFile(Path, &LocalArena, &FileData);
+	LONG Size = LoadGLTFFile(Path, &Scene->TextureArena, &FileData);
 	if (Size <= 0) {
 		S_LogAppendf(L"Failed to load %s\n", Path);
 		return FALSE;
@@ -64,7 +63,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 	cgltf_options Options = {0};
 	Options.memory.alloc_func = cgltf_arena_alloc;
 	Options.memory.free_func = cgltf_arena_free;
-	Options.memory.user_data = &LocalArena;
+	Options.memory.user_data = &Scene->TextureArena;
 
 	cgltf_data *Data = NULL;
 	cgltf_result Result = cgltf_parse(&Options, FileData, Size, &Data);
@@ -76,7 +75,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 		return FALSE;
 	}
 
-	Result = LoadGLTFBuffers(&Options, &LocalArena, Data, Path);
+	Result = LoadGLTFBuffers(&Options, &Scene->TextureArena, Data, Path);
 	if (Result != cgltf_result_success) {
 		if (Data) {
 			cgltf_free(Data);
@@ -102,7 +101,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 	Scene->Models[Scene->ModelsCount].Meshes = S_ArenaAlloc(&Scene->SceneArena, NodeCount * sizeof(R_Mesh));
 	Scene->Models[Scene->ModelsCount].MeshesCount = 0;
 
-	for (size_t i = 0; i < NodeCount; i++) {
+	for (size_t i = 0; i < NodeCount; i++, Scene->Models[Scene->ModelsCount].MeshesCount++) {
 		cgltf_node *NodeData = &Data->nodes[i];
 		if (NodeData->mesh == NULL) {
 			continue;
@@ -255,12 +254,9 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 			Primitive->Indices = Indices;
 			Primitive->IndexCount = IndexCount;
 		}
-		Scene->Models[Scene->ModelsCount].MeshesCount++;
 	}
 
 	cgltf_free(Data);
-	S_ArenaRelease(&LocalArena);
-
 	Scene->ModelsCount++;
 	S_LogAppendf(L"Successfully loaded %s\n", Path);
 	return TRUE;
@@ -284,13 +280,13 @@ PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path)
 		WCHAR BasePath[MAX_PATH];
 		wcscpy_s(BasePath, MAX_PATH, Path);
 		RemoveAllAfterLastSlash(BasePath);
-		if (ExtractImageData(BasePath, BaseImage, &Pixels, &Size, &W, &H, &Channels)) {
+		if (ExtractImageData(BasePath, BaseImage, &Scene->TextureArena, &Pixels, &Size, &W, &H, &Channels)) {
 			R_Texture *Texture = &Scene->Models[Scene->ModelsCount].Images[i];
 			Texture->Pixels = Pixels;
 			Texture->Width = W;
 			Texture->Height = H;
 
-			PWSTR UniqueNameW = S_ArenaAlloc(&Scene->SceneArena, MAX_PATH * sizeof(WCHAR));
+			PWSTR UniqueNameW = S_ArenaAlloc(&Scene->TextureArena, MAX_PATH * sizeof(WCHAR));
 			if (BaseImage->uri && !IsDataEmbedded(BaseImage)) {
 				WCHAR UriW[MAX_PATH];
 				MultiByteToWideChar(CP_UTF8, 0, BaseImage->uri, -1, UriW, MAX_PATH);
@@ -310,6 +306,7 @@ PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path)
 BOOL
 ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 				 _In_ cgltf_image *Img,
+				 _In_ S_Arena *TextureArena,
 				 _Outptr_result_bytebuffer_(*Size) UINT8 **Pixels,
 				 _Out_ size_t *Size,
 				 _Out_ int *W,
@@ -333,13 +330,12 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 			const char *EncodedB64 = FirstCommaPtr + 1;
 			size_t EncLen = strlen(EncodedB64);
 			size_t DecodedMaxCap = (EncLen / 4) * 3 + 4;
-			char *Decoded = malloc(DecodedMaxCap);
+			char *Decoded = S_ArenaAlloc(TextureArena, DecodedMaxCap);
 			if (Decoded == NULL) {
 				return FALSE;
 			}
 			b64_decode(EncodedB64, Decoded);
 			StbiData = stbi_load_from_memory(Decoded, (int)DecodedMaxCap, W, H, Channels, 4);
-			free(Decoded);
 			if (!StbiData) {
 				return FALSE;
 			}
@@ -365,11 +361,7 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 		return FALSE;
 	}
 	*Size = (size_t)(*W) * (size_t)(*H) * 4;
-	*Pixels = malloc(*Size);
-	if (*Pixels == NULL) {
-		stbi_image_free(StbiData);
-		return FALSE;
-	}
+	*Pixels = S_ArenaAlloc(TextureArena, *Size);
 	memcpy(*Pixels, StbiData, *Size);
 	stbi_image_free(StbiData);
 	return TRUE;
@@ -434,7 +426,7 @@ LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ S_Arena *Arena, _Inout_ 
 			return cgltf_result_data_too_short;
 		}
 
-		Data->buffers[0].vertex_data = (void *)Data->bin;
+		Data->buffers[0].vertex_data = Data->bin;
 		Data->buffers[0].data_free_method = cgltf_data_free_method_none;
 	}
 
@@ -480,29 +472,29 @@ LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ S_Arena *Arena, _Inout_ 
 LONG
 LoadGLTFFile(_In_z_ PCWSTR Path, S_Arena *Arena, _Outptr_ void **Data)
 {
-	FILE *file = _wfopen(Path, L"rb");
-	if (!file) {
+	FILE *FileHandle = _wfopen(Path, L"rb");
+	if (!FileHandle) {
 		return 0;
 	}
-	fseek(file, 0, SEEK_END);
-	long Size = ftell(file);
-	fseek(file, 0, SEEK_SET);
+	fseek(FileHandle, 0, SEEK_END);
+	long Size = ftell(FileHandle);
+	fseek(FileHandle, 0, SEEK_SET);
 
 	if (Size <= 0) {
-		fclose(file);
+		fclose(FileHandle);
 		return Size;
 	}
 
 	*Data = S_ArenaAlloc(Arena, Size);
 	if (!*Data) {
-		fclose(file);
+		fclose(FileHandle);
 		return 0;
 	}
 
-	size_t read_bytes = fread(*Data, 1, Size, file);
-	fclose(file);
+	size_t ReadBytes = fread(*Data, 1, Size, FileHandle);
+	fclose(FileHandle);
 
-	if (read_bytes != (size_t)Size) {
+	if (ReadBytes != (size_t)Size) {
 		free(*Data);
 		return 0;
 	}

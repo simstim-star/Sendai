@@ -14,4 +14,5 @@ typedef struct S_Scene {
 	R_SceneData Data;
 
 	S_Arena SceneArena;
+	S_Arena TextureArena;
 } S_Scene;

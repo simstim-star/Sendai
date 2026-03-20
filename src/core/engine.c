@@ -50,7 +50,8 @@ S_Run()
 					 .Camera = R_CameraSpawn((XMFLOAT3){0, 0, 0}),
 					 .Scene =
 						 {
-						   .SceneArena = S_ArenaInit(GIGABYTES(2)),
+						   .SceneArena = S_ArenaInit(MEGABYTES(512)),
+						   .TextureArena = S_ArenaInit(MEGABYTES(512)),
 						   .ModelsCount = 0,
 						   .ModelsCapacity = 10000,
 						 },
@@ -200,7 +201,7 @@ EngineUpdate(Sendai *Engine)
 	S_Tick(&Engine->Timer);
 	R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
 	Engine->Scene.Data =
-		(R_SceneData){.CameraPosition = Engine->Camera.Position, .LightPosition = {10.0f, 1.0f, 1.0f}, .LightColor = {100.0f, 1.0f, 1.0f}};
+		(R_SceneData){.CameraPosition = Engine->Camera.Position, .LightPosition = {10.0f, 1.0f, 1.0f}, .LightColor = {1000.0f, 1000.0f, 1000.0f}};
 	UI_Update(Engine);
 }
 
@@ -276,6 +277,7 @@ LoadPBRTextures(R_Primitive *Primitive, R_Core *Renderer, S_Scene *Scene, int Mo
 	Primitive->cb.MetallicTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Metallic);
 	Primitive->cb.RoughnessTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Roughness);
 	Primitive->cb.OcclusionTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Occlusion);
+	S_ArenaReset(&Scene->TextureArena);
 }
 
 UINT32

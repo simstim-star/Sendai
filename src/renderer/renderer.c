@@ -550,7 +550,7 @@ CreateSceneResources(R_Core *const Renderer)
 	ExitIfFailed(hr);
 
 	D3D12_HEAP_PROPERTIES HeapProps = {.Type = D3D12_HEAP_TYPE_UPLOAD};
-	Renderer->TextureUploadBuffer.Size = MEGABYTES(128);
+	Renderer->TextureUploadBuffer.Size = MEGABYTES(512);
 	Renderer->TextureUploadBuffer.CurrentOffset = 0;
 	D3D12_RESOURCE_DESC TextureBufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(Renderer->TextureUploadBuffer.Size, D3D12_RESOURCE_FLAG_NONE, 0);
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &HeapProps, D3D12_HEAP_FLAG_NONE, &TextureBufferDesc,
