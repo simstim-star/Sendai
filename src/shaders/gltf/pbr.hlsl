@@ -1,4 +1,9 @@
-// Inspired by https://learnopengl.com/PBR/Lighting
+// PBR inspired by https://learnopengl.com/PBR/Lighting
+// Bindless inspired by https://alextardif.com/Bindless.html
+
+#define TextureSpace space1
+
+static const uint TEXTURES_N_DESCRIPTORS = 15;
 
 cbuffer MeshData : register(b0)
 {
@@ -18,6 +23,12 @@ cbuffer PBRData : register(b1)
     float2 uvOffset;
     float2 uvScale;
     float uvRotation;
+    
+    uint albedoTextureIndex;
+    uint normalTextureIndex;
+    uint metallicTextureIndex;
+    uint roughnessTextureIndex;
+    uint aoTextureIndex;
 };
 
 cbuffer SceneData : register(b2)
@@ -29,11 +40,7 @@ cbuffer SceneData : register(b2)
 
 static const float PI = 3.14159265359;
 
-Texture2D albedoTex : register(t0);
-Texture2D normalTex : register(t1);
-Texture2D metallicTex : register(t2);
-Texture2D roughnessTex : register(t3);
-Texture2D aoTex : register(t4);
+Texture2D Texture2DTable[TEXTURES_N_DESCRIPTORS] : register(t0, TextureSpace);
 
 SamplerState defaultSampler : register(s0);
 
@@ -80,7 +87,7 @@ PSIn VSMain(VSIn v)
 // ----------------------------------------------------------------------------
 float3 getNormalFromMap(float2 texCoords, float3 worldPos, float3 normal)
 {
-    float3 tangentNormal = normalTex.Sample(defaultSampler, texCoords).xyz * 2.0 - 1.0;
+    float3 tangentNormal = Texture2DTable[normalTextureIndex].Sample(defaultSampler, texCoords).xyz * 2.0 - 1.0;
 
     float3 Q1 = ddx(worldPos);
     float3 Q2 = ddy(worldPos);
@@ -142,10 +149,10 @@ float3 fresnelSchlick(float cosTheta, float3 F0)
 // ----------------------------------------------------------------------------
 float4 PSMain(PSIn input) : SV_TARGET
 {
-    float3 albedo = baseColorFactor.xyz * pow(albedoTex.Sample(defaultSampler, input.uv).rgb, 2.2);
-    float metallic = metallicFactor * metallicTex.Sample(defaultSampler, input.uv).b;
-    float roughness = roughnessFactor * roughnessTex.Sample(defaultSampler, input.uv).g;
-    float ao = aoTex.Sample(defaultSampler, input.uv2).r;
+    float3 albedo = baseColorFactor.xyz * pow(Texture2DTable[albedoTextureIndex].Sample(defaultSampler, input.uv).rgb, 2.2);
+    float metallic = metallicFactor * Texture2DTable[metallicTextureIndex].Sample(defaultSampler, input.uv).b;
+    float roughness = roughnessFactor * Texture2DTable[roughnessTextureIndex].Sample(defaultSampler, input.uv).g;
+    float ao = Texture2DTable[aoTextureIndex].Sample(defaultSampler, input.uv2).r;
 
     float3 N = getNormalFromMap(input.uv, input.fragPos, input.norm);
     float3 V = normalize(camPos - input.fragPos);

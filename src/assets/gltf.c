@@ -142,6 +142,12 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 				}
 			}
 
+			const R_Texture *const Images = Scene->Models[Scene->ModelsCount].Images;
+			Primitive->Albedo = NULL; 
+			Primitive->Normal = NULL; 
+			Primitive->Metallic = NULL; 
+			Primitive->Roughness = NULL; 
+			Primitive->Occlusion = NULL; 
 			if (PrimitiveData->material) {
 				cgltf_material *PrimitiveMaterialData = PrimitiveData->material;
 				if (PrimitiveMaterialData->has_pbr_metallic_roughness) {
@@ -151,7 +157,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 					Primitive->cb.RoughnessFactor = MetallicRoughnessData->roughness_factor;
 					
 					if (MetallicRoughnessData->base_color_texture.texture) {
-						Primitive->AlbedoIndex = MetallicRoughnessData->base_color_texture.texture->image - Data->images;
+						Primitive->Albedo = &Images[MetallicRoughnessData->base_color_texture.texture->image - Data->images];
 
 						if (MetallicRoughnessData->base_color_texture.has_transform) {
 							cgltf_texture_transform *Transform = &MetallicRoughnessData->base_color_texture.transform;
@@ -169,34 +175,24 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 							Primitive->cb.UVOffset.y = 0.0f;
 							Primitive->cb.UVRotation = 0.0f;
 						}
-					} else {
-						Primitive->AlbedoIndex = -1;
 					}
 
 					if (MetallicRoughnessData->metallic_roughness_texture.texture) {
-						Primitive->MetallicIndex = MetallicRoughnessData->metallic_roughness_texture.texture->image - Data->images;
-					} else {
-						Primitive->MetallicIndex = -1;
+						Primitive->Metallic = &Images[MetallicRoughnessData->metallic_roughness_texture.texture->image - Data->images];
 					}
 				}
 
 				cgltf_texture_view *NormalTextureView = &PrimitiveMaterialData->normal_texture;
 				if (NormalTextureView->texture) {
-					Primitive->NormalIndex = NormalTextureView->texture->image - Data->images;
-				} else {
-					Primitive->NormalIndex = -1;
+					Primitive->Normal = &Images[NormalTextureView->texture->image - Data->images];
 				}
 
 				if (PrimitiveMaterialData->pbr_metallic_roughness.metallic_roughness_texture.texture) {
-					Primitive->RoughnessIndex = PrimitiveMaterialData->pbr_metallic_roughness.metallic_roughness_texture.texture->image - Data->images;
-				} else {
-					Primitive->RoughnessIndex = -1;
+					Primitive->Roughness = &Images[PrimitiveMaterialData->pbr_metallic_roughness.metallic_roughness_texture.texture->image - Data->images];
 				}
 
 				if (PrimitiveMaterialData->occlusion_texture.texture) {
-					Primitive->OcclusionIndex = PrimitiveMaterialData->occlusion_texture.texture->image - Data->images;
-				} else {
-					Primitive->OcclusionIndex = -1;
+					Primitive->Occlusion = &Images[PrimitiveMaterialData->occlusion_texture.texture->image - Data->images];
 				}
 			}
 

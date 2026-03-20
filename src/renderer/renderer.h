@@ -14,7 +14,6 @@ typedef enum ERenderState { ERS_GLTF, ERS_WIREFRAME, ERS_BILLBOARD, ERS_N_RENDER
 
 typedef struct GPUTexture {
 	ID3D12Resource *GpuTexture;
-	D3D12_GPU_DESCRIPTOR_HANDLE SrvHandle;
 	UINT HeapIndex;
 } GPUTexture;
 
@@ -97,4 +96,4 @@ void R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera);
 void R_ExecuteCommands(R_Core *const Renderer);
 void R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height);
 void R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex);
-GPUTexture R_UploadTexture(R_Core *Renderer, R_Texture *Source, UINT SlotIndex);
+GPUTexture R_UploadTexture(R_Core *Renderer, R_Texture *Source);

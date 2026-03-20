@@ -1,15 +1,29 @@
 #include "pch.h"
 
-#include "engine.h"
 #include "../assets/gltf.h"
 #include "../renderer/renderer.h"
 #include "../renderer/shader.h"
 #include "../ui/ui.h"
 #include "../win32/file_dialog.h"
 #include "../win32/win_path.h"
+#include "engine.h"
 
 static const UINT8 BLACK_PIXEL[] = {0, 0, 0, 255};
 static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
+
+static const R_Texture BlackTexture = {
+  .Name = "fallback_black",
+  .Pixels = BLACK_PIXEL,
+  .Width = 1,
+  .Height = 1,
+};
+
+static const R_Texture WhiteTexture = {
+  .Name = "fallback_white",
+  .Pixels = WHITE_PIXEL,
+  .Width = 1,
+  .Height = 1,
+};
 
 /****************************************************
 	Forward declaration of private functions
@@ -22,7 +36,7 @@ static void EngineDraw(Sendai *Engine);
 static void LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene);
 
 void LoadPBRTextures(R_Primitive *Primitive, R_Core *Renderer, S_Scene *Scene, int ModelIdx);
-void R_BindTextureToSlot(R_Core *Renderer, S_Scene *Scene, int ModelIdx, int TextureIdx, UINT HeapSlot, UINT32 FallbackColor);
+static UINT32 R_GetTextureIndex(R_Core *Renderer, S_Scene *Scene, int ModelIdx, R_Texture *Texture);
 
 /****************************************************
 	Public functions
@@ -257,43 +271,23 @@ LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 void
 LoadPBRTextures(R_Primitive *Primitive, R_Core *Renderer, S_Scene *Scene, int ModelIdx)
 {
-	UINT BaseDescriptorIndex = Renderer->TexturesCount;
-
-	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &Primitive->MaterialDescriptorBase);
-	UINT DescriptorSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	Primitive->MaterialDescriptorBase.ptr += (UINT64)BaseDescriptorIndex * DescriptorSize;
-
-	// Albedo (t0)
-	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->AlbedoIndex, BaseDescriptorIndex + 0, BLACK_PIXEL);
-
-	// Normal (t1)
-	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->NormalIndex, BaseDescriptorIndex + 1, WHITE_PIXEL);
-
-	// Metallic (t2)
-	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->MetallicIndex, BaseDescriptorIndex + 2, BLACK_PIXEL);
-
-	// Roughness (t3)
-	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->RoughnessIndex, BaseDescriptorIndex + 3, BLACK_PIXEL);
-
-	// AO (t4)
-	R_BindTextureToSlot(Renderer, Scene, ModelIdx, Primitive->OcclusionIndex, BaseDescriptorIndex + 4, BLACK_PIXEL);
+	Primitive->cb.AlbedoTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Albedo);
+	Primitive->cb.NormalTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Normal);
+	Primitive->cb.MetallicTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Metallic);
+	Primitive->cb.RoughnessTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Roughness);
+	Primitive->cb.OcclusionTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Occlusion);
 }
 
-void
-R_BindTextureToSlot(R_Core *Renderer, S_Scene *Scene, int ModelIdx, int TextureIdx, UINT HeapSlot, UINT32 FallbackColor)
+UINT32
+R_GetTextureIndex(R_Core *Renderer, S_Scene *Scene, int ModelIdx, R_Texture *Texture)
 {
 	R_Texture *Target;
-	R_Texture Dummy = {0};
-	char DummyName[64];
-	if (TextureIdx >= 0) {
-		Target = &Scene->Models[ModelIdx].Images[TextureIdx];
+	if (Texture) {
+		Target = Texture;
 	} else {
-		snprintf(DummyName, sizeof(DummyName), "Fallback_M%d_S%u", ModelIdx, HeapSlot);
-		Dummy.Pixels = &FallbackColor;
-		Dummy.Width = 1;
-		Dummy.Height = 1;
-		Dummy.Name = DummyName;
-		Target = &Dummy;
+		Target = &BlackTexture;
 	}
-	R_UploadTexture(Renderer, Target, HeapSlot);
+
+	GPUTexture Tex = R_UploadTexture(Renderer, Target);
+	return Tex.HeapIndex;
 }

@@ -249,19 +249,20 @@ R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height)
 }
 
 GPUTexture
-R_UploadTexture(R_Core *Renderer, R_Texture *Source, UINT SlotIndex)
+R_UploadTexture(R_Core *Renderer, R_Texture *Source)
 {
-	GPUTexture NewTex = {0};
-
 	ptrdiff_t Index = shgeti(Renderer->Textures, Source->Name);
 	if (Index != -1) {
-		NewTex.GpuTexture = Renderer->Textures[Index].Texture.GpuTexture;
-	} else {
-		NewTex.GpuTexture = CommandCreateTextureGPU(Renderer, Source);
+		return Renderer->Textures[Index].Texture;
 	}
-		Renderer->TexturesCount += 1;
-	UINT IncrementSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
+	uint32_t SlotIndex = Renderer->TexturesCount++;
+	GPUTexture NewTex = {
+	  .GpuTexture = CommandCreateTextureGPU(Renderer, Source),
+	  .HeapIndex = SlotIndex,
+	};
+
+	UINT IncrementSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	D3D12_CPU_DESCRIPTOR_HANDLE CpuDescHandle;
 	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &CpuDescHandle);
 	CpuDescHandle.ptr += (SIZE_T)SlotIndex * IncrementSize;
@@ -273,8 +274,6 @@ R_UploadTexture(R_Core *Renderer, R_Texture *Source, UINT SlotIndex)
 	  .Texture2D.MipLevels = 1,
 	};
 	ID3D12Device_CreateShaderResourceView(Renderer->Device, NewTex.GpuTexture, &SrvDesc, CpuDescHandle);
-	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &NewTex.SrvHandle);
-	NewTex.SrvHandle.ptr += (UINT64)SlotIndex * IncrementSize;
 
 	TextureLookup Lookup = {.key = _strdup(Source->Name), .Texture = NewTex};
 	shputs(Renderer->Textures, Lookup);
@@ -313,7 +312,7 @@ CreateCustomTexture(PCWSTR Path, R_Core *Renderer)
 	INT W, H;
 	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
 	R_Texture Source = (R_Texture){.Height = H, .Width = W, .Pixels = Pixels, .Name = "teste"};
-	GPUTexture NewTex = R_UploadTexture(Renderer, &Source, 0);
+	GPUTexture NewTex = R_UploadTexture(Renderer, &Source);
 	Renderer->TexturesCount = 1;
 	stbi_image_free(Pixels);
 }
@@ -448,6 +447,10 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2, SceneDataGpuBaseAddress);
 	Renderer->SceneDataOffset += (sizeof(R_SceneData) + 255) & ~255;
 
+	D3D12_GPU_DESCRIPTOR_HANDLE TexturesHeapStart;
+	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &TexturesHeapStart);
+	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 3, TexturesHeapStart);
+
 	for (INT ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
 		R_Model *Model = &Scene->Models[ModelIdx];
 		for (INT MeshIdx = 0; MeshIdx < Model->MeshesCount; ++MeshIdx) {
@@ -461,7 +464,6 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 			for (INT PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
 				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
 				ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES, &Primitive->cb, 0);
-				ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 3, Primitive->MaterialDescriptorBase);
 				ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Primitive->VertexBufferView);
 				ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
 				ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);

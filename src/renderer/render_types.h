@@ -17,7 +17,12 @@ typedef struct R_PBRConstantBuffer {
 	XMFLOAT2 UVOffset;
 	XMFLOAT2 UVScale;
 	FLOAT UVRotation;
-	FLOAT Padding;
+
+	UINT32 AlbedoTextureIndex;
+	UINT32 NormalTextureIndex;
+	UINT32 MetallicTextureIndex;
+	UINT32 RoughnessTextureIndex;
+	UINT32 OcclusionTextureIndex;
 } R_PBRConstantBuffer;
 
 #define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 4
@@ -56,16 +61,14 @@ typedef struct R_Primitive {
 	UINT IndexCount;
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView;
 
-	INT AlbedoIndex;
-	INT NormalIndex;
-	INT MetallicIndex;
-	INT RoughnessIndex;
-	INT OcclusionIndex;
+	R_Texture *Albedo;
+	R_Texture *Normal;
+	R_Texture *Metallic;
+	R_Texture *Roughness;
+	R_Texture *Occlusion;
 
 	INT UVChannel;
 	R_PBRConstantBuffer cb;
-
-	D3D12_GPU_DESCRIPTOR_HANDLE MaterialDescriptorBase;
 } R_Primitive;
 
 typedef struct R_Mesh {

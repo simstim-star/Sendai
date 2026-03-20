@@ -23,10 +23,10 @@ R_CompileShader(PCWSTR FilePath, ID3DBlob **Blob, EShaderType ShaderType)
 
 	switch (ShaderType) {
 	case EST_VERTEX_SHADER:
-		hr = D3DCompileFromFile(FilePath, NULL, NULL, "VSMain", "vs_5_0", CompileFlags, 0, Blob, &ErrorBlob);
+		hr = D3DCompileFromFile(FilePath, NULL, NULL, "VSMain", "vs_5_1", CompileFlags, 0, Blob, &ErrorBlob);
 		break;
 	case EST_PIXEL_SHADER:
-		hr = D3DCompileFromFile(FilePath, NULL, NULL, "PSMain", "ps_5_0", CompileFlags, 0, Blob, &ErrorBlob);
+		hr = D3DCompileFromFile(FilePath, NULL, NULL, "PSMain", "ps_5_1", CompileFlags, 0, Blob, &ErrorBlob);
 		break;
 	}
 
@@ -58,12 +58,12 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	RootParameters[2].Descriptor.ShaderRegister = 2;
 	RootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-	// Texture Table
+	// Texture Table (Bindless)
 	D3D12_DESCRIPTOR_RANGE SrvRange = {
 	  .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-	  .NumDescriptors = 5,
+	  .NumDescriptors = 15, 
 	  .BaseShaderRegister = 0,
-	  .RegisterSpace = 0,
+	  .RegisterSpace = 1,
 	  .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
 	};
 
@@ -87,7 +87,8 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	  .pParameters = RootParameters,
 	  .NumStaticSamplers = 1,
 	  .pStaticSamplers = &Sampler,
-	  .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
+	  .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+			   D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED,
 	};
 
 	ID3DBlob *Signature = NULL;
