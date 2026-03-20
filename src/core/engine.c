@@ -85,8 +85,8 @@ S_Run()
 		}
 	}
 
-	ID3D12RootSignature_Release(Engine.RendererCore.RootSignPBR);
 	R_Destroy(&Engine.RendererCore);
+	S_ArenaRelease(&Engine.Scene.TextureArena);
 	S_ArenaRelease(&Engine.Scene.SceneArena);
 
 #if defined(_DEBUG)

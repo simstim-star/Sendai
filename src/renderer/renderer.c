@@ -148,7 +148,6 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 void
 R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera)
 {
-	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignPBR);
 	ID3D12GraphicsCommandList_RSSetViewports(Renderer->CommandList, 1, &Renderer->Viewport);
 	ID3D12GraphicsCommandList_RSSetScissorRects(Renderer->CommandList, 1, &Renderer->ScissorRect);
 
@@ -243,6 +242,7 @@ R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height)
 
 	if (Renderer->DepthStencil) {
 		ID3D12Resource_Release(Renderer->DepthStencil);
+		ID3D12DescriptorHeap_Release(Renderer->DepthStencilHeap);
 	}
 
 	CreateDepthStencilBuffer(Renderer);
@@ -321,36 +321,44 @@ void
 R_Destroy(R_Core *Renderer)
 {
 	UI_Destroy();
-	IDXGISwapChain1_Release(Renderer->SwapChain);
-	ID3D12DescriptorHeap_Release(Renderer->RtvDescriptorHeap);
-	ID3D12Device_Release(Renderer->TexturesHeap);
-	for (INT i = 0; i < FRAME_COUNT; ++i) {
-		SignalAndWait(Renderer);
-		ID3D12Resource_Release(Renderer->RtvBuffers[i]);
-	}
-	ID3D12Device_Release(Renderer->Device);
-	ID3D12GraphicsCommandList_Release(Renderer->DepthStencil);
-	ID3D12GraphicsCommandList_Release(Renderer->DepthStencilHeap);
-	ID3D12CommandAllocator_Release(Renderer->CommandAllocator);
-	ID3D12GraphicsCommandList_Release(Renderer->CommandList);
-	ID3D12CommandQueue_Release(Renderer->CommandQueue);
-	ID3D12Fence_Release(Renderer->Fence);
+
 	for (ERenderState State = ERS_GLTF; State < ERS_N_RENDER_STATES; ++State) {
 		ID3D12PipelineState_Release(Renderer->PipelineState[State]);
 	}
+
+	ID3D12Resource_Release(Renderer->DepthStencil);
 	ID3D12Resource_Release(Renderer->VertexBufferDefault);
 	ID3D12Resource_Release(Renderer->IndexBufferDefault);
 	ID3D12Resource_Release(Renderer->VertexBufferUpload);
 	ID3D12Resource_Release(Renderer->SceneDataUploadBuffer);
-	CloseHandle(Renderer->FenceEvent);
 
 	for (INT i = 0; i < hmlen(Renderer->Textures); ++i) {
 		GPUTexture *Value = &Renderer->Textures[i].Texture;
 		ID3D12Resource_Release(Value->GpuTexture);
 	}
 
+	for (INT i = 0; i < FRAME_COUNT; ++i) {
+		SignalAndWait(Renderer);
+		ID3D12Resource_Release(Renderer->RtvBuffers[i]);
+	}
+	CloseHandle(Renderer->FenceEvent);
+
+	ID3D12DescriptorHeap_Release(Renderer->RtvDescriptorHeap);
+	ID3D12DescriptorHeap_Release(Renderer->TexturesHeap);
+	ID3D12DescriptorHeap_Release(Renderer->DepthStencilHeap);
+
 	ID3D12Resource_Release(Renderer->MeshDataUploadBuffer);
 	ID3D12Resource_Release(Renderer->TextureUploadBuffer.Buffer);
+
+	ID3D12RootSignature_Release(Renderer->RootSignPBR);
+	ID3D12RootSignature_Release(Renderer->RootSignBillboard);
+
+	ID3D12CommandAllocator_Release(Renderer->CommandAllocator);
+	ID3D12GraphicsCommandList_Release(Renderer->CommandList);
+	ID3D12CommandQueue_Release(Renderer->CommandQueue);
+	ID3D12Fence_Release(Renderer->Fence);
+	IDXGISwapChain1_Release(Renderer->SwapChain);
+	ID3D12Device_Release(Renderer->Device);
 }
 
 /****************************************************
@@ -434,6 +442,7 @@ UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize, 
 void
 RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 {
+	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignPBR);
 	UINT8 *MeshDataCpuAddress = Renderer->MeshDataUploadBufferCpuAddress;
 	D3D12_GPU_VIRTUAL_ADDRESS MeshDataGpuAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->MeshDataUploadBuffer);
 
