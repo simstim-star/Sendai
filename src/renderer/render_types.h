@@ -27,15 +27,18 @@ typedef struct R_PBRConstantBuffer {
 
 #define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 4
 
-typedef struct R_SceneData {
+typedef struct R_Light {
 	XMFLOAT3 LightPosition;
-	float Padding0;
-
+	FLOAT Padding0;
 	XMFLOAT3 LightColor;
-	float Padding1;
+	FLOAT Padding1;
+} R_Light;
+
+typedef struct R_SceneData {
+	R_Light Lights[7];
 
 	XMFLOAT3 CameraPosition;
-	float Padding2;
+	FLOAT Padding0;
 } R_SceneData;
 
 typedef struct R_MeshConstants {

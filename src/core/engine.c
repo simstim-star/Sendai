@@ -200,8 +200,20 @@ EngineUpdate(Sendai *Engine)
 
 	S_Tick(&Engine->Timer);
 	R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
-	Engine->Scene.Data =
-		(R_SceneData){.CameraPosition = Engine->Camera.Position, .LightPosition = {10.0f, 1.0f, 1.0f}, .LightColor = {1000.0f, 1000.0f, 1000.0f}};
+	Engine->Scene.bIsLigthActive = 0;
+	Engine->Scene.bIsLigthActive |= (1 << 1);
+	Engine->Scene.bIsLigthActive |= (1 << 2);
+	Engine->Scene.bIsLigthActive |= (1 << 3);
+	Engine->Scene.Data = (R_SceneData){.CameraPosition = Engine->Camera.Position,
+									   .Lights = {
+										   {.LightPosition = {12.0f, 11.0f, 1.0f}, .LightColor = {300.0f, 100.0f, 100.0f}},
+										   {.LightPosition = {-33.0f, 8.0f, 3.0f}, .LightColor = {250.0f, 100.0f, 100.0f}},
+										   {.LightPosition = {15.0f, 5.0f, 5.0f}, .LightColor = {100.0f, 0.0f, 200.0f}},
+										   {.LightPosition = {10.0f, 0.0f, 10.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
+										   {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
+										   {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
+										   {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
+	}};
 	UI_Update(Engine);
 }
 

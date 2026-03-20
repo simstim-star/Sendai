@@ -4,6 +4,7 @@
 #define TextureSpace space1
 
 static const uint TEXTURES_N_DESCRIPTORS = 15;
+static const uint MAX_LIGHT_NUMBER = 7;
 
 cbuffer MeshData : register(b0)
 {
@@ -31,10 +32,15 @@ cbuffer PBRData : register(b1)
     uint aoTextureIndex;
 };
 
+struct Light
+{
+    float3 position;
+    float3 color;
+};
+
 cbuffer SceneData : register(b2)
 {
-    float3 lightPosition;
-    float3 lightColor;
+    Light lights[MAX_LIGHT_NUMBER];
     float3 camPos;
 };
 
@@ -161,26 +167,29 @@ float4 PSMain(PSIn input) : SV_TARGET
     F0 = lerp(F0, albedo, metallic);
 
     float3 Lo = float3(0.0, 0.0, 0.0);
-    float3 L = normalize(lightPosition - input.fragPos);
-    float3 H = normalize(V + L);
-    float distance = length(lightPosition - input.fragPos);
-    float attenuation = 1.0 / (distance * distance);
-    float3 radiance = lightColor * attenuation;
+    for (int i = 0; i < MAX_LIGHT_NUMBER; ++i)
+    {
+        float3 L = normalize(lights[i].position - input.fragPos);
+        float3 H = normalize(V + L);
+        float distance = length(lights[i].position - input.fragPos);
+        float attenuation = 1.0 / (distance * distance);
+        float3 radiance = lights[i].color * attenuation;
 
-    float NDF = DistributionGGX(N, H, roughness);
-    float G = GeometrySmith(N, V, L, roughness);
-    float3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+        float NDF = DistributionGGX(N, H, roughness);
+        float G = GeometrySmith(N, V, L, roughness);
+        float3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
            
-    float3 numerator = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-    float3 specular = numerator / denominator;
+        float3 numerator = NDF * G * F;
+        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+        float3 specular = numerator / denominator;
         
-    float3 kS = F;
-    float3 kD = float3(1.0, 1.0, 1.0) - kS;
-    kD *= 1.0 - metallic;
+        float3 kS = F;
+        float3 kD = float3(1.0, 1.0, 1.0) - kS;
+        kD *= 1.0 - metallic;
 
-    float NdotL = max(dot(N, L), 0.0);
-    Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+        float NdotL = max(dot(N, L), 0.0);
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+    }
     
     float3 ambient = float3(0.03, 0.03, 0.03) * albedo * ao;
     float3 color = ambient + Lo;

@@ -12,16 +12,18 @@ typedef struct UI_Renderer {
 	ID3D12Resource *IconTextureResource;
 } UI_Renderer;
 
-
 typedef struct UI_BottomBarState {
 	FLOAT BottomBarHeight;
 	BOOL bIsDraggingBottom;
 	UINT32 FPS;
 	UINT FrameCounter;
+	BOOL ShowLog;
+	enum E_BottomBarTab { EBBS_LOG_TAB, EBBS_OTHER } ActiveTab;
 } UI_BottomBarState;
 
 typedef struct UI_TopBarState {
 	BOOL ShowLog;
+	enum E_TopBarTab { ETBS_FILE_TAB, ETBS_LOG_TAB } ActiveTab;
 } UI_TopBarState;
 
 typedef struct UI_ToolBarState {

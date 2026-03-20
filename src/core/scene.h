@@ -12,6 +12,7 @@ typedef struct S_Scene {
 	UINT ModelsCapacity;
 
 	R_SceneData Data;
+	BYTE bIsLigthActive;
 
 	S_Arena SceneArena;
 	S_Arena TextureArena;

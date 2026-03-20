@@ -35,7 +35,7 @@ static ID3D12Resource *CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Sour
 static UINT64 SuballocateTextureUpload(R_Core *Renderer, UINT64 Size);
 static void UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize, UINT64 Offset);
 static void CreateCustomTexture(PCWSTR Path, R_Core *Renderer);
-static void RenderBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, EReservedSrvIndex SrvIndex);
+static void RenderLightBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, EReservedSrvIndex SrvIndex);
 
 static void SignalAndWait(R_Core *const Renderer);
 static void RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera);
@@ -173,13 +173,19 @@ R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera)
 	Renderer->MeshDataOffset = 0;
 	Renderer->SceneDataOffset = 0;
 	RenderPrimitives(Scene, Renderer, Camera);
-	XMVECTOR LightPos = XMLoadFloat3(&Scene->Data.LightPosition);
-	R_MeshConstants LightMeshData = {
-	  .View = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection),
-	  .Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f),
-	  .Model = XMMatrixTranslationFromVector(XM_REF_1V(LightPos)),
-	};
-	RenderBillboard(&LightMeshData, Renderer, ERSI_BILLBOARD_LAMP);
+	XMMATRIX ViewMat = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection);
+	XMMATRIX ProjMat = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f);
+	for (int i = 0; i < 7; ++i) {
+		if (Scene->bIsLigthActive & (1 << i)) {
+			XMVECTOR LightPos = XMLoadFloat3(&Scene->Data.Lights[i].LightPosition);
+			R_MeshConstants LightMeshData = {
+			  .View = ViewMat,
+			  .Proj = ProjMat,
+			  .Model = XMMatrixTranslationFromVector(XM_REF_1V(LightPos)),
+			};
+			RenderLightBillboard(&LightMeshData, Renderer, ERSI_BILLBOARD_LAMP);
+		}
+	}
 	UI_Draw(Renderer->CommandList);
 
 	// Bring the rtv resource back to present state
@@ -553,7 +559,7 @@ CreateSceneResources(R_Core *const Renderer)
 	ExitIfFailed(hr);
 	ID3D12Resource_Map(Renderer->MeshDataUploadBuffer, 0, NULL, &Renderer->MeshDataUploadBufferCpuAddress);
 
-	BufferDesc.Width = KILOBYTES(1);
+	BufferDesc.Width = MEGABYTES(1);
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc,
 											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Renderer->SceneDataUploadBuffer);
 	ExitIfFailed(hr);
@@ -581,7 +587,7 @@ CreateShaders(R_Core *const Renderer)
 }
 
 void
-RenderBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, EReservedSrvIndex SrvIndex)
+RenderLightBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, EReservedSrvIndex SrvIndex)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignBillboard);
 	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[ERS_BILLBOARD]);
@@ -589,24 +595,25 @@ RenderBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, EReserve
 
 	UpdateResourceData(Renderer->MeshDataUploadBuffer, MeshConstants, sizeof(R_MeshConstants), Renderer->MeshDataOffset);
 
+	D3D12_GPU_VIRTUAL_ADDRESS MeshDataGpuAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->MeshDataUploadBuffer);
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + Renderer->MeshDataOffset);
+
 	UINT IncrementSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	D3D12_GPU_DESCRIPTOR_HANDLE LampHandle;
 	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &LampHandle);
 	LampHandle.ptr += (UINT64)SrvIndex * IncrementSize;
-
-	D3D12_GPU_VIRTUAL_ADDRESS MeshDataGpuAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->MeshDataUploadBuffer);
-	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + Renderer->MeshDataOffset);
 	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, LampHandle);
 
 	struct BillboardVertex {
 		XMFLOAT3 Position;
 		XMFLOAT2 UV;
 	} BillboardVertices[] = {
-	  {{-1.0f, -1.0f, 0.0f}, {0.0f, 1.0f}},
-	  {{-1.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-	  {{1.0f, -1.0f, 0.0f}, {1.0f, 1.0f}},
-	  {{1.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	  {{-0.5f, -0.5f, 0.0f}, {0.0f, 1.0f}},
+	  {{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f}},
+	  {{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f}},
+	  {{0.5f, 0.5f, 0.0f}, {1.0f, 0.0f}},
 	};
+
 	UpdateResourceData(Renderer->SceneDataUploadBuffer, &BillboardVertices, sizeof(BillboardVertices), Renderer->SceneDataOffset);
 
 	D3D12_VERTEX_BUFFER_VIEW VBV = {
@@ -615,6 +622,7 @@ RenderBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, EReserve
 	  .StrideInBytes = sizeof(struct BillboardVertex),
 	};
 	ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &VBV);
+
 	ID3D12GraphicsCommandList_DrawInstanced(Renderer->CommandList, 4, 1, 0, 0);
 
 	Renderer->SceneDataOffset += (sizeof(BillboardVertices) + 255) & ~255;
