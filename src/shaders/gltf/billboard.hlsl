@@ -9,12 +9,14 @@ cbuffer MeshData : register(b0)
 struct VSIn
 {
     float3 pos : POSITION;
+    float3 tint : COLOR;
     float2 uv : TEXCOORD0;
 };
 
 struct PSIn
 {
     float4 pos : SV_POSITION;
+    float3 tint : COLOR;
     float2 uv : TEXCOORD0;
 };
 
@@ -29,6 +31,7 @@ PSIn VSMain(VSIn v)
                         + (v.pos.y * camUp * 0.5);
     o.pos = mul(float4(billboardPos, 1.0), mul(view, proj));
     o.uv = v.uv;
+    o.tint = v.tint;
     return o;
 }
 
@@ -37,5 +40,5 @@ SamplerState defaultSampler : register(s0);
 
 float4 PSMain(PSIn input) : SV_TARGET
 {
-    return lightTex.Sample(defaultSampler, input.uv);
+    return float4(normalize(input.tint), 1.0) * lightTex.Sample(defaultSampler, input.uv);
 }

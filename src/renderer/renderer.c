@@ -39,7 +39,7 @@ static ID3D12Resource *CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Sour
 static UINT64 SuballocateTextureUpload(R_Core *Renderer, UINT64 Size);
 static void UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize, UINT64 Offset);
 static void CreateCustomTexture(PCWSTR Path, R_Core *Renderer);
-static void RenderLightBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, EReservedSrvIndex SrvIndex);
+static void RenderLightBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint, EReservedSrvIndex SrvIndex);
 
 static void SignalAndWait(R_Core *const Renderer);
 static void RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera);
@@ -187,7 +187,7 @@ R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera)
 			  .Proj = ProjMat,
 			  .Model = XM_MAT_TRANSLATION_FROM_VEC(LightPos),
 			};
-			RenderLightBillboard(&LightMeshData, Renderer, ERSI_BILLBOARD_LAMP);
+			RenderLightBillboard(&LightMeshData, Renderer, Scene->Data.Lights[i].LightColor, ERSI_BILLBOARD_LAMP);
 		}
 	}
 	UI_Draw(Renderer->CommandList);
@@ -598,7 +598,7 @@ CreateShaders(R_Core *const Renderer)
 }
 
 void
-RenderLightBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, EReservedSrvIndex SrvIndex)
+RenderLightBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint, EReservedSrvIndex SrvIndex)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignBillboard);
 	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[ERS_BILLBOARD]);
@@ -617,12 +617,13 @@ RenderLightBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, ERe
 
 	struct BillboardVertex {
 		XMFLOAT3 Position;
+		XMFLOAT3 Color;
 		XMFLOAT2 UV;
 	} BillboardVertices[] = {
-	  {{-0.5f, -0.5f, 0.0f}, {0.0f, 1.0f}},
-	  {{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f}},
-	  {{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f}},
-	  {{0.5f, 0.5f, 0.0f}, {1.0f, 0.0f}},
+	  {{-0.5f, -0.5f, 0.0f}, {Tint.x, Tint.y, Tint.z}, {0.0f, 1.0f}},
+	  {{-0.5f, 0.5f, 0.0f}, {Tint.x, Tint.y, Tint.z}, {0.0f, 0.0f}},
+	  {{0.5f, -0.5f, 0.0f}, {Tint.x, Tint.y, Tint.z}, {1.0f, 1.0f}},
+	  {{0.5f, 0.5f, 0.0f}, {Tint.x, Tint.y, Tint.z}, {1.0f, 0.0f}},
 	};
 
 	UpdateResourceData(Renderer->SceneDataUploadBuffer, &BillboardVertices, sizeof(BillboardVertices), Renderer->SceneDataOffset);

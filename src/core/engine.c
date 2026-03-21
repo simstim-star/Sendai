@@ -302,11 +302,11 @@ LightInit(S_Scene *Scene, R_Camera *Camera)
 	Scene->Data = (R_SceneData){.CameraPosition = Camera->Position,
 								.Lights = {
 								  {.LightPosition = {5.0f, 8.0f, 5.0f}, .LightColor = {300.0f, 100.0f, 100.0f}},
-								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
-								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
-								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
-								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
-								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
-								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
+								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
+								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
+								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
+								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
+								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
+								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
 								}};
 }
