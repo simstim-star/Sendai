@@ -7,3 +7,5 @@
 void Win32CurrPath(_Out_writes_(PathSize) WCHAR *const Path, UINT PathSize);
 
 void Win32FullPath(PCWSTR SubPath, _Out_writes_(PathSize) PWSTR const Path, UINT PathSize);
+
+void Win32GetFileNameOnly(PCWSTR FullPath, _Out_writes_(BufferSize) PWSTR const OutBuffer, UINT BufferSize);

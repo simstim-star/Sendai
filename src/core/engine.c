@@ -37,6 +37,7 @@ static void LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene);
 
 void LoadPBRTextures(R_Primitive *Primitive, R_Core *Renderer, S_Scene *Scene, int ModelIdx);
 static UINT32 R_GetTextureIndex(R_Core *Renderer, S_Scene *Scene, int ModelIdx, R_Texture *Texture);
+static void LightInit(S_Scene *Scene, R_Camera *Camera);
 
 /****************************************************
 	Public functions
@@ -63,6 +64,7 @@ S_Run()
 	InitWindow(&Engine);
 	R_Init(&Engine.RendererCore, Engine.hWnd);
 	UI_Init(&Engine.RendererUI, &Engine.RendererCore);
+	LightInit(&Engine.Scene, &Engine.Camera);
 	S_TimerInit(&Engine.Timer);
 
 	ShowWindow(Engine.hWnd, SW_MAXIMIZE);
@@ -200,20 +202,6 @@ EngineUpdate(Sendai *Engine)
 
 	S_Tick(&Engine->Timer);
 	R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
-	Engine->Scene.bIsLigthActive = 0;
-	Engine->Scene.bIsLigthActive |= (1 << 1);
-	Engine->Scene.bIsLigthActive |= (1 << 2);
-	Engine->Scene.bIsLigthActive |= (1 << 3);
-	Engine->Scene.Data = (R_SceneData){.CameraPosition = Engine->Camera.Position,
-									   .Lights = {
-										   {.LightPosition = {12.0f, 11.0f, 1.0f}, .LightColor = {300.0f, 100.0f, 100.0f}},
-										   {.LightPosition = {-33.0f, 8.0f, 3.0f}, .LightColor = {250.0f, 100.0f, 100.0f}},
-										   {.LightPosition = {15.0f, 5.0f, 5.0f}, .LightColor = {100.0f, 0.0f, 200.0f}},
-										   {.LightPosition = {10.0f, 0.0f, 10.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
-										   {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
-										   {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
-										   {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
-	}};
 	UI_Update(Engine);
 }
 
@@ -304,4 +292,21 @@ R_GetTextureIndex(R_Core *Renderer, S_Scene *Scene, int ModelIdx, R_Texture *Tex
 
 	GPUTexture Tex = R_UploadTexture(Renderer, Target);
 	return Tex.HeapIndex;
+}
+
+void
+LightInit(S_Scene *Scene, R_Camera *Camera)
+{
+	Scene->bIsLigthActive = 0;
+	Scene->bIsLigthActive |= (1 << 0);
+	Scene->Data = (R_SceneData){.CameraPosition = Camera->Position,
+								.Lights = {
+								  {.LightPosition = {5.0f, 8.0f, 5.0f}, .LightColor = {300.0f, 100.0f, 100.0f}},
+								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
+								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
+								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
+								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
+								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
+								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {0.0f, 0.0f, 0.0f}},
+								}};
 }

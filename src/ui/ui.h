@@ -17,8 +17,10 @@ typedef struct UI_BottomBarState {
 	BOOL bIsDraggingBottom;
 	UINT32 FPS;
 	UINT FrameCounter;
-	BOOL ShowLog;
-	enum E_BottomBarTab { EBBS_LOG_TAB, EBBS_OTHER } ActiveTab;
+	UINT SelectedModelIndex;
+	UINT SelectedLightIndex;
+	struct S_Scene *Scene;
+	enum E_BottomBarTab { EBBS_LOG_TAB, EBBS_SCENE_TAB, EBBS_LIGHT_TAB } ActiveTab;
 } UI_BottomBarState;
 
 typedef struct UI_TopBarState {

@@ -17,6 +17,10 @@
 
 #define MAX_TEXTURES 4096
 
+#define IS_LIGHT_ACTIVE(mask, i) (((mask) >> (i)) & 1)
+
+R_SceneData PreprocessSceneData(S_Scene *Scene);
+
 static const FLOAT CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
 typedef enum EReservedSrvIndex {
@@ -181,7 +185,7 @@ R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera)
 			R_MeshConstants LightMeshData = {
 			  .View = ViewMat,
 			  .Proj = ProjMat,
-			  .Model = XMMatrixTranslationFromVector(XM_REF_1V(LightPos)),
+			  .Model = XM_MAT_TRANSLATION_FROM_VEC(LightPos),
 			};
 			RenderLightBillboard(&LightMeshData, Renderer, ERSI_BILLBOARD_LAMP);
 		}
@@ -456,7 +460,8 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 	MeshData.View = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection);
 	MeshData.Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f);
 
-	UpdateResourceData(Renderer->SceneDataUploadBuffer, &Scene->Data, sizeof(R_SceneData), Renderer->SceneDataOffset);
+	R_SceneData SceneData = PreprocessSceneData(Scene);
+	UpdateResourceData(Renderer->SceneDataUploadBuffer, &SceneData, sizeof(R_SceneData), Renderer->SceneDataOffset);
 	D3D12_GPU_VIRTUAL_ADDRESS SceneDataGpuBaseAddress =
 		ID3D12Resource_GetGPUVirtualAddress(Renderer->SceneDataUploadBuffer) + Renderer->SceneDataOffset;
 	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2, SceneDataGpuBaseAddress);
@@ -468,10 +473,16 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 
 	for (INT ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
 		R_Model *Model = &Scene->Models[ModelIdx];
+		XMMATRIX ModelTrans = XM_MAT_TRANSLATION(Model->Position.x, Model->Position.y, Model->Position.z);
+		XMMATRIX ScaleMat = XMMatrixScaling(Model->Scale.x, Model->Scale.y, Model->Scale.z);
+		ModelTrans = XM_MAT_MULT(ModelTrans, ScaleMat);
 		for (INT MeshIdx = 0; MeshIdx < Model->MeshesCount; ++MeshIdx) {
 			R_Mesh *Mesh = &Model->Meshes[MeshIdx];
+
 			MeshData.Model = XMLoadFloat4x4(&Mesh->ModelMatrix);
+			MeshData.Model = XM_MAT_MULT(MeshData.Model, ModelTrans);
 			MeshData.Normal = R_NormalMatrix(Mesh->ModelMatrix);
+
 			memcpy(MeshDataCpuAddress + Renderer->MeshDataOffset, &MeshData, sizeof(R_MeshConstants));
 			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + Renderer->MeshDataOffset);
 			Renderer->MeshDataOffset += (sizeof(R_MeshConstants) + 255) & ~255;
@@ -627,4 +638,20 @@ RenderLightBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, ERe
 
 	Renderer->SceneDataOffset += (sizeof(BillboardVertices) + 255) & ~255;
 	Renderer->MeshDataOffset += (sizeof(R_MeshConstants) + 255) & ~255;
+}
+
+R_SceneData
+PreprocessSceneData(S_Scene *Scene)
+{
+	R_SceneData Result = {0};
+	Result.CameraPosition = Scene->Data.CameraPosition;
+
+	for (int i = 0; i < 7; i++) {
+		if (IS_LIGHT_ACTIVE(Scene->bIsLigthActive, i)) {
+			Result.Lights[i].LightColor = Scene->Data.Lights[i].LightColor;
+			Result.Lights[i].LightPosition = Scene->Data.Lights[i].LightPosition;
+		}
+	}
+
+	return Result;
 }

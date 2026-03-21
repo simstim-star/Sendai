@@ -11,6 +11,7 @@
 
 #include "../core/log.h"
 #include "../core/scene.h"
+#include "../win32/win_path.h"
 #include "../renderer/render_types.h"
 #include "gltf.h"
 
@@ -92,6 +93,11 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 
 	Scene->Models[Scene->ModelsCount].Meshes = S_ArenaAlloc(&Scene->SceneArena, Data->meshes_count * sizeof(R_Mesh));
 	Scene->Models[Scene->ModelsCount].MeshesCount = Data->meshes_count;
+	WCHAR FileNameW[MAX_PATH];
+	Win32GetFileNameOnly(Path, FileNameW, MAX_PATH);
+	int UTF8Size = WideCharToMultiByte(CP_UTF8, 0, FileNameW, -1, NULL, 0, NULL, NULL);
+	Scene->Models[Scene->ModelsCount].Name = S_ArenaAlloc(&Scene->SceneArena, UTF8Size);
+	WideCharToMultiByte(CP_UTF8, 0, FileNameW, -1, Scene->Models[Scene->ModelsCount].Name, UTF8Size, NULL, NULL);
 
 	if (Data->images_count > 0) {
 		PreloadImages(Scene, Data, Path);
@@ -100,6 +106,9 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 	size_t NodeCount = Data->nodes_count;
 	Scene->Models[Scene->ModelsCount].Meshes = S_ArenaAlloc(&Scene->SceneArena, NodeCount * sizeof(R_Mesh));
 	Scene->Models[Scene->ModelsCount].MeshesCount = 0;
+	Scene->Models[Scene->ModelsCount].Scale.x = 1;
+	Scene->Models[Scene->ModelsCount].Scale.y = 1;
+	Scene->Models[Scene->ModelsCount].Scale.z = 1;
 
 	for (size_t i = 0; i < NodeCount; i++, Scene->Models[Scene->ModelsCount].MeshesCount++) {
 		cgltf_node *NodeData = &Data->nodes[i];

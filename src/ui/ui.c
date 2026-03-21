@@ -24,6 +24,8 @@
 #include "../core/engine.h"
 #include "../dx_helpers/desc_helpers.h"
 
+#define COLOR_DISABLED nk_rgba(100, 100, 100, 255)
+
 static struct nk_image UI_TEXTURES[UI_EUT_NUM_USER_TEXTURES];
 
 /****************************************************
@@ -31,10 +33,12 @@ static struct nk_image UI_TEXTURES[UI_EUT_NUM_USER_TEXTURES];
 *****************************************************/
 
 static void LoadCustomTextures(R_Core *Renderer);
+
 static void BottomBarDraggingArea(struct nk_context *Ctx, const float HandleHeight, UI_Renderer *UI, UI_BottomBarState *State);
 static void BottomBarTabArea(struct nk_context *Ctx, const float TabBarHeight, UI_BottomBarState *State);
 static void BottomBarContentArea(struct nk_context *Ctx, UI_BottomBarState *State, const float HandleHeight, const float TabBarHeight);
 static void BottomBarInfoArea(struct nk_context *Ctx, UI_Renderer *UI, const float InfoBarHeight, UI_BottomBarState *State);
+
 static struct nk_colorf ColorToNuklear(XMFLOAT4 *color);
 
 /****************************************************
@@ -136,6 +140,7 @@ UI_Update(Sendai *Engine)
 {
 	Engine->UIState.BottomBar.FPS = Engine->Timer.FramesPerSecond;
 	Engine->UIState.BottomBar.FrameCounter = Engine->FrameCounter;
+	Engine->UIState.BottomBar.Scene = &Engine->Scene;
 	UI_EAction Action = UI_DrawTopBar(&Engine->RendererUI, &Engine->UIState.TopBar) |
 						UI_DrawToolbarButton(&Engine->RendererUI, &Engine->UIState.ToolBar) |
 						UI_DrawBottomBar(&Engine->RendererUI, &Engine->UIState.BottomBar);
@@ -282,9 +287,14 @@ BottomBarTabArea(struct nk_context *Ctx, const float TabBarHeight, UI_BottomBarS
 			State->ActiveTab = EBBS_LOG_TAB;
 		}
 
-		TabStyle.normal = State->ActiveTab == EBBS_OTHER ? Ctx->style.button.hover : Ctx->style.button.normal;
-		if (nk_button_label_styled(Ctx, &TabStyle, "Other")) {
-			State->ActiveTab = EBBS_OTHER;
+		TabStyle.normal = State->ActiveTab == EBBS_SCENE_TAB ? Ctx->style.button.hover : Ctx->style.button.normal;
+		if (nk_button_label_styled(Ctx, &TabStyle, "Models")) {
+			State->ActiveTab = EBBS_SCENE_TAB;
+		}
+
+		TabStyle.normal = State->ActiveTab == EBBS_LIGHT_TAB ? Ctx->style.button.hover : Ctx->style.button.normal;
+		if (nk_button_label_styled(Ctx, &TabStyle, "Lights")) {
+			State->ActiveTab = EBBS_LIGHT_TAB;
 		}
 	}
 	nk_layout_row_end(Ctx);
@@ -305,12 +315,133 @@ BottomBarContentArea(struct nk_context *Ctx, UI_BottomBarState *State, const flo
 			SENDAI_LOG.UTF8Buffer[RequiredBytes] = '\0';
 			nk_edit_string(Ctx, LogFlags, SENDAI_LOG.UTF8Buffer, &RequiredBytes, sizeof(SENDAI_LOG.UTF8Buffer), nk_filter_default);
 		}
-	} break;
+		break;
+	}
+	case EBBS_SCENE_TAB: {
+		float SafeHeight = fmax(50.0f, ContentAreaHeight);
+
+		nk_layout_row_template_begin(Ctx, SafeHeight);
+		nk_layout_row_template_push_variable(Ctx, 200);
+		nk_layout_row_template_push_static(Ctx, 250);
+		nk_layout_row_template_end(Ctx);
+
+		if (nk_group_begin(Ctx, "SceneTableGroup", NK_WINDOW_BORDER)) {
+			nk_layout_row_dynamic(Ctx, 22, 2);
+			nk_label(Ctx, "Name", NK_TEXT_LEFT);
+			nk_label(Ctx, "Status", NK_TEXT_LEFT);
+
+			for (int i = 0; i < State->Scene->ModelsCount; i++) {
+				R_Model *Model = &State->Scene->Models[i];
+				int IsSelected = (State->SelectedModelIndex == i);
+
+				nk_layout_row_dynamic(Ctx, 20, 1);
+				if (nk_selectable_label(Ctx, Model->Name, NK_TEXT_LEFT, &IsSelected)) {
+					State->SelectedModelIndex = i;
+				}
+			}
+			nk_group_end(Ctx);
+		}
+
+		if (nk_group_begin(Ctx, "InspectorGroup", NK_WINDOW_BORDER)) {
+			if (State->SelectedModelIndex >= 0 && State->SelectedModelIndex < State->Scene->ModelsCount) {
+				R_Model *SelModel = &State->Scene->Models[State->SelectedModelIndex];
+
+				nk_layout_row_dynamic(Ctx, 20, 1);
+				nk_label(Ctx, "Name:", NK_TEXT_LEFT);
+				nk_label_colored(Ctx, SelModel->Name, NK_TEXT_LEFT, nk_rgb(255, 255, 0));
+
+				nk_layout_row_dynamic(Ctx, 20, 1);
+				nk_label(Ctx, "Position:", NK_TEXT_LEFT);
+
+				nk_layout_row_dynamic(Ctx, 20, 1);
+				nk_property_float(Ctx, "#X:", -1000.0f, &SelModel->Position.x, 1000.0f, 0.1f, 0.05f);
+				nk_property_float(Ctx, "#Y:", -1000.0f, &SelModel->Position.y, 1000.0f, 0.1f, 0.05f);
+				nk_property_float(Ctx, "#Z:", -1000.0f, &SelModel->Position.z, 1000.0f, 0.1f, 0.05f);
+
+				nk_label(Ctx, "Scale:", NK_TEXT_LEFT);
+				nk_property_float(Ctx, "#X:", 0.01f, &SelModel->Scale.x, 500.0f, 0.1f, 0.05f);
+				nk_property_float(Ctx, "#Y:", 0.01f, &SelModel->Scale.y, 500.0f, 0.1f, 0.05f);
+				nk_property_float(Ctx, "#Z:", 0.01f, &SelModel->Scale.z, 500.0f, 0.1f, 0.05f);
+
+			} else {
+				nk_layout_row_dynamic(Ctx, 20, 1);
+				nk_label(Ctx, "No model selected", NK_TEXT_CENTERED);
+			}
+			nk_group_end(Ctx);
+		}
+		break;
+	}
+
+	case EBBS_LIGHT_TAB: {
+		float SafeHeight = fmax(50.0f, ContentAreaHeight);
+
+		nk_layout_row_template_begin(Ctx, SafeHeight);
+		nk_layout_row_template_push_variable(Ctx, 200);
+		nk_layout_row_template_push_static(Ctx, 250);
+		nk_layout_row_template_end(Ctx);
+
+		if (nk_group_begin(Ctx, "LightTableGroup", NK_WINDOW_BORDER)) {
+			nk_layout_row_dynamic(Ctx, 22, 2);
+			nk_label(Ctx, "Name", NK_TEXT_LEFT);
+			nk_label(Ctx, "Active", NK_TEXT_LEFT);
+
+			for (int i = 0; i < 7; i++) {
+				int IsSelected = (State->SelectedLightIndex == i);
+				char AsStr[3];
+				sprintf(AsStr, "%d", i);
+				nk_layout_row_dynamic(Ctx, 20, 2);
+				BOOL IsActive = (State->Scene->bIsLigthActive >> i) & 1;
+				if (IsActive) {
+					if (nk_selectable_label(Ctx, AsStr, NK_TEXT_LEFT, &IsSelected)) {
+						State->SelectedLightIndex = i;
+					}
+				} else {
+					nk_style_push_color(Ctx, &Ctx->style.text.color, COLOR_DISABLED);
+					nk_label(Ctx, AsStr, NK_TEXT_LEFT);
+					nk_style_pop_color(Ctx);
+				}
+				if (nk_checkbox_label(Ctx, "", &IsActive)) {
+					if (IsActive) {
+						State->Scene->bIsLigthActive |= (1 << i);
+					} else {
+						State->Scene->bIsLigthActive &= ~(1 << i);
+					}
+				}
+			}
+			nk_group_end(Ctx);
+		}
+
+		if (nk_group_begin(Ctx, "InspectorGroup", NK_WINDOW_BORDER)) {
+			if (State->SelectedLightIndex >= 0 && State->SelectedLightIndex < 7) {
+				R_Light *SelectedLight = &State->Scene->Data.Lights[State->SelectedLightIndex];
+
+				nk_layout_row_dynamic(Ctx, 20, 1);
+				nk_label(Ctx, "Position:", NK_TEXT_LEFT);
+
+				nk_layout_row_dynamic(Ctx, 20, 1);
+				nk_property_float(Ctx, "#X:", -1000.0f, &SelectedLight->LightPosition.x, 1000.0f, 0.1f, 0.05f);
+				nk_property_float(Ctx, "#Y:", -1000.0f, &SelectedLight->LightPosition.y, 1000.0f, 0.1f, 0.05f);
+				nk_property_float(Ctx, "#Z:", -1000.0f, &SelectedLight->LightPosition.z, 1000.0f, 0.1f, 0.05f);
+
+				nk_label(Ctx, "Color:", NK_TEXT_LEFT);
+				nk_property_float(Ctx, "#R:", 0.0f, &SelectedLight->LightColor.x, 5000.0f, 10.0f, 1.0f);
+				nk_property_float(Ctx, "#G:", 0.0f, &SelectedLight->LightColor.y, 5000.0f, 10.0f, 1.0f);
+				nk_property_float(Ctx, "#B:", 0.0f, &SelectedLight->LightColor.z, 5000.0f, 10.0f, 1.0f);
+
+			} else {
+				nk_layout_row_dynamic(Ctx, 20, 1);
+				nk_label(Ctx, "No model selected", NK_TEXT_CENTERED);
+			}
+			nk_group_end(Ctx);
+		}
+		break;
+	}
 
 	default: {
 		nk_layout_row_dynamic(Ctx, 20, 1);
 		nk_label(Ctx, "Select a tab to view content", NK_TEXT_LEFT);
-	} break;
+		break;
+	}
 	}
 }
 

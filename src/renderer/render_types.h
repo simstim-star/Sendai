@@ -84,10 +84,13 @@ typedef struct R_Mesh {
 
 typedef struct R_Model {
 	PSTR Name;
-	UINT Id;
-	XMFLOAT3 Position;
+	UINT Size;
 	R_Mesh *Meshes;
 	UINT MeshesCount;
+
+	XMFLOAT3 Position;
+	XMFLOAT3 Rotation;
+	XMFLOAT3 Scale;
 
 	R_Texture *Images;
 	UINT ImagesCount;
