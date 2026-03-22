@@ -14,18 +14,18 @@
 	Forward declaration of private functions
 *****************************************************/
 
-static void InitWindow(Sendai *Engine);
+static void InitWindow(Sendai *const Engine);
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam);
-static void EngineUpdate(Sendai *Engine);
-static void EngineDraw(Sendai *Engine);
-static void LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene);
+static void EngineUpdate(Sendai *const Engine);
+static void EngineDraw(Sendai *const Engine);
+static void LoadPrimitivesIntoBuffers(const R_Core *const Renderer, const S_Scene *const Scene);
 
 /****************************************************
 	Public functions
 *****************************************************/
 
 INT
-S_Run()
+S_Run(void)
 {
 	Sendai Engine = {.Title = L"Sendai",
 					 .RendererCore = {.Width = 1280, .Height = 720},
@@ -81,7 +81,7 @@ S_Run()
 }
 
 void
-S_FileOpen(Sendai *Engine)
+S_FileOpen(Sendai *const Engine)
 {
 	PWSTR FilePath = Win32SelectGLTFPath();
 	if (FilePath == NULL) {
@@ -93,7 +93,7 @@ S_FileOpen(Sendai *Engine)
 }
 
 void
-S_WireframeMode(Sendai *Engine)
+S_WireframeMode(Sendai *const Engine)
 {
 	if (Engine->RendererCore.State != ERS_WIREFRAME) {
 		Engine->RendererCore.State = ERS_WIREFRAME;
@@ -107,22 +107,22 @@ S_WireframeMode(Sendai *Engine)
 *****************************************************/
 
 void
-InitWindow(Sendai *engine)
+InitWindow(Sendai *const Engine)
 {
 	WNDCLASSEX wc = {0};
 	wc.cbSize = sizeof(WNDCLASSEX);
 	wc.style = CS_CLASSDC | CS_HREDRAW | CS_VREDRAW;
 	wc.lpfnWndProc = WindowProc;
-	wc.hInstance = engine->hInstance;
+	wc.hInstance = Engine->hInstance;
 	wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wc.hIconSm = LoadIcon(NULL, IDI_WINLOGO);
 	wc.lpszClassName = L"SendaiClass";
 	RegisterClassEx(&wc);
-	RECT rect = {0, 0, (LONG)(engine->RendererCore.Width), (LONG)(engine->RendererCore.Height)};
+	RECT rect = {0, 0, (LONG)(Engine->RendererCore.Width), (LONG)(Engine->RendererCore.Height)};
 	AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
-	engine->hWnd = CreateWindow(wc.lpszClassName, engine->Title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
-								rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, engine->hInstance, engine);
+	Engine->hWnd = CreateWindow(wc.lpszClassName, Engine->Title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
+								rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, Engine->hInstance, Engine);
 }
 
 LRESULT CALLBACK
@@ -176,7 +176,7 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 }
 
 static void
-EngineUpdate(Sendai *Engine)
+EngineUpdate(Sendai *const Engine)
 {
 	if (Engine->FrameCounter == 50) {
 		Engine->FrameCounter = 0;
@@ -189,13 +189,13 @@ EngineUpdate(Sendai *Engine)
 }
 
 static void
-EngineDraw(Sendai *Engine)
+EngineDraw(Sendai *const Engine)
 {
 	R_Draw(&Engine->RendererCore, &Engine->Scene, &Engine->Camera);
 }
 
 void
-LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
+LoadPrimitivesIntoBuffers(const R_Core *const Renderer, const S_Scene *const Scene)
 {
 	void *pData;
 	ID3D12Resource_Map(Renderer->VertexBufferUpload, 0, NULL, &pData);
@@ -205,7 +205,7 @@ LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 
 	for (int ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
 		for (int MeshIdx = 0; MeshIdx < Scene->Models[ModelIdx].MeshesCount; ++MeshIdx) {
-			R_Mesh *Mesh = &Scene->Models[ModelIdx].Meshes[MeshIdx];
+			const R_Mesh *const Mesh = &Scene->Models[ModelIdx].Meshes[MeshIdx];
 			for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
 				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
 				UINT VertexBufferSize = sizeof(R_Vertex) * Primitive->VertexCount;
@@ -230,7 +230,7 @@ LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 				CurrentIndexBufferOffset += IndexBufferSize;
 				CurrentUploadBufferOffset += IndexBufferSize;
 
-				R_LoadPBRTextures(Primitive, Renderer, Scene, ModelIdx);
+				R_LoadPBRTextures(Primitive, Renderer, Scene);
 			}
 		}
 	}

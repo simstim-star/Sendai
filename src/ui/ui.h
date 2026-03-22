@@ -1,11 +1,17 @@
 #pragma once
 
-typedef enum { UI_ACTION_NONE = 0, UI_ACTION_FILE_OPEN, UI_ACTION_WIREFRAME_BUTTON_CLICKED } UI_EAction;
+typedef struct nk_context nk_context;
+typedef struct S_Scene S_Scene;
+typedef struct R_Camera R_Camera;
+typedef struct Sendai Sendai;
+typedef struct ID3D12GraphicsCommandList ID3D12GraphicsCommandList;
+typedef struct ID3D12Resource ID3D12Resource;
 
+typedef enum { UI_ACTION_NONE = 0, UI_ACTION_FILE_OPEN, UI_ACTION_WIREFRAME_BUTTON_CLICKED } UI_EAction;
 typedef enum { UI_EUT_WIREFRAME, UI_EUT_CAMERA, UI_EUT_NUM_USER_TEXTURES } UI_EUserTextures;
 
 typedef struct UI_Renderer {
-	struct nk_context *Context;
+	nk_context *Context;
 	UINT Width;
 	UINT Height;
 } UI_Renderer;
@@ -17,7 +23,7 @@ typedef struct UI_BottomBarState {
 	UINT FrameCounter;
 	UINT SelectedModelIndex;
 	UINT SelectedLightIndex;
-	struct S_Scene *Scene;
+	S_Scene *Scene;
 	enum E_BottomBarTab { EBBS_LOG_TAB, EBBS_SCENE_TAB, EBBS_LIGHT_TAB } ActiveTab;
 } UI_BottomBarState;
 
@@ -28,7 +34,7 @@ typedef struct UI_TopBarState {
 
 typedef struct UI_ToolBarState {
 	BOOL Wireframe;
-	struct R_Camera *Camera;
+	R_Camera *Camera;
 } UI_ToolBarState;
 
 typedef struct UI_State {
@@ -39,7 +45,7 @@ typedef struct UI_State {
 
 void UI_Init(UI_Renderer *const UI, struct R_Core *Renderer);
 
-void UI_Update(struct Sendai *Engine);
+void UI_Update(Sendai *Engine);
 
 void UI_InputBegin(const UI_Renderer *UI);
 
@@ -53,7 +59,7 @@ UI_EAction UI_DrawToolbar(UI_Renderer *UI, UI_ToolBarState *State);
 
 UI_EAction UI_DrawBottomBar(UI_Renderer *UI, UI_BottomBarState *State);
 
-void UI_Draw(struct ID3D12GraphicsCommandList *CommandList);
+void UI_Draw(ID3D12GraphicsCommandList *CommandList);
 
 void UI_Resize(UI_Renderer *UI, const int Width, const int Height);
 

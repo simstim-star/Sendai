@@ -49,7 +49,7 @@ typedef struct R_MeshConstants {
 } R_MeshConstants;
 
 typedef struct R_Texture {
-	UINT8 *Pixels;
+	const UINT8 *Pixels;
 	INT Width;
 	INT Height;
 	PSTR Name;
@@ -76,7 +76,7 @@ typedef struct R_Primitive {
 
 typedef struct R_Mesh {
 	R_Primitive *Primitives;
-	UINT PrimitivesCount;
+	size_t PrimitivesCount;
 
 	// RH and Row-Major
 	XMFLOAT4X4 ModelMatrix;
@@ -84,15 +84,15 @@ typedef struct R_Mesh {
 
 typedef struct R_Model {
 	PSTR Name;
-	UINT Size;
+	size_t Size;
 	R_Mesh *Meshes;
-	UINT MeshesCount;
+	size_t MeshesCount;
 
 	XMFLOAT3 Position;
 	XMFLOAT3 Rotation;
 	XMFLOAT3 Scale;
 
 	R_Texture *Images;
-	UINT ImagesCount;
+	size_t ImagesCount;
 } R_Model;
 

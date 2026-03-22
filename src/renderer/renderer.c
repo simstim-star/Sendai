@@ -28,14 +28,14 @@ typedef enum EReservedSrvIndex {
 *****************************************************/
 
 static void SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers);
-static void CreateSceneResources(const R_Core *const Renderer);
+static void CreateSceneResources(R_Core *const Renderer);
 static void CreateDepthStencilBuffer(R_Core *const Renderer);
 static void CreateShaders(R_Core *const Renderer);
-R_SceneData PreprocessSceneData(S_Scene *Scene);
+static R_SceneData PreprocessSceneData(const S_Scene *const Scene);
 
 static void SignalAndWait(R_Core *const Renderer);
-static void RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera, R_MeshConstants *const MeshConstants);
-static void RenderLightBillboards(S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
+static void RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
+static void RenderLightBillboards(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
 
 /****************************************************
 Public functions
@@ -132,7 +132,8 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	  .AlphaMode = DXGI_ALPHA_MODE_IGNORE,
 	  .Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH,
 	};
-	hr = IDXGIFactory2_CreateSwapChainForHwnd(Factory, Renderer->CommandQueue, Renderer->hWnd, &SwapChainDesc, NULL, NULL, &Renderer->SwapChain);
+	hr = IDXGIFactory2_CreateSwapChainForHwnd(Factory, (IUnknown *)Renderer->CommandQueue, Renderer->hWnd, &SwapChainDesc, NULL, NULL,
+											  &Renderer->SwapChain);
 	ExitIfFailed(hr);
 
 	SetRtvBuffers(Renderer, FRAME_COUNT);
@@ -143,7 +144,7 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 }
 
 void
-R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera)
+R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const Camera)
 {
 	ID3D12GraphicsCommandList_RSSetViewports(Renderer->CommandList, 1, &Renderer->Viewport);
 	ID3D12GraphicsCommandList_RSSetScissorRects(Renderer->CommandList, 1, &Renderer->ScissorRect);
@@ -173,7 +174,7 @@ R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera)
 	  .View = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection),
 	  .Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f),
 	};
-	RenderPrimitives(Scene, Renderer, Camera, &MeshConstants);
+	RenderPrimitives(Scene, Renderer, &MeshConstants);
 	RenderLightBillboards(Scene, Renderer, &MeshConstants);
 	UI_Draw(Renderer->CommandList);
 
@@ -301,7 +302,7 @@ SignalAndWait(R_Core *const Renderer)
 }
 
 void
-RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera, R_MeshConstants *const MeshConstants)
+RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignPBR);
 	UINT8 *MeshDataCpuAddress = Renderer->MeshDataUploadBufferCpuAddress;
@@ -318,14 +319,14 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera,
 	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &TexturesHeapStart);
 	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 3, TexturesHeapStart);
 
-	for (INT ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
+	for (size_t ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
 		R_Model *Model = &Scene->Models[ModelIdx];
 		XMMATRIX T = XMMatrixTranslation(Model->Position.x, Model->Position.y, Model->Position.z);
 		XMMATRIX R = XMMatrixRotationRollPitchYaw(Model->Rotation.x, Model->Rotation.y, Model->Rotation.z);
 		XMMATRIX S = XMMatrixScaling(Model->Scale.x, Model->Scale.y, Model->Scale.z);
 		XMMATRIX M = XM_MAT_MULT(S, R);
 		M = XM_MAT_MULT(M, T);
-		for (INT MeshIdx = 0; MeshIdx < Model->MeshesCount; ++MeshIdx) {
+		for (size_t MeshIdx = 0; MeshIdx < Model->MeshesCount; ++MeshIdx) {
 			R_Mesh *Mesh = &Model->Meshes[MeshIdx];
 
 			MeshConstants->Model = XMLoadFloat4x4(&Mesh->ModelMatrix);
@@ -350,7 +351,7 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera,
 }
 
 void
-RenderLightBillboards(S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants)
+RenderLightBillboards(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants)
 {
 	for (int i = 0; i < NUM_LIGHTS; ++i) {
 		if (Scene->ActiveLightMask & (1 << i)) {
@@ -387,7 +388,7 @@ SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers)
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE RtvDescriptorHandle;
 	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->RtvDescriptorHeap, &RtvDescriptorHandle);
-	for (int i = 0; i < NumBuffers; ++i) {
+	for (UINT i = 0; i < NumBuffers; ++i) {
 		HRESULT hr = IDXGISwapChain1_GetBuffer(Renderer->SwapChain, i, &IID_ID3D12Resource, &Renderer->RtvBuffers[i]);
 		ExitIfFailed(hr);
 		ID3D12Device_CreateRenderTargetView(Renderer->Device, Renderer->RtvBuffers[i], NULL, RtvDescriptorHandle);
@@ -447,7 +448,7 @@ CreateShaders(R_Core *const Renderer)
 }
 
 R_SceneData
-PreprocessSceneData(S_Scene *Scene)
+PreprocessSceneData(const S_Scene *const Scene)
 {
 	R_SceneData Result = {0};
 	Result.CameraPosition = Scene->Data.CameraPosition;

@@ -17,9 +17,9 @@ typedef struct TextureLookup {
 
 void R_CreateCustomTexture(PCWSTR Path, R_Core *Renderer);
 void R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex);
-GPUTexture R_UploadTexture(R_Core *Renderer, R_Texture *Source);
-ID3D12Resource *R_CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Source);
+GPUTexture R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source);
+ID3D12Resource *R_CommandCreateTextureGPU(R_Core *const Renderer, const R_Texture *const Source);
 UINT64 R_SuballocateTextureUpload(R_Core *Renderer, UINT64 Size);
 UINT32
-R_GetTextureIndex(R_Core *Renderer, S_Scene *Scene, int ModelIdx, R_Texture *Texture);
-void R_LoadPBRTextures(R_Primitive *Primitive, R_Core *Renderer, S_Scene *Scene, int ModelIdx);
+R_GetTextureIndex(R_Core *const Renderer, const R_Texture *const Texture);
+void R_LoadPBRTextures(R_Primitive *const Primitive, R_Core *const Renderer, S_Scene *const Scene);

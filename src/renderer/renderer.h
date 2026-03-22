@@ -83,6 +83,6 @@ typedef struct R_Core {
 
 void R_Init(R_Core *const Renderer, HWND hWnd);
 void R_Destroy(R_Core *Renderer);
-void R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera);
+void R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const Camera);
 void R_ExecuteCommands(R_Core *const Renderer);
 void R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height);

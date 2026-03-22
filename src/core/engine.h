@@ -23,7 +23,7 @@ typedef struct Sendai {
 	UINT FrameCounter;
 } Sendai;
 
-INT S_Run();
+INT S_Run(void);
 
-void S_FileOpen(Sendai *Engine);
-void S_WireframeMode(Sendai *Engine);
+void S_FileOpen(Sendai *const Engine);
+void S_WireframeMode(Sendai *const Engine);

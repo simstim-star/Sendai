@@ -7,7 +7,7 @@
 #include "../core/memory.h"
 
 void
-R_LightsInit(S_Scene *Scene, R_Camera *Camera)
+R_LightsInit(S_Scene *const Scene, const R_Camera *const Camera)
 {
 	Scene->ActiveLightMask = 0;
 	Scene->ActiveLightMask |= (1 << 0);
@@ -24,9 +24,9 @@ R_LightsInit(S_Scene *Scene, R_Camera *Camera)
 }
 
 void
-R_UpdateLights(BYTE ActiveLightMask, R_Light *InLights, R_Light *OutLights, UINT NumLights)
+R_UpdateLights(BYTE ActiveLightMask, const R_Light *const InLights, R_Light *const OutLights, UINT NumLights)
 {
-	for (int i = 0; i < NumLights; i++) {
+	for (UINT i = 0; i < NumLights; i++) {
 		if (IS_LIGHT_ACTIVE(ActiveLightMask, i)) {
 			OutLights[i].LightColor = InLights[i].LightColor;
 			OutLights[i].LightPosition = InLights[i].LightPosition;
@@ -35,7 +35,7 @@ R_UpdateLights(BYTE ActiveLightMask, R_Light *InLights, R_Light *OutLights, UINT
 }
 
 void
-R_RenderLightBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint, UINT SrvIndex)
+R_RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint, UINT SrvIndex)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignBillboard);
 	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[ERS_BILLBOARD]);

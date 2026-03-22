@@ -8,8 +8,8 @@ typedef struct ID3D12RootSignature ID3D12RootSignature;
 
 typedef struct S_Scene {
 	R_Model *Models;
-	UINT ModelsCount;
-	UINT ModelsCapacity;
+	size_t ModelsCount;
+	size_t ModelsCapacity;
 
 	R_SceneData Data;
 	BYTE ActiveLightMask;

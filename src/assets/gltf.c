@@ -113,8 +113,8 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 	Scene->Models[Scene->ModelsCount].Rotation.y = 0.0f;
 	Scene->Models[Scene->ModelsCount].Rotation.z = 0.0f;
 
-	for (size_t i = 0; i < NodeCount; i++, Scene->Models[Scene->ModelsCount].MeshesCount++) {
-		cgltf_node *NodeData = &Data->nodes[i];
+	for (size_t NodeIndex = 0; NodeIndex < NodeCount; NodeIndex++, Scene->Models[Scene->ModelsCount].MeshesCount++) {
+		cgltf_node *NodeData = &Data->nodes[NodeIndex];
 		if (NodeData->mesh == NULL) {
 			continue;
 		}
@@ -122,7 +122,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 		R_Mesh *Mesh = &Scene->Models[Scene->ModelsCount].Meshes[Scene->Models[Scene->ModelsCount].MeshesCount];
 		cgltf_mesh *MeshData = NodeData->mesh;
 
-		float TransformColMajor[4][4];
+		cgltf_float TransformColMajor[4][4];
 		cgltf_node_transform_world(NodeData, TransformColMajor);
 
 		// Note: Mesh->Transform is col-major, but XMLoadFloat4x4 expects row-major.
@@ -213,38 +213,38 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 				break;
 			}
 
-			size_t VertexCount = PositionAccessor->count;
+			UINT VertexCount = PositionAccessor->count;
 			R_Vertex *Vertices = M_ArenaAlloc(&Scene->SceneArena, sizeof(R_Vertex) * VertexCount);
 
-			for (size_t i = 0; i < VertexCount; i++) {
+			for (UINT VertexIndex = 0; VertexIndex < VertexCount; VertexIndex++) {
 				float Position[3];
-				cgltf_accessor_read_float(PositionAccessor, i, Position, 3);
-				Vertices[i].Position = (XMFLOAT3){Position[0], Position[1], Position[2]};
+				cgltf_accessor_read_float(PositionAccessor, VertexIndex, Position, 3);
+				Vertices[VertexIndex].Position = (XMFLOAT3){Position[0], Position[1], Position[2]};
 
 				cgltf_accessor *NormalAccessor = AccessorsData[cgltf_attribute_type_normal];
 				if (NormalAccessor) {
 					float Normal[4];
-					cgltf_accessor_read_float(NormalAccessor, i, Normal, 3);
-					Vertices[i].Normal.x = Normal[0];
-					Vertices[i].Normal.y = Normal[1];
-					Vertices[i].Normal.z = Normal[2];
+					cgltf_accessor_read_float(NormalAccessor, VertexIndex, Normal, 3);
+					Vertices[VertexIndex].Normal.x = Normal[0];
+					Vertices[VertexIndex].Normal.y = Normal[1];
+					Vertices[VertexIndex].Normal.z = Normal[2];
 				}
 
 				if (UVAccessorsData[0]) {
 					float uv[2];
-					cgltf_accessor_read_float(UVAccessorsData[0], i, uv, 2);
-					Vertices[i].UV0.x = uv[0];
-					Vertices[i].UV0.y = uv[1];
+					cgltf_accessor_read_float(UVAccessorsData[0], VertexIndex, uv, 2);
+					Vertices[VertexIndex].UV0.x = uv[0];
+					Vertices[VertexIndex].UV0.y = uv[1];
 				}
 
 				if (UVAccessorsData[1]) {
 					float uv[2];
-					cgltf_accessor_read_float(UVAccessorsData[1], i, uv, 2);
-					Vertices[i].UV1.x = uv[0];
-					Vertices[i].UV1.y = uv[1];
+					cgltf_accessor_read_float(UVAccessorsData[1], VertexIndex, uv, 2);
+					Vertices[VertexIndex].UV1.x = uv[0];
+					Vertices[VertexIndex].UV1.y = uv[1];
 				} else {
-					Vertices[i].UV1.x = 0.0f;
-					Vertices[i].UV1.y = 0.0f;
+					Vertices[VertexIndex].UV1.x = 0.0f;
+					Vertices[VertexIndex].UV1.y = 0.0f;
 				}
 			}
 
@@ -342,7 +342,7 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 			const char *EncodedB64 = FirstCommaPtr + 1;
 			size_t EncLen = strlen(EncodedB64);
 			size_t DecodedMaxCap = (EncLen / 4) * 3 + 4;
-			char *Decoded = M_ArenaAlloc(TextureArena, DecodedMaxCap);
+			stbi_uc *Decoded = M_ArenaAlloc(TextureArena, DecodedMaxCap);
 			if (Decoded == NULL) {
 				return FALSE;
 			}
@@ -385,12 +385,8 @@ LoadGLTFBuffer(
 {
 	WCHAR FullPathBuffer[MAX_PATH];
 	wcscpy_s(FullPathBuffer, MAX_PATH, FullPathGLTF);
-
 	RemoveAllAfterLastSlash(FullPathBuffer);
-
-	WCHAR BufferFileNameUTF8[MAX_PATH];
-	MultiByteToWideChar(CP_UTF8, 0, BufferFileName, -1, BufferFileNameUTF8, MAX_PATH);
-	wcscat_s(FullPathBuffer, MAX_PATH, BufferFileNameUTF8);
+	wcscat_s(FullPathBuffer, MAX_PATH, BufferFileName);
 
 	FILE *file = _wfopen(FullPathBuffer, L"rb");
 	if (!file) {
@@ -437,7 +433,6 @@ LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ 
 		if (Data->bin_size < Data->buffers[0].size) {
 			return cgltf_result_data_too_short;
 		}
-
 		Data->buffers[0].vertex_data = Data->bin;
 		Data->buffers[0].data_free_method = cgltf_data_free_method_none;
 	}

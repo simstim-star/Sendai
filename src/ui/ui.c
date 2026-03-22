@@ -12,6 +12,7 @@
 #define NK_INCLUDE_DEFAULT_FONT
 #define NK_IMPLEMENTATION
 #define NK_D3D12_IMPLEMENTATION
+
 #include "../../deps/nuklear.h"
 #include "../shaders/nuklear/nuklear_d3d12.h"
 
@@ -40,8 +41,6 @@ static void BottomBarDraggingArea(struct nk_context *Ctx, const float HandleHeig
 static void BottomBarTabArea(struct nk_context *Ctx, const float TabBarHeight, UI_BottomBarState *State);
 static void BottomBarContentArea(struct nk_context *Ctx, UI_BottomBarState *State, const float HandleHeight, const float TabBarHeight);
 static void BottomBarInfoArea(struct nk_context *Ctx, UI_Renderer *UI, const float InfoBarHeight, UI_BottomBarState *State);
-
-static struct nk_colorf ColorToNuklear(XMFLOAT4 *color);
 
 /****************************************************
 	Public functions
@@ -422,9 +421,9 @@ BottomBarContentArea(struct nk_context *Ctx, UI_BottomBarState *State, const flo
 			nk_label(Ctx, "Active", NK_TEXT_LEFT);
 
 			for (int i = 0; i < 7; i++) {
-				int IsSelected = (State->SelectedLightIndex == i);
-				char AsStr[3];
-				sprintf(AsStr, "%d", i);
+				BOOL IsSelected = (State->SelectedLightIndex == i);
+				char AsStr[12];
+				sprintf_s(AsStr, sizeof(AsStr), "%d", i);
 				nk_layout_row_dynamic(Ctx, 20, 2);
 				BOOL IsActive = (State->Scene->ActiveLightMask >> i) & 1;
 				if (IsActive) {
@@ -502,15 +501,4 @@ BottomBarInfoArea(struct nk_context *Ctx, UI_Renderer *UI, const float InfoBarHe
 		nk_layout_row_end(Ctx);
 	}
 	nk_end(Ctx);
-}
-
-static struct nk_colorf
-ColorToNuklear(XMFLOAT4 *Color)
-{
-	return (struct nk_colorf){
-	  .r = Color->x,
-	  .g = Color->y,
-	  .b = Color->z,
-	  .a = Color->w,
-	};
 }

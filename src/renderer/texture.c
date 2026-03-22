@@ -3,6 +3,7 @@
 #include "renderer.h"
 #include "texture.h"
 #include "../ui/ui.h"
+#include "../error/error.h"
 
 #define STB_DS_IMPLEMENTATION
 #include "../../deps/stb_ds.h"
@@ -55,7 +56,7 @@ R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
 }
 
 GPUTexture
-R_UploadTexture(R_Core *Renderer, R_Texture *Source)
+R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source)
 {
 	ptrdiff_t Index = shgeti(Renderer->Textures, Source->Name);
 	if (Index != -1) {
@@ -95,13 +96,13 @@ R_CreateCustomTexture(PCWSTR Path, R_Core *Renderer)
 	INT W, H;
 	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
 	R_Texture Source = (R_Texture){.Height = H, .Width = W, .Pixels = Pixels, .Name = PathUTF8};
-	GPUTexture NewTex = R_UploadTexture(Renderer, &Source);
+	R_UploadTexture(Renderer, &Source);
 	Renderer->TexturesCount++;
 	stbi_image_free(Pixels);
 }
 
 ID3D12Resource *
-R_CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Source)
+R_CommandCreateTextureGPU(R_Core *const Renderer, const R_Texture *const Source)
 {
 	ID3D12Resource *Texture = NULL;
 	D3D12_RESOURCE_DESC TexDesc = {.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
@@ -155,7 +156,7 @@ R_CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Source)
 }
 
 UINT64
-R_SuballocateTextureUpload(R_Core *Renderer, UINT64 Size)
+R_SuballocateTextureUpload(R_Core *const Renderer, UINT64 Size)
 {
 	UINT64 AlignedOffset = ROUND_UP_POWER_OF_2(Renderer->TextureUploadBuffer.CurrentOffset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 
@@ -168,26 +169,26 @@ R_SuballocateTextureUpload(R_Core *Renderer, UINT64 Size)
 }
 
 UINT32
-R_GetTextureIndex(R_Core *Renderer, S_Scene *Scene, int ModelIdx, R_Texture *Texture)
+R_GetTextureIndex(R_Core *const Renderer, const R_Texture *const Texture)
 {
-	R_Texture *Target;
+	R_Texture Target;
 	if (Texture) {
-		Target = Texture;
+		Target = *Texture;
 	} else {
-		Target = &BlackTexture;
+		Target = BlackTexture;
 	}
 
-	GPUTexture Tex = R_UploadTexture(Renderer, Target);
+	GPUTexture Tex = R_UploadTexture(Renderer, &Target);
 	return Tex.HeapIndex;
 }
 
 void
-R_LoadPBRTextures(R_Primitive *Primitive, R_Core *Renderer, S_Scene *Scene, int ModelIdx)
+R_LoadPBRTextures(R_Primitive *const Primitive, R_Core *const Renderer, S_Scene *const Scene)
 {
-	Primitive->cb.AlbedoTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Albedo);
-	Primitive->cb.NormalTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Normal);
-	Primitive->cb.MetallicTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Metallic);
-	Primitive->cb.RoughnessTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Roughness);
-	Primitive->cb.OcclusionTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Occlusion);
+	Primitive->cb.AlbedoTextureIndex = R_GetTextureIndex(Renderer, Primitive->Albedo);
+	Primitive->cb.NormalTextureIndex = R_GetTextureIndex(Renderer, Primitive->Normal);
+	Primitive->cb.MetallicTextureIndex = R_GetTextureIndex(Renderer, Primitive->Metallic);
+	Primitive->cb.RoughnessTextureIndex = R_GetTextureIndex(Renderer, Primitive->Roughness);
+	Primitive->cb.OcclusionTextureIndex = R_GetTextureIndex(Renderer, Primitive->Occlusion);
 	M_ArenaReset(&Scene->TextureArena);
 }
