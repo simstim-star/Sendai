@@ -109,6 +109,9 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 	Scene->Models[Scene->ModelsCount].Scale.x = 1;
 	Scene->Models[Scene->ModelsCount].Scale.y = 1;
 	Scene->Models[Scene->ModelsCount].Scale.z = 1;
+	Scene->Models[Scene->ModelsCount].Rotation.x = 0.0f;
+	Scene->Models[Scene->ModelsCount].Rotation.y = 0.0f;
+	Scene->Models[Scene->ModelsCount].Rotation.z = 0.0f;
 
 	for (size_t i = 0; i < NodeCount; i++, Scene->Models[Scene->ModelsCount].MeshesCount++) {
 		cgltf_node *NodeData = &Data->nodes[i];

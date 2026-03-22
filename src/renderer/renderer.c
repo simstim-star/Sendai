@@ -473,15 +473,19 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 
 	for (INT ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
 		R_Model *Model = &Scene->Models[ModelIdx];
-		XMMATRIX ModelTrans = XM_MAT_TRANSLATION(Model->Position.x, Model->Position.y, Model->Position.z);
-		XMMATRIX ScaleMat = XMMatrixScaling(Model->Scale.x, Model->Scale.y, Model->Scale.z);
-		ModelTrans = XM_MAT_MULT(ModelTrans, ScaleMat);
+		XMMATRIX T = XMMatrixTranslation(Model->Position.x, Model->Position.y, Model->Position.z);
+		XMMATRIX R = XMMatrixRotationRollPitchYaw(Model->Rotation.x, Model->Rotation.y, Model->Rotation.z);
+		XMMATRIX S = XMMatrixScaling(Model->Scale.x, Model->Scale.y, Model->Scale.z);
+		XMMATRIX M = XM_MAT_MULT(S, R);
+		M = XM_MAT_MULT(M, T);
 		for (INT MeshIdx = 0; MeshIdx < Model->MeshesCount; ++MeshIdx) {
 			R_Mesh *Mesh = &Model->Meshes[MeshIdx];
 
 			MeshData.Model = XMLoadFloat4x4(&Mesh->ModelMatrix);
-			MeshData.Model = XM_MAT_MULT(MeshData.Model, ModelTrans);
-			MeshData.Normal = R_NormalMatrix(Mesh->ModelMatrix);
+			MeshData.Model = XM_MAT_MULT(MeshData.Model, M);
+			XMFLOAT4X4 FinalWorldF4;
+			XM_STORE_FLOAT4X4(&FinalWorldF4, MeshData.Model);
+			MeshData.Normal = R_NormalMatrix(FinalWorldF4);
 
 			memcpy(MeshDataCpuAddress + Renderer->MeshDataOffset, &MeshData, sizeof(R_MeshConstants));
 			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + Renderer->MeshDataOffset);

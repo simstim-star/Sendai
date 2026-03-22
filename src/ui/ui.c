@@ -358,6 +358,11 @@ BottomBarContentArea(struct nk_context *Ctx, UI_BottomBarState *State, const flo
 				nk_property_float(Ctx, "#Y:", -1000.0f, &SelModel->Position.y, 1000.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Z:", -1000.0f, &SelModel->Position.z, 1000.0f, 0.1f, 0.05f);
 
+				nk_label(Ctx, "Rotation:", NK_TEXT_LEFT);
+				nk_property_float(Ctx, "#X:", -100.0f, &SelModel->Rotation.x, 100.0f, 0.1f, 0.05f);
+				nk_property_float(Ctx, "#Y:", -100.0f, &SelModel->Rotation.y, 100.0f, 0.1f, 0.05f);
+				nk_property_float(Ctx, "#Z:", -100.0f, &SelModel->Rotation.z, 100.0f, 0.1f, 0.05f);
+
 				nk_label(Ctx, "Scale:", NK_TEXT_LEFT);
 				nk_property_float(Ctx, "#X:", 0.01f, &SelModel->Scale.x, 500.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Y:", 0.01f, &SelModel->Scale.y, 500.0f, 0.1f, 0.05f);
