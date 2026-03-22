@@ -2,7 +2,7 @@
 
 typedef enum { UI_ACTION_NONE = 0, UI_ACTION_FILE_OPEN, UI_ACTION_WIREFRAME_BUTTON_CLICKED } UI_EAction;
 
-typedef enum { UI_EUT_WIREFRAME, UI_EUT_NUM_USER_TEXTURES } UI_EUserTextures;
+typedef enum { UI_EUT_WIREFRAME, UI_EUT_CAMERA, UI_EUT_NUM_USER_TEXTURES } UI_EUserTextures;
 
 typedef struct UI_Renderer {
 	struct nk_context *Context;
@@ -30,6 +30,7 @@ typedef struct UI_TopBarState {
 
 typedef struct UI_ToolBarState {
 	BOOL Wireframe;
+	struct R_Camera *Camera;
 } UI_ToolBarState;
 
 typedef struct UI_State {
@@ -50,7 +51,7 @@ UI_EAction UI_LogWindow(UI_Renderer *const UI);
 
 UI_EAction UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State);
 
-UI_EAction UI_DrawToolbarButton(UI_Renderer *UI, UI_ToolBarState *State);
+UI_EAction UI_DrawToolbar(UI_Renderer *UI, UI_ToolBarState *State);
 
 UI_EAction UI_DrawBottomBar(UI_Renderer *UI, UI_BottomBarState *State);
 

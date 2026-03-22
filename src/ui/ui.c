@@ -22,6 +22,7 @@
 #include "ui.h"
 
 #include "../core/engine.h"
+#include "../core/camera.h"
 #include "../dx_helpers/desc_helpers.h"
 
 #define COLOR_DISABLED nk_rgba(100, 100, 100, 255)
@@ -81,23 +82,49 @@ UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State)
 
 	return Action;
 }
-
 UI_EAction
-UI_DrawToolbarButton(UI_Renderer *UI, UI_ToolBarState *State)
+UI_DrawToolbar(UI_Renderer *UI, UI_ToolBarState *State)
 {
 	struct nk_context *Ctx = UI->Context;
 	UI_EAction Action = UI_ACTION_NONE;
 
 	const float TopBarHeight = UI->Height * 0.05f;
 	const float BtnSize = 50.0f;
-	struct nk_rect WindowRect = nk_rect(10, TopBarHeight + 10, BtnSize, BtnSize);
-	nk_style_push_vec2(Ctx, &Ctx->style.window.padding, nk_vec2(0, 0));
-	if (nk_begin(Ctx, "IconButton", WindowRect, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_layout_row_static(Ctx, BtnSize, BtnSize, 1);
-		if (nk_button_image(Ctx, UI_TEXTURES[UI_EUT_WIREFRAME])) {
-			Action = UI_ACTION_WIREFRAME_BUTTON_CLICKED;
-			State->Wireframe = !State->Wireframe;
+	const float WindowWidth = 450.0f;
+	struct nk_rect WindowRect = nk_rect(10, TopBarHeight + 10, WindowWidth, BtnSize);
+
+	nk_style_push_vec2(Ctx, &Ctx->style.window.padding, nk_vec2(5, 5));
+
+	if (nk_begin(Ctx, "Toolbar", WindowRect, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_begin(Ctx, NK_STATIC, BtnSize - 10, 7);
+		{
+			nk_layout_row_push(Ctx, BtnSize - 10);
+			if (nk_button_image(Ctx, UI_TEXTURES[UI_EUT_WIREFRAME])) {
+				Action = UI_ACTION_WIREFRAME_BUTTON_CLICKED;
+				State->Wireframe = !State->Wireframe;
+			}
+
+			nk_layout_row_push(Ctx, 10);
+			nk_spacing(Ctx, 1);
+
+			nk_layout_row_push(Ctx, BtnSize - 10);
+			{
+				struct nk_style_button static_btn = Ctx->style.button;
+				static_btn.hover = static_btn.normal;
+				static_btn.active = static_btn.normal;
+				nk_button_image_styled(Ctx, &static_btn, UI_TEXTURES[UI_EUT_CAMERA]);
+			}
+
+			nk_layout_row_push(Ctx, 70);
+			nk_property_float(Ctx, "#X:", -1000.0f, &State->Camera->Position.x, 1000.0f, 0.1f, 0.05f);
+			nk_layout_row_push(Ctx, 70);
+			nk_property_float(Ctx, "#Y:", -1000.0f, &State->Camera->Position.y, 1000.0f, 0.1f, 0.05f);
+			nk_layout_row_push(Ctx, 70);
+			nk_property_float(Ctx, "#Z:", -1000.0f, &State->Camera->Position.z, 1000.0f, 0.1f, 0.05f);
+			nk_layout_row_push(Ctx, 100);
+			nk_property_float(Ctx, "Speed:", 0.0f, &State->Camera->MoveSpeed, 100.0f, 1.0f, 0.5f);
 		}
+		nk_layout_row_end(Ctx);
 	}
 	nk_end(Ctx);
 	nk_style_pop_vec2(Ctx);
@@ -141,8 +168,8 @@ UI_Update(Sendai *Engine)
 	Engine->UIState.BottomBar.FPS = Engine->Timer.FramesPerSecond;
 	Engine->UIState.BottomBar.FrameCounter = Engine->FrameCounter;
 	Engine->UIState.BottomBar.Scene = &Engine->Scene;
-	UI_EAction Action = UI_DrawTopBar(&Engine->RendererUI, &Engine->UIState.TopBar) |
-						UI_DrawToolbarButton(&Engine->RendererUI, &Engine->UIState.ToolBar) |
+	Engine->UIState.ToolBar.Camera = &Engine->Camera;
+	UI_EAction Action = UI_DrawTopBar(&Engine->RendererUI, &Engine->UIState.TopBar) | UI_DrawToolbar(&Engine->RendererUI, &Engine->UIState.ToolBar) |
 						UI_DrawBottomBar(&Engine->RendererUI, &Engine->UIState.BottomBar);
 
 	switch (Action) {
@@ -248,6 +275,9 @@ LoadCustomTextures(R_Core *Renderer)
 	WCHAR WireframePath[512];
 	Win32FullPath(L"/assets/images/wireframe.png", WireframePath, _countof(WireframePath));
 	R_CreateUITexture(WireframePath, Renderer, UI_EUT_WIREFRAME);
+	WCHAR CameraPath[512];
+	Win32FullPath(L"/assets/images/camera.png", CameraPath, _countof(CameraPath));
+	R_CreateUITexture(CameraPath, Renderer, UI_EUT_CAMERA);
 }
 
 void
