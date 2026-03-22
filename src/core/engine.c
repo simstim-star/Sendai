@@ -137,6 +137,9 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		return 0;
 	}
 	case WM_SIZE:
+		if (wParam == SIZE_MINIMIZED) {
+			return 0;
+		}
 		if (Engine && Engine->RendererCore.SwapChain) {
 			int width = LOWORD(lParam);
 			int height = HIWORD(lParam);

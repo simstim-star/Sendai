@@ -2,6 +2,7 @@
 
 #include "renderer.h"
 #include "texture.h"
+#include "../ui/ui.h"
 
 #define STB_DS_IMPLEMENTATION
 #include "../../deps/stb_ds.h"
@@ -29,19 +30,25 @@ R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
 {
 	char PathUTF8[MAX_PATH * 4];
 	WideCharToMultiByte(CP_UTF8, 0, Path, -1, PathUTF8, (INT)sizeof(PathUTF8), NULL, NULL);
+	
+	if (shgeti(Renderer->Textures, PathUTF8) != -1) {
+		return;
+	}
+
 	INT W, H;
 	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
 	R_Texture Source = (R_Texture){
 	  .Height = H,
 	  .Width = W,
 	  .Pixels = Pixels,
+	  .Name = PathUTF8,
 	};
 
 	GPUTexture NewTex = {0};
 	NewTex.GpuTexture = R_CommandCreateTextureGPU(Renderer, &Source);
 	UI_SetTextureInNkHeap(nkSlotIndex, NewTex.GpuTexture);
 
-	TextureLookup Lookup = {.key = Path, .Texture = NewTex};
+	TextureLookup Lookup = {.key = PathUTF8, .Texture = NewTex};
 	shputs(Renderer->Textures, Lookup);
 
 	stbi_image_free(Pixels);
@@ -87,9 +94,9 @@ R_CreateCustomTexture(PCWSTR Path, R_Core *Renderer)
 	WideCharToMultiByte(CP_UTF8, 0, Path, -1, PathUTF8, (INT)sizeof(PathUTF8), NULL, NULL);
 	INT W, H;
 	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
-	R_Texture Source = (R_Texture){.Height = H, .Width = W, .Pixels = Pixels, .Name = "teste"};
+	R_Texture Source = (R_Texture){.Height = H, .Width = W, .Pixels = Pixels, .Name = PathUTF8};
 	GPUTexture NewTex = R_UploadTexture(Renderer, &Source);
-	Renderer->TexturesCount = 1;
+	Renderer->TexturesCount++;
 	stbi_image_free(Pixels);
 }
 

@@ -8,8 +8,6 @@ typedef struct UI_Renderer {
 	struct nk_context *Context;
 	UINT Width;
 	UINT Height;
-
-	ID3D12Resource *IconTextureResource;
 } UI_Renderer;
 
 typedef struct UI_BottomBarState {

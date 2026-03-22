@@ -266,8 +266,7 @@ R_Destroy(R_Core *Renderer)
 	ID3D12Resource_Release(Renderer->SceneDataUploadBuffer);
 
 	for (INT i = 0; i < hmlen(Renderer->Textures); ++i) {
-		GPUTexture *Value = &Renderer->Textures[i].Texture;
-		ID3D12Resource_Release(Value->GpuTexture);
+		ID3D12Resource_Release(Renderer->Textures[i].Texture.GpuTexture);
 	}
 
 	for (INT i = 0; i < FRAME_COUNT; ++i) {
@@ -292,6 +291,8 @@ R_Destroy(R_Core *Renderer)
 	ID3D12Fence_Release(Renderer->Fence);
 	IDXGISwapChain1_Release(Renderer->SwapChain);
 	ID3D12Device_Release(Renderer->Device);
+
+	shfree(Renderer->Textures);
 }
 
 /****************************************************
