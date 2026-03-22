@@ -48,7 +48,7 @@ S_Run()
 {
 	Sendai Engine = {.Title = L"Sendai",
 					 .RendererCore = {.Width = 1280, .Height = 720},
-					 .Camera = R_CameraSpawn((XMFLOAT3){0, 0, 0}),
+					 .Camera = R_CameraSpawn((XMFLOAT3){0, 2, -15}),
 					 .Scene =
 						 {
 						   .SceneArena = S_ArenaInit(MEGABYTES(512)),
@@ -59,7 +59,6 @@ S_Run()
 					 .bRunning = TRUE};
 
 	Engine.Scene.Models = S_ArenaAlloc(&Engine.Scene.SceneArena, sizeof(R_Model) * Engine.Scene.ModelsCapacity);
-	Engine.Camera.Yaw = 2 * XM_PI;
 
 	InitWindow(&Engine);
 	R_Init(&Engine.RendererCore, Engine.hWnd);

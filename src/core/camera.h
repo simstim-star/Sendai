@@ -5,12 +5,12 @@
 typedef struct R_Camera {
 	XMFLOAT3 InitialPosition;
 	XMFLOAT3 Position;
-	float Yaw;	 // Relative to the +z axis.
-	float Pitch; // Relative to the xz plane.
+	float Yaw; 
+	float Pitch;
 	XMFLOAT3 LookDirection;
 	XMFLOAT3 UpDirection;
-	float MoveSpeed; // Speed at which the camera moves, in units per second.
-	float TurnSpeed; // Speed at which the camera turns, in radians per second.
+	float MoveSpeed; // units per second
+	float TurnSpeed; // radians per second
 
 	struct {
 		bool W;
@@ -25,10 +25,10 @@ typedef struct R_Camera {
 	} KeysPressed;
 } R_Camera;
 
-R_Camera R_CameraSpawn(XMFLOAT3 position);
-void R_CameraUpdate(R_Camera *camera, float elapsed_seconds);
-void R_CameraOnKeyDown(R_Camera *camera, WPARAM key);
-void R_CameraOnKeyUp(R_Camera *camera, WPARAM key);
+R_Camera R_CameraSpawn(XMFLOAT3 Position);
+void R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds);
+void R_CameraOnKeyDown(R_Camera *Camera, WPARAM Key);
+void R_CameraOnKeyUp(R_Camera *Camera, WPARAM Key);
 
-XMMATRIX R_CameraViewMatrix(XMFLOAT3 pos, XMFLOAT3 look, XMFLOAT3 up);
-XMMATRIX R_CameraProjectionMatrix(float fov, float aspect_ratio, float near_plane, float far_plane);
+XMMATRIX R_CameraViewMatrix(XMFLOAT3 Pos, XMFLOAT3 Look, XMFLOAT3 Up);
+XMMATRIX R_CameraProjectionMatrix(float Fov, float AspectRatio, float NearPlane, float FarPlane);

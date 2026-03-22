@@ -9,9 +9,9 @@ static void
 CameraReset(R_Camera *camera)
 {
 	camera->Position = camera->InitialPosition;
-	camera->Yaw = XM_PI;
+	camera->Yaw = 2 * XM_PI;
 	camera->Pitch = 0.0f;
-	camera->LookDirection = (XMFLOAT3){0, 0, -1};
+	camera->LookDirection = (XMFLOAT3){0, 0, 0};
 }
 
 /*****************************************************************
@@ -24,9 +24,9 @@ R_CameraSpawn(XMFLOAT3 Position)
 	return (R_Camera){
 	  .InitialPosition = Position,
 	  .Position = Position,
-	  .Yaw = XM_PI,
+	  .Yaw = 2 * XM_PI,
 	  .Pitch = 0.0f,
-	  .LookDirection = {0, 0, -1},
+	  .LookDirection = {0, 0, 0},
 	  .UpDirection = {0, 1, 0},
 	  .MoveSpeed = {5.0f},
 	  .TurnSpeed = XM_PIDIV4,
@@ -110,12 +110,12 @@ R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 }
 
 XMMATRIX
-R_CameraViewMatrix(XMFLOAT3 pos, XMFLOAT3 look, XMFLOAT3 up)
+R_CameraViewMatrix(XMFLOAT3 Pos, XMFLOAT3 Look, XMFLOAT3 Up)
 {
-	XMVECTOR EyePosition = XMLoadFloat3(&pos);
-	XMVECTOR EyeDirection = XMLoadFloat3(&look);
-	XMVECTOR UpDirection = XMLoadFloat3(&up);
-	return XM_MAT_LOOK_LH(EyePosition, EyeDirection, UpDirection);
+	XMVECTOR EyePosition = XMLoadFloat3(&Pos);
+	XMVECTOR EyeDirection = XMLoadFloat3(&Look);
+	XMVECTOR UpDirection = XMLoadFloat3(&Up);
+	return XM_MAT_LOOK_TO_LH(EyePosition, EyeDirection, UpDirection);
 }
 
 XMMATRIX
