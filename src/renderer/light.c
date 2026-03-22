@@ -74,6 +74,6 @@ R_RenderLightBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, X
 
 	ID3D12GraphicsCommandList_DrawInstanced(Renderer->CommandList, 4, 1, 0, 0);
 
-	Renderer->SceneDataOffset += (sizeof(BillboardVertices) + 255) & ~255;
-	Renderer->MeshDataOffset += (sizeof(R_MeshConstants) + 255) & ~255;
+	Renderer->SceneDataOffset += CB_ALIGN(BillboardVertices);
+	Renderer->MeshDataOffset += CB_ALIGN(R_MeshConstants);
 }

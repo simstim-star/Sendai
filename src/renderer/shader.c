@@ -154,9 +154,9 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 }
 
 XMMATRIX
-R_NormalMatrix(XMFLOAT4X4 Model)
+R_NormalMatrix(XMFLOAT4X4 *Model)
 {
-	XMMATRIX ModelMatrix = XMLoadFloat4x4(&Model);
+	XMMATRIX ModelMatrix = XMLoadFloat4x4(Model);
 	XMMATRIX ModelInv = XM_MAT_INV(NULL, ModelMatrix);
 	return XM_MAT_TRANSP(ModelInv);
 }

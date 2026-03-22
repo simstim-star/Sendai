@@ -1,8 +1,5 @@
 #pragma once
 
-#define CB_ALIGNMENT 256
-#define GET_ALIGNED_SIZE(TYPE, ALIGNMENT) (((sizeof(TYPE)) + ALIGNMENT) & ~ALIGNMENT)
-
 static inline D3D12_RESOURCE_DESC
 CD3DX12_RESOURCE_DESC_BUFFER(const UINT64 width, const D3D12_RESOURCE_FLAGS flags, const UINT64 alignment)
 {

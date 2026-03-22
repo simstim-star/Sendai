@@ -12,4 +12,4 @@ typedef enum EShaderType {
 HRESULT R_CompileShader(PCWSTR FilePath, ID3DBlob **Blob, EShaderType ShaderType);
 void R_CreatePBRPipelineState(R_Core *Renderer);
 void R_CreateBillboardPipelineState(R_Core *Renderer);
-XMMATRIX R_NormalMatrix(XMFLOAT4X4 Model);
+XMMATRIX R_NormalMatrix(XMFLOAT4X4 *Model);

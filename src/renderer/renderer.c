@@ -34,7 +34,8 @@ static void CreateShaders(R_Core *const Renderer);
 R_SceneData PreprocessSceneData(S_Scene *Scene);
 
 static void SignalAndWait(R_Core *const Renderer);
-static void RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera);
+static void RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera, R_MeshConstants *const MeshConstants);
+static void RenderLightBillboards(S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
 
 /****************************************************
 Public functions
@@ -168,23 +169,14 @@ R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera)
 
 	Renderer->MeshDataOffset = 0;
 	Renderer->SceneDataOffset = 0;
-	RenderPrimitives(Scene, Renderer, Camera);
-	XMMATRIX ViewMat = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection);
-	XMMATRIX ProjMat = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f);
-	for (int i = 0; i < 7; ++i) {
-		if (Scene->ActiveLightMask & (1 << i)) {
-			XMVECTOR LightPos = XMLoadFloat3(&Scene->Data.Lights[i].LightPosition);
-			R_MeshConstants LightMeshData = {
-			  .View = ViewMat,
-			  .Proj = ProjMat,
-			  .Model = XM_MAT_TRANSLATION_FROM_VEC(LightPos),
-			};
-			R_RenderLightBillboard(&LightMeshData, Renderer, Scene->Data.Lights[i].LightColor, ERSI_BILLBOARD_LAMP);
-		}
-	}
+	R_MeshConstants MeshConstants = {
+	  .View = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection),
+	  .Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f),
+	};
+	RenderPrimitives(Scene, Renderer, Camera, &MeshConstants);
+	RenderLightBillboards(Scene, Renderer, &MeshConstants);
 	UI_Draw(Renderer->CommandList);
 
-	// Bring the rtv resource back to present state
 	ResourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	ResourceBarrier.Transition.pResource = Renderer->RtvBuffers[Renderer->RtvIndex];
 	ResourceBarrier.Transition.Subresource = 0;
@@ -309,22 +301,18 @@ SignalAndWait(R_Core *const Renderer)
 }
 
 void
-RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
+RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera, R_MeshConstants *const MeshConstants)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignPBR);
 	UINT8 *MeshDataCpuAddress = Renderer->MeshDataUploadBufferCpuAddress;
 	D3D12_GPU_VIRTUAL_ADDRESS MeshDataGpuAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->MeshDataUploadBuffer);
-
-	R_MeshConstants MeshData;
-	MeshData.View = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection);
-	MeshData.Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f);
 
 	R_SceneData SceneData = PreprocessSceneData(Scene);
 	M_UpdateResourceData(Renderer->SceneDataUploadBuffer, &SceneData, sizeof(R_SceneData), Renderer->SceneDataOffset);
 	D3D12_GPU_VIRTUAL_ADDRESS SceneDataGpuBaseAddress =
 		ID3D12Resource_GetGPUVirtualAddress(Renderer->SceneDataUploadBuffer) + Renderer->SceneDataOffset;
 	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2, SceneDataGpuBaseAddress);
-	Renderer->SceneDataOffset += (sizeof(R_SceneData) + 255) & ~255;
+	Renderer->SceneDataOffset += CB_ALIGN(R_SceneData);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE TexturesHeapStart;
 	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &TexturesHeapStart);
@@ -340,15 +328,15 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 		for (INT MeshIdx = 0; MeshIdx < Model->MeshesCount; ++MeshIdx) {
 			R_Mesh *Mesh = &Model->Meshes[MeshIdx];
 
-			MeshData.Model = XMLoadFloat4x4(&Mesh->ModelMatrix);
-			MeshData.Model = XM_MAT_MULT(MeshData.Model, M);
-			XMFLOAT4X4 FinalWorldF4;
-			XM_STORE_FLOAT4X4(&FinalWorldF4, MeshData.Model);
-			MeshData.Normal = R_NormalMatrix(FinalWorldF4);
+			MeshConstants->Model = XMLoadFloat4x4(&Mesh->ModelMatrix);
+			MeshConstants->Model = XM_MAT_MULT(MeshConstants->Model, M);
+			XMFLOAT4X4 ModelXMFLOAT;
+			XM_STORE_FLOAT4X4(&ModelXMFLOAT, MeshConstants->Model);
+			MeshConstants->Normal = R_NormalMatrix(&ModelXMFLOAT);
 
-			memcpy(MeshDataCpuAddress + Renderer->MeshDataOffset, &MeshData, sizeof(R_MeshConstants));
+			memcpy(MeshDataCpuAddress + Renderer->MeshDataOffset, MeshConstants, sizeof(R_MeshConstants));
 			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + Renderer->MeshDataOffset);
-			Renderer->MeshDataOffset += (sizeof(R_MeshConstants) + 255) & ~255;
+			Renderer->MeshDataOffset += CB_ALIGN(R_MeshConstants);
 
 			for (INT PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
 				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
@@ -357,6 +345,18 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 				ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
 				ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);
 			}
+		}
+	}
+}
+
+void
+RenderLightBillboards(S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants)
+{
+	for (int i = 0; i < NUM_LIGHTS; ++i) {
+		if (Scene->ActiveLightMask & (1 << i)) {
+			XMVECTOR LightPos = XMLoadFloat3(&Scene->Data.Lights[i].LightPosition);
+			MeshConstants->Model = XM_MAT_TRANSLATION_FROM_VEC(LightPos);
+			R_RenderLightBillboard(MeshConstants, Renderer, Scene->Data.Lights[i].LightColor, ERSI_BILLBOARD_LAMP);
 		}
 	}
 }

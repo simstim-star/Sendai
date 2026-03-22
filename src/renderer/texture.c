@@ -157,8 +157,7 @@ R_CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Source)
 UINT64
 R_SuballocateTextureUpload(R_Core *Renderer, UINT64 Size)
 {
-	UINT64 AlignedOffset =
-		(Renderer->TextureUploadBuffer.CurrentOffset + (D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT - 1)) & ~(D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT - 1);
+	UINT64 AlignedOffset = ROUND_UP_POWER_OF_2(Renderer->TextureUploadBuffer.CurrentOffset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 
 	if (AlignedOffset + Size > Renderer->TextureUploadBuffer.Size) {
 		// What do I do in this case?

@@ -34,8 +34,7 @@ M_ArenaInit(size_t ReserveSize)
 void *
 M_ArenaAlloc(M_Arena *Arena, size_t Size)
 {
-	size_t AlignMask = 7;
-	size_t Position = (Arena->Offset + AlignMask) & ~AlignMask;
+	size_t Position = ROUND_UP_POWER_OF_2(Arena->Offset, 8);
 	size_t End = Position + Size;
 
 	if (End > Arena->SizeReserved) {
