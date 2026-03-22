@@ -9,18 +9,9 @@
 typedef struct R_Camera R_Camera;
 typedef struct R_Primitive R_Primitive;
 typedef struct R_Texture R_Texture;
+typedef struct TextureLookup TextureLookup;
 
 typedef enum ERenderState { ERS_GLTF, ERS_WIREFRAME, ERS_BILLBOARD, ERS_N_RENDER_STATES } ERenderState;
-
-typedef struct GPUTexture {
-	ID3D12Resource *GpuTexture;
-	UINT HeapIndex;
-} GPUTexture;
-
-typedef struct TextureLookup {
-	char *key;
-	GPUTexture Texture;
-} TextureLookup;
 
 typedef struct R_UploadBuffer {
 	ID3D12Resource *Buffer;
@@ -95,5 +86,3 @@ void R_Destroy(R_Core *Renderer);
 void R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera);
 void R_ExecuteCommands(R_Core *const Renderer);
 void R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height);
-void R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex);
-GPUTexture R_UploadTexture(R_Core *Renderer, R_Texture *Source);

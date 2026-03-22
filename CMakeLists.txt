@@ -3,29 +3,24 @@
 project(__sendai LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 
-set(SOURCE_FILES "src/core/camera.c" "src/core/timer.c" "src/win32/win_main.c" "src/win32/win_path.c" "src/win32/file_dialog.c"
-"src/renderer/renderer.c" "src/ui/ui.c" "src/error/error.c" "src/core/engine.c" "src/core/log.c" "src/assets/gltf.c"
-"src/core/arena.c" "src/renderer/shader.c")
+set(CORE_SOURCES "src/core/camera.c" "src/core/memory.c" "src/core/timer.c" "src/core/engine.c" "src/core/log.c")
+set(RENDER_SOURCES "src/renderer/renderer.c" "src/renderer/shader.c" "src/renderer/light.c" "src/renderer/texture.c")
+set(WIN32_SOURCES "src/win32/win_main.c" "src/win32/win_path.c" "src/win32/file_dialog.c")
+set(UI_SOURCES "src/ui/ui.c" )
+set(SOURCE_FILES ${CORE_SOURCES} ${WIN32_SOURCES} ${RENDER_SOURCES} ${UI_SOURCES} "src/error/error.c" "src/assets/gltf.c")
 
-set(HEADER_FILES "src/core/camera.h" "src/core/timer.h" "src/win32/win_path.h" "src/win32/file_dialog.h" "src/assets/gltf.h"
-"src/renderer/renderer.h" "src/renderer/render_types.h" "src/ui/ui.h" "src/error/error.h" "src/core/engine.h" "src/core/log.h" 
-"src/core/scene.h" "src/core/arena.h" "src/dx_helpers/barrier_helpers.h" "src/dx_helpers/desc_helpers.h" "src/renderer/shader.h")
+set(CORE_HEADERS "src/core/camera.h" "src/core/memory.h" "src/core/timer.h" "src/core/engine.h" "src/core/log.h" "src/core/scene.h")
+set(RENDER_HEADERS "src/renderer/renderer.h" "src/renderer/render_types.h" "src/renderer/shader.h" "src/renderer/light.h" "src/renderer/texture.h")
+set(WIN32_HEADERS "src/win32/win_path.h" "src/win32/file_dialog.h")
+set(UI_HEADERS "src/ui/ui.h" )
+set(DX_HELPERS "src/dx_helpers/barrier_helpers.h" "src/dx_helpers/desc_helpers.h")
+set(HEADER_FILES ${CORE_HEADERS} ${WIN32_HEADERS} ${RENDER_HEADERS} ${UI_HEADERS} ${DX_HELPERS} ${DX_HELPERS} "src/assets/gltf.h" "src/error/error.h")
 
 set(DEPS_FILES "deps/b64.h" "deps/cgltf.h" "deps/nuklear.h" "deps/stb_ds.h" "deps/stb_image.h")
 
 set(SHADER_FILES "src/shaders/gltf/gltf.hlsl" "src/shaders/gltf/pbr.hlsl" "src/shaders/gltf/billboard.hlsl")
 
 set_source_files_properties(${SHADER_FILES} PROPERTIES LANGUAGE HLSL)
-set_source_files_properties("src/shaders/gltf/pbr.hlsl" PROPERTIES 
-    VS_ENTRY_POINT "VSMain"
-    VS_SHADER_MODEL "5.0"
-)
-
-# Define the Pixel Shader
-set_source_files_properties("src/shaders/gltf/pbr.hlsl" PROPERTIES 
-    PS_ENTRY_POINT "PSMain"
-    PS_SHADER_MODEL "5.0"
-)
 
 source_group("Sources" FILES ${SOURCE_FILES})
 source_group("Headers" FILES ${HEADER_FILES})

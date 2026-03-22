@@ -7,23 +7,8 @@
 #include "../win32/file_dialog.h"
 #include "../win32/win_path.h"
 #include "engine.h"
-
-static const UINT8 BLACK_PIXEL[] = {0, 0, 0, 255};
-static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
-
-static const R_Texture BlackTexture = {
-  .Name = "fallback_black",
-  .Pixels = BLACK_PIXEL,
-  .Width = 1,
-  .Height = 1,
-};
-
-static const R_Texture WhiteTexture = {
-  .Name = "fallback_white",
-  .Pixels = WHITE_PIXEL,
-  .Width = 1,
-  .Height = 1,
-};
+#include "../renderer/light.h"
+#include "../renderer/texture.h"
 
 /****************************************************
 	Forward declaration of private functions
@@ -34,10 +19,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lPara
 static void EngineUpdate(Sendai *Engine);
 static void EngineDraw(Sendai *Engine);
 static void LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene);
-
-void LoadPBRTextures(R_Primitive *Primitive, R_Core *Renderer, S_Scene *Scene, int ModelIdx);
-static UINT32 R_GetTextureIndex(R_Core *Renderer, S_Scene *Scene, int ModelIdx, R_Texture *Texture);
-static void LightInit(S_Scene *Scene, R_Camera *Camera);
 
 /****************************************************
 	Public functions
@@ -51,19 +32,19 @@ S_Run()
 					 .Camera = R_CameraSpawn((XMFLOAT3){0, 2, -15}),
 					 .Scene =
 						 {
-						   .SceneArena = S_ArenaInit(MEGABYTES(512)),
-						   .TextureArena = S_ArenaInit(MEGABYTES(512)),
+						   .SceneArena = M_ArenaInit(MEGABYTES(512)),
+						   .TextureArena = M_ArenaInit(MEGABYTES(512)),
 						   .ModelsCount = 0,
 						   .ModelsCapacity = 10000,
 						 },
 					 .bRunning = TRUE};
 
-	Engine.Scene.Models = S_ArenaAlloc(&Engine.Scene.SceneArena, sizeof(R_Model) * Engine.Scene.ModelsCapacity);
+	Engine.Scene.Models = M_ArenaAlloc(&Engine.Scene.SceneArena, sizeof(R_Model) * Engine.Scene.ModelsCapacity);
 
 	InitWindow(&Engine);
 	R_Init(&Engine.RendererCore, Engine.hWnd);
 	UI_Init(&Engine.RendererUI, &Engine.RendererCore);
-	LightInit(&Engine.Scene, &Engine.Camera);
+	R_LightsInit(&Engine.Scene, &Engine.Camera);
 	S_TimerInit(&Engine.Timer);
 
 	ShowWindow(Engine.hWnd, SW_MAXIMIZE);
@@ -87,8 +68,8 @@ S_Run()
 	}
 
 	R_Destroy(&Engine.RendererCore);
-	S_ArenaRelease(&Engine.Scene.TextureArena);
-	S_ArenaRelease(&Engine.Scene.SceneArena);
+	M_ArenaRelease(&Engine.Scene.TextureArena);
+	M_ArenaRelease(&Engine.Scene.SceneArena);
 
 #if defined(_DEBUG)
 	IDXGIDebug1 *debugDev = NULL;
@@ -96,7 +77,7 @@ S_Run()
 		IDXGIDebug_ReportLiveObjects(debugDev, DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
 	}
 #endif
-	return (int)(msg.wParam);
+	return (INT)(msg.wParam);
 }
 
 void
@@ -246,7 +227,7 @@ LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 				CurrentIndexBufferOffset += IndexBufferSize;
 				CurrentUploadBufferOffset += IndexBufferSize;
 
-				LoadPBRTextures(Primitive, Renderer, Scene, ModelIdx);
+				R_LoadPBRTextures(Primitive, Renderer, Scene, ModelIdx);
 			}
 		}
 	}
@@ -266,46 +247,4 @@ LoadPrimitivesIntoBuffers(R_Core *Renderer, S_Scene *Scene)
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &BarrierIndexBuffer);
 
 	ID3D12Resource_Unmap(Renderer->VertexBufferUpload, 0, NULL);
-}
-
-void
-LoadPBRTextures(R_Primitive *Primitive, R_Core *Renderer, S_Scene *Scene, int ModelIdx)
-{
-	Primitive->cb.AlbedoTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Albedo);
-	Primitive->cb.NormalTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Normal);
-	Primitive->cb.MetallicTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Metallic);
-	Primitive->cb.RoughnessTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Roughness);
-	Primitive->cb.OcclusionTextureIndex = R_GetTextureIndex(Renderer, Scene, ModelIdx, Primitive->Occlusion);
-	S_ArenaReset(&Scene->TextureArena);
-}
-
-UINT32
-R_GetTextureIndex(R_Core *Renderer, S_Scene *Scene, int ModelIdx, R_Texture *Texture)
-{
-	R_Texture *Target;
-	if (Texture) {
-		Target = Texture;
-	} else {
-		Target = &BlackTexture;
-	}
-
-	GPUTexture Tex = R_UploadTexture(Renderer, Target);
-	return Tex.HeapIndex;
-}
-
-void
-LightInit(S_Scene *Scene, R_Camera *Camera)
-{
-	Scene->bIsLigthActive = 0;
-	Scene->bIsLigthActive |= (1 << 0);
-	Scene->Data = (R_SceneData){.CameraPosition = Camera->Position,
-								.Lights = {
-								  {.LightPosition = {5.0f, 8.0f, 5.0f}, .LightColor = {300.0f, 100.0f, 100.0f}},
-								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
-								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
-								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
-								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
-								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
-								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
-								}};
 }

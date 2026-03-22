@@ -17,6 +17,7 @@
 
 #include "../core/log.h"
 #include "../renderer/renderer.h"
+#include "../renderer/texture.h"
 #include "../win32/file_dialog.h"
 #include "../win32/win_path.h"
 #include "ui.h"
@@ -425,7 +426,7 @@ BottomBarContentArea(struct nk_context *Ctx, UI_BottomBarState *State, const flo
 				char AsStr[3];
 				sprintf(AsStr, "%d", i);
 				nk_layout_row_dynamic(Ctx, 20, 2);
-				BOOL IsActive = (State->Scene->bIsLigthActive >> i) & 1;
+				BOOL IsActive = (State->Scene->ActiveLightMask >> i) & 1;
 				if (IsActive) {
 					if (nk_selectable_label(Ctx, AsStr, NK_TEXT_LEFT, &IsSelected)) {
 						State->SelectedLightIndex = i;
@@ -437,9 +438,9 @@ BottomBarContentArea(struct nk_context *Ctx, UI_BottomBarState *State, const flo
 				}
 				if (nk_checkbox_label(Ctx, "", &IsActive)) {
 					if (IsActive) {
-						State->Scene->bIsLigthActive |= (1 << i);
+						State->Scene->ActiveLightMask |= (1 << i);
 					} else {
-						State->Scene->bIsLigthActive &= ~(1 << i);
+						State->Scene->ActiveLightMask &= ~(1 << i);
 					}
 				}
 			}

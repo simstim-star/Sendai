@@ -3,23 +3,19 @@
 #include "render_types.h"
 #include "renderer.h"
 #include "shader.h"
+#include "light.h"
+#include "texture.h"
 
 #include "../core/camera.h"
+#include "../core/memory.h"
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"
 #include "../ui/ui.h"
 #include "../win32/win_path.h"
 
-#define STB_DS_IMPLEMENTATION
 #include "../../deps/stb_ds.h"
 
-#include "../../deps/stb_image.h"
-
 #define MAX_TEXTURES 4096
-
-#define IS_LIGHT_ACTIVE(mask, i) (((mask) >> (i)) & 1)
-
-R_SceneData PreprocessSceneData(S_Scene *Scene);
 
 static const FLOAT CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
@@ -35,11 +31,7 @@ static void SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers);
 static void CreateSceneResources(const R_Core *const Renderer);
 static void CreateDepthStencilBuffer(R_Core *const Renderer);
 static void CreateShaders(R_Core *const Renderer);
-static ID3D12Resource *CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Source);
-static UINT64 SuballocateTextureUpload(R_Core *Renderer, UINT64 Size);
-static void UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize, UINT64 Offset);
-static void CreateCustomTexture(PCWSTR Path, R_Core *Renderer);
-static void RenderLightBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint, EReservedSrvIndex SrvIndex);
+R_SceneData PreprocessSceneData(S_Scene *Scene);
 
 static void SignalAndWait(R_Core *const Renderer);
 static void RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera);
@@ -180,14 +172,14 @@ R_Draw(R_Core *const Renderer, S_Scene *Scene, R_Camera *const Camera)
 	XMMATRIX ViewMat = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection);
 	XMMATRIX ProjMat = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f);
 	for (int i = 0; i < 7; ++i) {
-		if (Scene->bIsLigthActive & (1 << i)) {
+		if (Scene->ActiveLightMask & (1 << i)) {
 			XMVECTOR LightPos = XMLoadFloat3(&Scene->Data.Lights[i].LightPosition);
 			R_MeshConstants LightMeshData = {
 			  .View = ViewMat,
 			  .Proj = ProjMat,
 			  .Model = XM_MAT_TRANSLATION_FROM_VEC(LightPos),
 			};
-			RenderLightBillboard(&LightMeshData, Renderer, Scene->Data.Lights[i].LightColor, ERSI_BILLBOARD_LAMP);
+			R_RenderLightBillboard(&LightMeshData, Renderer, Scene->Data.Lights[i].LightColor, ERSI_BILLBOARD_LAMP);
 		}
 	}
 	UI_Draw(Renderer->CommandList);
@@ -258,75 +250,6 @@ R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height)
 	CreateDepthStencilBuffer(Renderer);
 }
 
-GPUTexture
-R_UploadTexture(R_Core *Renderer, R_Texture *Source)
-{
-	ptrdiff_t Index = shgeti(Renderer->Textures, Source->Name);
-	if (Index != -1) {
-		return Renderer->Textures[Index].Texture;
-	}
-
-	uint32_t SlotIndex = Renderer->TexturesCount++;
-	GPUTexture NewTex = {
-	  .GpuTexture = CommandCreateTextureGPU(Renderer, Source),
-	  .HeapIndex = SlotIndex,
-	};
-
-	UINT IncrementSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	D3D12_CPU_DESCRIPTOR_HANDLE CpuDescHandle;
-	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &CpuDescHandle);
-	CpuDescHandle.ptr += (SIZE_T)SlotIndex * IncrementSize;
-
-	D3D12_SHADER_RESOURCE_VIEW_DESC SrvDesc = {
-	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
-	  .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
-	  .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-	  .Texture2D.MipLevels = 1,
-	};
-	ID3D12Device_CreateShaderResourceView(Renderer->Device, NewTex.GpuTexture, &SrvDesc, CpuDescHandle);
-
-	TextureLookup Lookup = {.key = _strdup(Source->Name), .Texture = NewTex};
-	shputs(Renderer->Textures, Lookup);
-
-	return NewTex;
-}
-
-void
-R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
-{
-	char PathUTF8[MAX_PATH * 4];
-	WideCharToMultiByte(CP_UTF8, 0, Path, -1, PathUTF8, (INT)sizeof(PathUTF8), NULL, NULL);
-	INT W, H;
-	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
-	R_Texture Source = (R_Texture){
-	  .Height = H,
-	  .Width = W,
-	  .Pixels = Pixels,
-	};
-
-	GPUTexture NewTex = {0};
-	NewTex.GpuTexture = CommandCreateTextureGPU(Renderer, &Source);
-	UI_SetTextureInNkHeap(nkSlotIndex, NewTex.GpuTexture);
-
-	TextureLookup Lookup = {.key = Path, .Texture = NewTex};
-	shputs(Renderer->Textures, Lookup);
-
-	stbi_image_free(Pixels);
-}
-
-void
-CreateCustomTexture(PCWSTR Path, R_Core *Renderer)
-{
-	char PathUTF8[MAX_PATH * 4];
-	WideCharToMultiByte(CP_UTF8, 0, Path, -1, PathUTF8, (INT)sizeof(PathUTF8), NULL, NULL);
-	INT W, H;
-	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
-	R_Texture Source = (R_Texture){.Height = H, .Width = W, .Pixels = Pixels, .Name = "teste"};
-	GPUTexture NewTex = R_UploadTexture(Renderer, &Source);
-	Renderer->TexturesCount = 1;
-	stbi_image_free(Pixels);
-}
-
 void
 R_Destroy(R_Core *Renderer)
 {
@@ -384,71 +307,6 @@ SignalAndWait(R_Core *const Renderer)
 	WaitForSingleObject(Renderer->FenceEvent, INFINITE);
 }
 
-ID3D12Resource *
-CommandCreateTextureGPU(R_Core *Renderer, R_Texture *Source)
-{
-	ID3D12Resource *Texture = NULL;
-	D3D12_RESOURCE_DESC TexDesc = {.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-								   .Width = Source->Width,
-								   .Height = Source->Height,
-								   .DepthOrArraySize = 1,
-								   .MipLevels = 1,
-								   .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
-								   .SampleDesc = {1, 0},
-								   .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
-								   .Flags = D3D12_RESOURCE_FLAG_NONE};
-
-	D3D12_HEAP_PROPERTIES HeapDefault = {.Type = D3D12_HEAP_TYPE_DEFAULT};
-	HRESULT hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &HeapDefault, D3D12_HEAP_FLAG_NONE, &TexDesc, D3D12_RESOURCE_STATE_COMMON,
-													  NULL, &IID_ID3D12Resource, &Texture);
-	ExitIfFailed(hr);
-
-	UINT NumRows;
-	UINT64 RowSize;
-	UINT64 TotalUploadSize = 0;
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT Footprint;
-
-	ID3D12Device_GetCopyableFootprints(Renderer->Device, &TexDesc, 0, 1, 0, &Footprint, &NumRows, &RowSize, &TotalUploadSize);
-	UINT64 Offset = SuballocateTextureUpload(Renderer, TotalUploadSize);
-	Footprint.Offset += Offset;
-	UINT8 *DestPtr = Renderer->TextureUploadBuffer.BaseMappedPtr + Footprint.Offset;
-	for (UINT i = 0; i < NumRows; ++i) {
-		memcpy(DestPtr + i * Footprint.Footprint.RowPitch, (UINT8 *)Source->Pixels + i * (Source->Width * 4), Source->Width * 4);
-	}
-	D3D12_TEXTURE_COPY_LOCATION DstLocation = {.pResource = Texture, .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = 0};
-	D3D12_TEXTURE_COPY_LOCATION SrcLocation = {
-	  .pResource = Renderer->TextureUploadBuffer.Buffer, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = Footprint};
-	D3D12_RESOURCE_BARRIER ToCopyDest = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-										 .Transition = {
-										   .pResource = Texture,
-										   .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-										   .StateBefore = D3D12_RESOURCE_STATE_COMMON,
-										   .StateAfter = D3D12_RESOURCE_STATE_COPY_DEST,
-										 }};
-	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &ToCopyDest);
-	ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->CommandList, &DstLocation, 0, 0, 0, &SrcLocation, NULL);
-	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-									  .Transition = {
-										.pResource = Texture,
-										.Subresource = 0,
-										.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
-										.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-									  }};
-	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &Barrier);
-	return Texture;
-}
-
-void
-UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize, UINT64 Offset)
-{
-	UINT8 *Begin = NULL;
-	const D3D12_RANGE ReadRange = {0, 0};
-	HRESULT hr = ID3D12Resource_Map(Resource, 0, &ReadRange, &Begin);
-	ExitIfFailed(hr);
-	memcpy(Begin + Offset, Data, DataSize);
-	ID3D12Resource_Unmap(Resource, 0, NULL);
-}
-
 void
 RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 {
@@ -461,7 +319,7 @@ RenderPrimitives(S_Scene *Scene, R_Core *const Renderer, R_Camera *const Camera)
 	MeshData.Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f);
 
 	R_SceneData SceneData = PreprocessSceneData(Scene);
-	UpdateResourceData(Renderer->SceneDataUploadBuffer, &SceneData, sizeof(R_SceneData), Renderer->SceneDataOffset);
+	M_UpdateResourceData(Renderer->SceneDataUploadBuffer, &SceneData, sizeof(R_SceneData), Renderer->SceneDataOffset);
 	D3D12_GPU_VIRTUAL_ADDRESS SceneDataGpuBaseAddress =
 		ID3D12Resource_GetGPUVirtualAddress(Renderer->SceneDataUploadBuffer) + Renderer->SceneDataOffset;
 	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2, SceneDataGpuBaseAddress);
@@ -523,20 +381,6 @@ CreateDepthStencilBuffer(R_Core *const Renderer)
 	ID3D12Device_CreateDepthStencilView(Renderer->Device, Renderer->DepthStencil, NULL, DepthStencilHandle);
 }
 
-UINT64
-SuballocateTextureUpload(R_Core *Renderer, UINT64 Size)
-{
-	UINT64 AlignedOffset =
-		(Renderer->TextureUploadBuffer.CurrentOffset + (D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT - 1)) & ~(D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT - 1);
-
-	if (AlignedOffset + Size > Renderer->TextureUploadBuffer.Size) {
-		// What do I do in this case?
-	}
-
-	Renderer->TextureUploadBuffer.CurrentOffset = AlignedOffset + Size;
-	return AlignedOffset;
-}
-
 void
 SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers)
 {
@@ -591,7 +435,7 @@ CreateSceneResources(R_Core *const Renderer)
 
 	WCHAR LampImagePath[512];
 	Win32FullPath(L"/assets/images/lamp.png", LampImagePath, _countof(LampImagePath));
-	CreateCustomTexture(LampImagePath, Renderer);
+	R_CreateCustomTexture(LampImagePath, Renderer);
 }
 
 void
@@ -601,62 +445,11 @@ CreateShaders(R_Core *const Renderer)
 	R_CreateBillboardPipelineState(Renderer);
 }
 
-void
-RenderLightBillboard(R_MeshConstants *MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint, EReservedSrvIndex SrvIndex)
-{
-	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignBillboard);
-	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[ERS_BILLBOARD]);
-	ID3D12GraphicsCommandList_IASetPrimitiveTopology(Renderer->CommandList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-
-	UpdateResourceData(Renderer->MeshDataUploadBuffer, MeshConstants, sizeof(R_MeshConstants), Renderer->MeshDataOffset);
-
-	D3D12_GPU_VIRTUAL_ADDRESS MeshDataGpuAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->MeshDataUploadBuffer);
-	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + Renderer->MeshDataOffset);
-
-	UINT IncrementSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	D3D12_GPU_DESCRIPTOR_HANDLE LampHandle;
-	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &LampHandle);
-	LampHandle.ptr += (UINT64)SrvIndex * IncrementSize;
-	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, LampHandle);
-
-	struct BillboardVertex {
-		XMFLOAT3 Position;
-		XMFLOAT3 Color;
-		XMFLOAT2 UV;
-	} BillboardVertices[] = {
-	  {{-0.5f, -0.5f, 0.0f}, {Tint.x, Tint.y, Tint.z}, {0.0f, 1.0f}},
-	  {{-0.5f, 0.5f, 0.0f}, {Tint.x, Tint.y, Tint.z}, {0.0f, 0.0f}},
-	  {{0.5f, -0.5f, 0.0f}, {Tint.x, Tint.y, Tint.z}, {1.0f, 1.0f}},
-	  {{0.5f, 0.5f, 0.0f}, {Tint.x, Tint.y, Tint.z}, {1.0f, 0.0f}},
-	};
-
-	UpdateResourceData(Renderer->SceneDataUploadBuffer, &BillboardVertices, sizeof(BillboardVertices), Renderer->SceneDataOffset);
-
-	D3D12_VERTEX_BUFFER_VIEW VBV = {
-	  .BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Renderer->SceneDataUploadBuffer) + Renderer->SceneDataOffset,
-	  .SizeInBytes = sizeof(BillboardVertices),
-	  .StrideInBytes = sizeof(struct BillboardVertex),
-	};
-	ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &VBV);
-
-	ID3D12GraphicsCommandList_DrawInstanced(Renderer->CommandList, 4, 1, 0, 0);
-
-	Renderer->SceneDataOffset += (sizeof(BillboardVertices) + 255) & ~255;
-	Renderer->MeshDataOffset += (sizeof(R_MeshConstants) + 255) & ~255;
-}
-
 R_SceneData
 PreprocessSceneData(S_Scene *Scene)
 {
 	R_SceneData Result = {0};
 	Result.CameraPosition = Scene->Data.CameraPosition;
-
-	for (int i = 0; i < 7; i++) {
-		if (IS_LIGHT_ACTIVE(Scene->bIsLigthActive, i)) {
-			Result.Lights[i].LightColor = Scene->Data.Lights[i].LightColor;
-			Result.Lights[i].LightPosition = Scene->Data.Lights[i].LightPosition;
-		}
-	}
-
+	R_UpdateLights(Scene->ActiveLightMask, Scene->Data.Lights, Result.Lights, NUM_LIGHTS);
 	return Result;
 }

@@ -1,12 +1,23 @@
 #include "pch.h"
 
-#include "arena.h"
+#include "memory.h"
 #include "../error/error.h"
 
-S_Arena
-S_ArenaInit(size_t ReserveSize)
+void
+M_UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize, UINT64 Offset)
 {
-	S_Arena Arena = {0};
+	UINT8 *Begin = NULL;
+	const D3D12_RANGE ReadRange = {0, 0};
+	HRESULT hr = ID3D12Resource_Map(Resource, 0, &ReadRange, &Begin);
+	ExitIfFailed(hr);
+	memcpy(Begin + Offset, Data, DataSize);
+	ID3D12Resource_Unmap(Resource, 0, NULL);
+}
+
+M_Arena
+M_ArenaInit(size_t ReserveSize)
+{
+	M_Arena Arena = {0};
 	Arena.Base = VirtualAlloc(NULL, ReserveSize, MEM_RESERVE, PAGE_READWRITE);
 
 	if (!Arena.Base) {
@@ -21,7 +32,7 @@ S_ArenaInit(size_t ReserveSize)
 }
 
 void *
-S_ArenaAlloc(S_Arena *Arena, size_t Size)
+M_ArenaAlloc(M_Arena *Arena, size_t Size)
 {
 	size_t AlignMask = 7;
 	size_t Position = (Arena->Offset + AlignMask) & ~AlignMask;
@@ -45,7 +56,7 @@ S_ArenaAlloc(S_Arena *Arena, size_t Size)
 }
 
 void
-S_ArenaReset(S_Arena *Arena)
+M_ArenaReset(M_Arena *Arena)
 {
 	Arena->Offset = 0;
 	if (Arena->SizeCommitted > 0) {
@@ -54,7 +65,7 @@ S_ArenaReset(S_Arena *Arena)
 }
 
 void
-S_ArenaRelease(S_Arena *Arena)
+M_ArenaRelease(M_Arena *Arena)
 {
 	if (Arena->Base) {
 		VirtualFree(Arena->Base, 0, MEM_RELEASE);

@@ -23,7 +23,7 @@ static void PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path);
 
 static BOOL ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 							 _In_ cgltf_image *Img,
-							 _In_ S_Arena *SceneArena,
+							 _In_ M_Arena *SceneArena,
 							 _Outptr_result_bytebuffer_(*Size) UINT8 **Pixels,
 							 _Out_ size_t *Size,
 							 _Out_ int *W,
@@ -32,12 +32,12 @@ static BOOL ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 
 static void RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBuffer[MAX_PATH]);
 
-static LONG LoadGLTFFile(_In_z_ PCWSTR Path, _In_ S_Arena *Arena, _Outptr_ void **Data);
+static LONG LoadGLTFFile(_In_z_ PCWSTR Path, _In_ M_Arena *Arena, _Outptr_ void **Data);
 
-static cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ S_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path);
+static cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path);
 
 static cgltf_result LoadGLTFBuffer(
-	_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _In_ S_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data);
+	_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _In_ M_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data);
 
 static void AppendFileNameToPath(_In_z_ PWSTR BasePath, _In_z_ char *FileName, _Out_writes_z_(MAX_PATH) char FullPath[MAX_PATH]);
 
@@ -91,12 +91,12 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 		return FALSE;
 	}
 
-	Scene->Models[Scene->ModelsCount].Meshes = S_ArenaAlloc(&Scene->SceneArena, Data->meshes_count * sizeof(R_Mesh));
+	Scene->Models[Scene->ModelsCount].Meshes = M_ArenaAlloc(&Scene->SceneArena, Data->meshes_count * sizeof(R_Mesh));
 	Scene->Models[Scene->ModelsCount].MeshesCount = Data->meshes_count;
 	WCHAR FileNameW[MAX_PATH];
 	Win32GetFileNameOnly(Path, FileNameW, MAX_PATH);
 	int UTF8Size = WideCharToMultiByte(CP_UTF8, 0, FileNameW, -1, NULL, 0, NULL, NULL);
-	Scene->Models[Scene->ModelsCount].Name = S_ArenaAlloc(&Scene->SceneArena, UTF8Size);
+	Scene->Models[Scene->ModelsCount].Name = M_ArenaAlloc(&Scene->SceneArena, UTF8Size);
 	WideCharToMultiByte(CP_UTF8, 0, FileNameW, -1, Scene->Models[Scene->ModelsCount].Name, UTF8Size, NULL, NULL);
 
 	if (Data->images_count > 0) {
@@ -104,7 +104,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 	}
 
 	size_t NodeCount = Data->nodes_count;
-	Scene->Models[Scene->ModelsCount].Meshes = S_ArenaAlloc(&Scene->SceneArena, NodeCount * sizeof(R_Mesh));
+	Scene->Models[Scene->ModelsCount].Meshes = M_ArenaAlloc(&Scene->SceneArena, NodeCount * sizeof(R_Mesh));
 	Scene->Models[Scene->ModelsCount].MeshesCount = 0;
 	Scene->Models[Scene->ModelsCount].Scale.x = 1;
 	Scene->Models[Scene->ModelsCount].Scale.y = 1;
@@ -132,7 +132,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 		memcpy(&Mesh->ModelMatrix, TransformColMajor, sizeof(XMFLOAT4X4));
 
 		Mesh->PrimitivesCount = MeshData->primitives_count;
-		Mesh->Primitives = S_ArenaAlloc(&Scene->SceneArena, Mesh->PrimitivesCount * sizeof(R_Primitive));
+		Mesh->Primitives = M_ArenaAlloc(&Scene->SceneArena, Mesh->PrimitivesCount * sizeof(R_Primitive));
 
 		for (cgltf_size PrimitiveId = 0; PrimitiveId < MeshData->primitives_count; PrimitiveId++) {
 			cgltf_primitive *PrimitiveData = &MeshData->primitives[PrimitiveId];
@@ -214,7 +214,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 			}
 
 			size_t VertexCount = PositionAccessor->count;
-			R_Vertex *Vertices = S_ArenaAlloc(&Scene->SceneArena, sizeof(R_Vertex) * VertexCount);
+			R_Vertex *Vertices = M_ArenaAlloc(&Scene->SceneArena, sizeof(R_Vertex) * VertexCount);
 
 			for (size_t i = 0; i < VertexCount; i++) {
 				float Position[3];
@@ -253,7 +253,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 
 			uint16_t *Indices = NULL;
 			if (IndexCount > 0) {
-				Indices = S_ArenaAlloc(&Scene->SceneArena, sizeof(uint16_t) * IndexCount);
+				Indices = M_ArenaAlloc(&Scene->SceneArena, sizeof(uint16_t) * IndexCount);
 				for (size_t i = 0; i < IndexCount; i++) {
 					uint32_t Index;
 					cgltf_accessor_read_uint(IndicesAccessor, (int)i, &Index, 1);
@@ -281,7 +281,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 void
 PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path)
 {
-	Scene->Models[Scene->ModelsCount].Images = S_ArenaAlloc(&Scene->SceneArena, Data->images_count * sizeof(R_Texture));
+	Scene->Models[Scene->ModelsCount].Images = M_ArenaAlloc(&Scene->SceneArena, Data->images_count * sizeof(R_Texture));
 	Scene->Models[Scene->ModelsCount].ImagesCount = Data->images_count;
 
 	for (int i = 0; i < Data->images_count; ++i) {
@@ -298,7 +298,7 @@ PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path)
 			Texture->Width = W;
 			Texture->Height = H;
 
-			PWSTR UniqueNameW = S_ArenaAlloc(&Scene->TextureArena, MAX_PATH * sizeof(WCHAR));
+			PWSTR UniqueNameW = M_ArenaAlloc(&Scene->TextureArena, MAX_PATH * sizeof(WCHAR));
 			if (BaseImage->uri && !IsDataEmbedded(BaseImage)) {
 				WCHAR UriW[MAX_PATH];
 				MultiByteToWideChar(CP_UTF8, 0, BaseImage->uri, -1, UriW, MAX_PATH);
@@ -308,7 +308,7 @@ PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path)
 			}
 
 			int UTF8Size = WideCharToMultiByte(CP_UTF8, 0, UniqueNameW, -1, NULL, 0, NULL, NULL);
-			char *UniqueName = S_ArenaAlloc(&Scene->SceneArena, UTF8Size);
+			char *UniqueName = M_ArenaAlloc(&Scene->SceneArena, UTF8Size);
 			WideCharToMultiByte(CP_UTF8, 0, UniqueNameW, -1, UniqueName, UTF8Size, NULL, NULL);
 			Texture->Name = UniqueName;
 		}
@@ -318,7 +318,7 @@ PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path)
 BOOL
 ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 				 _In_ cgltf_image *Img,
-				 _In_ S_Arena *TextureArena,
+				 _In_ M_Arena *TextureArena,
 				 _Outptr_result_bytebuffer_(*Size) UINT8 **Pixels,
 				 _Out_ size_t *Size,
 				 _Out_ int *W,
@@ -342,7 +342,7 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 			const char *EncodedB64 = FirstCommaPtr + 1;
 			size_t EncLen = strlen(EncodedB64);
 			size_t DecodedMaxCap = (EncLen / 4) * 3 + 4;
-			char *Decoded = S_ArenaAlloc(TextureArena, DecodedMaxCap);
+			char *Decoded = M_ArenaAlloc(TextureArena, DecodedMaxCap);
 			if (Decoded == NULL) {
 				return FALSE;
 			}
@@ -373,7 +373,7 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 		return FALSE;
 	}
 	*Size = (size_t)(*W) * (size_t)(*H) * 4;
-	*Pixels = S_ArenaAlloc(TextureArena, *Size);
+	*Pixels = M_ArenaAlloc(TextureArena, *Size);
 	memcpy(*Pixels, StbiData, *Size);
 	stbi_image_free(StbiData);
 	return TRUE;
@@ -381,7 +381,7 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 
 cgltf_result
 LoadGLTFBuffer(
-	_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _In_ S_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data)
+	_In_z_ PCWSTR FullPathGLTF, _In_z_ PCWSTR BufferFileName, _In_ M_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data)
 {
 	WCHAR FullPathBuffer[MAX_PATH];
 	wcscpy_s(FullPathBuffer, MAX_PATH, FullPathGLTF);
@@ -401,7 +401,7 @@ LoadGLTFBuffer(
 	*Size = ftell(file);
 	fseek(file, 0, SEEK_SET);
 
-	*Data = S_ArenaAlloc(Arena, *Size);
+	*Data = M_ArenaAlloc(Arena, *Size);
 	if (!*Data) {
 		fclose(file);
 		return cgltf_result_out_of_memory;
@@ -427,7 +427,7 @@ RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBuffer[MAX_PAT
 }
 
 cgltf_result
-LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ S_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path)
+LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path)
 {
 	if (Options == NULL) {
 		return cgltf_result_invalid_options;
@@ -482,7 +482,7 @@ LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ S_Arena *Arena, _Inout_ 
 }
 
 LONG
-LoadGLTFFile(_In_z_ PCWSTR Path, S_Arena *Arena, _Outptr_ void **Data)
+LoadGLTFFile(_In_z_ PCWSTR Path, M_Arena *Arena, _Outptr_ void **Data)
 {
 	FILE *FileHandle = _wfopen(Path, L"rb");
 	if (!FileHandle) {
@@ -497,7 +497,7 @@ LoadGLTFFile(_In_z_ PCWSTR Path, S_Arena *Arena, _Outptr_ void **Data)
 		return Size;
 	}
 
-	*Data = S_ArenaAlloc(Arena, Size);
+	*Data = M_ArenaAlloc(Arena, Size);
 	if (!*Data) {
 		fclose(FileHandle);
 		return 0;
@@ -538,7 +538,7 @@ IsDataEmbedded(const cgltf_image *const BaseImage)
 void *
 cgltf_arena_alloc(void *user, cgltf_size size)
 {
-	return S_ArenaAlloc((S_Arena *)user, size);
+	return M_ArenaAlloc((M_Arena *)user, size);
 }
 
 void

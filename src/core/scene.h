@@ -1,6 +1,6 @@
 #pragma once
 
-#include "arena.h"
+#include "memory.h"
 #include "../renderer/render_types.h"
 
 typedef struct R_Model R_Model;
@@ -12,8 +12,8 @@ typedef struct S_Scene {
 	UINT ModelsCapacity;
 
 	R_SceneData Data;
-	BYTE bIsLigthActive;
+	BYTE ActiveLightMask;
 
-	S_Arena SceneArena;
-	S_Arena TextureArena;
+	M_Arena SceneArena;
+	M_Arena TextureArena;
 } S_Scene;
