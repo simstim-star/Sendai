@@ -79,6 +79,10 @@ typedef struct R_Core {
 
 	ID3D12Resource *SceneDataUploadBuffer;
 	UINT64 SceneDataOffset;
+
+	UINT64 CurrentUploadBufferOffset;
+	UINT64 CurrentVertexBufferOffset;
+	UINT64 CurrentIndexBufferOffset;
 } R_Core;
 
 void R_Init(R_Core *const Renderer, HWND hWnd);

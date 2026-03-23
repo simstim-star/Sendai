@@ -1,26 +1,18 @@
 #include "../core/pch.h"
 
+#include "../error/error.h"
+#include "../ui/ui.h"
 #include "renderer.h"
 #include "texture.h"
-#include "../ui/ui.h"
-#include "../error/error.h"
 
 #define STB_DS_IMPLEMENTATION
 #include "../../deps/stb_ds.h"
 #include "../../deps/stb_image.h"
 
-static const UINT8 BLACK_PIXEL[] = {0, 0, 0, 255};
 static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
 
-static const R_Texture BlackTexture = {
-  .Name = "fallback_black",
-  .Pixels = BLACK_PIXEL,
-  .Width = 1,
-  .Height = 1,
-};
-
 static const R_Texture WhiteTexture = {
-  .Name = "fallback_white",
+  .Name = "fallback_black",
   .Pixels = WHITE_PIXEL,
   .Width = 1,
   .Height = 1,
@@ -31,7 +23,7 @@ R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
 {
 	char PathUTF8[MAX_PATH * 4];
 	WideCharToMultiByte(CP_UTF8, 0, Path, -1, PathUTF8, (INT)sizeof(PathUTF8), NULL, NULL);
-	
+
 	if (shgeti(Renderer->Textures, PathUTF8) != -1) {
 		return;
 	}
@@ -97,7 +89,6 @@ R_CreateCustomTexture(PCWSTR Path, R_Core *Renderer)
 	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
 	R_Texture Source = (R_Texture){.Height = H, .Width = W, .Pixels = Pixels, .Name = PathUTF8};
 	R_UploadTexture(Renderer, &Source);
-	Renderer->TexturesCount++;
 	stbi_image_free(Pixels);
 }
 
@@ -161,7 +152,9 @@ R_SuballocateTextureUpload(R_Core *const Renderer, UINT64 Size)
 	UINT64 AlignedOffset = ROUND_UP_POWER_OF_2(Renderer->TextureUploadBuffer.CurrentOffset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 
 	if (AlignedOffset + Size > Renderer->TextureUploadBuffer.Size) {
-		// What do I do in this case?
+		R_ExecuteCommands(Renderer);
+		Renderer->TextureUploadBuffer.CurrentOffset = Size;
+		return 0;
 	}
 
 	Renderer->TextureUploadBuffer.CurrentOffset = AlignedOffset + Size;
@@ -175,7 +168,7 @@ R_GetTextureIndex(R_Core *const Renderer, const R_Texture *const Texture)
 	if (Texture) {
 		Target = *Texture;
 	} else {
-		Target = BlackTexture;
+		Target = WhiteTexture;
 	}
 
 	GPUTexture Tex = R_UploadTexture(Renderer, &Target);
@@ -191,5 +184,5 @@ R_LoadPBRTextures(R_Primitive *const Primitive, R_Core *const Renderer, S_Scene 
 	Primitive->cb.RoughnessTextureIndex = R_GetTextureIndex(Renderer, Primitive->Roughness);
 	Primitive->cb.OcclusionTextureIndex = R_GetTextureIndex(Renderer, Primitive->Occlusion);
 	Primitive->cb.EmissiveTextureIndex = R_GetTextureIndex(Renderer, Primitive->Emissive);
-	M_ArenaReset(&Scene->TextureArena);
+	M_ArenaReset(&Scene->UploadArena);
 }

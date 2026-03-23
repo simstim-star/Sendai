@@ -6,10 +6,16 @@ PROJECT_NAME = __sendai
 
 # --- Dynamic Directory Logic ---
 BUILD_ROOT_DEBUG = build_nmake\debug
+BUILD_ROOT_PROFILE = build_nmake\profile
+
 !IF "$(DEBUG)" == "1"
 BUILD_ROOT = $(BUILD_ROOT_DEBUG)
 CONF_CFLAGS = /Od /Zi /D_DEBUG 
 CONF_LDFLAGS = /DEBUG
+!ELSEIF "$(PROFILE)" == "1"              
+BUILD_ROOT = $(BUILD_ROOT_PROFILE)
+CONF_CFLAGS = /O2 /Zi /DNDEBUG            
+CONF_LDFLAGS = /DEBUG /PROFILE
 !ELSE
 BUILD_ROOT = build_nmake\release
 CONF_CFLAGS = /O2 /DNDEBUG
@@ -79,6 +85,11 @@ copy_assets:
 debug:
 	$(MAKE) /NOLOGO DEBUG=1 all
 	devenv $(BUILD_ROOT_DEBUG)\bin\$(PROJECT_NAME).exe
+
+profile:
+    @if not exist $(BUILD_ROOT_PROFILE) mkdir $(BUILD_ROOT_PROFILE)
+    $(MAKE) /NOLOGO PROFILE=1 all
+    @echo Run Alt+F2 in Visual Studio and select $(BUILD_ROOT_PROFILE)\bin\$(PROJECT_NAME).exe
 
 clean:
 	@if exist build_nmake rmdir /S /Q build_nmake

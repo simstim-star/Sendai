@@ -15,5 +15,5 @@ typedef struct S_Scene {
 	BYTE ActiveLightMask;
 
 	M_Arena SceneArena;
-	M_Arena TextureArena;
+	M_Arena UploadArena;
 } S_Scene;

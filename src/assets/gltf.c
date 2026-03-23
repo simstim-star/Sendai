@@ -3,6 +3,8 @@
 #define CGLTF_IMPLEMENTATION
 #include "../../deps/cgltf.h"
 
+#include "../core/memory.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_WINDOWS_UTF8
 #include "../../deps/stb_image.h"
@@ -19,7 +21,7 @@
 	Forward declaration of private functions
 *****************************************************/
 
-static void PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path);
+static void PreloadImages(R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena *UploadArena);
 
 static BOOL ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 							 _In_ cgltf_image *Img,
@@ -41,7 +43,16 @@ static cgltf_result LoadGLTFBuffer(
 
 static void AppendFileNameToPath(_In_z_ PWSTR BasePath, _In_z_ char *FileName, _Out_writes_z_(MAX_PATH) char FullPath[MAX_PATH]);
 
+static PSTR CreateTextureName(M_Arena *UploadArena, cgltf_image *BaseImage, PCWSTR Path, int i);
+
 static int IsDataEmbedded(const cgltf_image *const BaseImage);
+
+static void RetriveAttributeData(cgltf_primitive *PrimitiveData, cgltf_accessor *UVAccessorsData[2], cgltf_accessor *AccessorsData[9]);
+
+static void LoadPBRData(R_Model *Model, R_Primitive *Primitive, cgltf_primitive *PrimitiveData, cgltf_data *Data);
+
+static void LoadVertexData(
+	cgltf_accessor *AccessorsData[9], S_Scene *Scene, cgltf_accessor *UVAccessorsData[2], cgltf_primitive *PrimitiveData, R_Primitive *Primitive);
 
 // The below functions are to inject into gltf to use my arena
 static void *cgltf_arena_alloc(void *user, cgltf_size size);
@@ -55,7 +66,8 @@ BOOL
 SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 {
 	void *FileData = NULL;
-	LONG Size = LoadGLTFFile(Path, &Scene->TextureArena, &FileData);
+
+	LONG Size = LoadGLTFFile(Path, &Scene->UploadArena, &FileData);
 	if (Size <= 0) {
 		S_LogAppendf(L"Failed to load %s\n", Path);
 		return FALSE;
@@ -64,7 +76,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 	cgltf_options Options = {0};
 	Options.memory.alloc_func = cgltf_arena_alloc;
 	Options.memory.free_func = cgltf_arena_free;
-	Options.memory.user_data = &Scene->TextureArena;
+	Options.memory.user_data = &Scene->UploadArena;
 
 	cgltf_data *Data = NULL;
 	cgltf_result Result = cgltf_parse(&Options, FileData, Size, &Data);
@@ -76,7 +88,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 		return FALSE;
 	}
 
-	Result = LoadGLTFBuffers(&Options, &Scene->TextureArena, Data, Path);
+	Result = LoadGLTFBuffers(&Options, &Scene->UploadArena, Data, Path);
 	if (Result != cgltf_result_success) {
 		if (Data) {
 			cgltf_free(Data);
@@ -91,36 +103,38 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 		return FALSE;
 	}
 
-	Scene->Models[Scene->ModelsCount].Meshes = M_ArenaAlloc(&Scene->SceneArena, Data->meshes_count * sizeof(R_Mesh));
-	Scene->Models[Scene->ModelsCount].MeshesCount = Data->meshes_count;
+	R_Model *Model = &Scene->Models[Scene->ModelsCount];
+	Model->Meshes = M_ArenaAlloc(&Scene->SceneArena, Data->nodes_count * sizeof(R_Mesh));
+	Model->MeshesCount = Data->nodes_count;
 	WCHAR FileNameW[MAX_PATH];
 	Win32GetFileNameOnly(Path, FileNameW, MAX_PATH);
 	int UTF8Size = WideCharToMultiByte(CP_UTF8, 0, FileNameW, -1, NULL, 0, NULL, NULL);
-	Scene->Models[Scene->ModelsCount].Name = M_ArenaAlloc(&Scene->SceneArena, UTF8Size);
-	WideCharToMultiByte(CP_UTF8, 0, FileNameW, -1, Scene->Models[Scene->ModelsCount].Name, UTF8Size, NULL, NULL);
+	Model->Name = M_ArenaAlloc(&Scene->SceneArena, UTF8Size);
+	WideCharToMultiByte(CP_UTF8, 0, FileNameW, -1, Model->Name, UTF8Size, NULL, NULL);
 
 	if (Data->images_count > 0) {
-		PreloadImages(Scene, Data, Path);
+		PreloadImages(Model, Data, Path, &Scene->UploadArena);
 	}
 
 	size_t NodeCount = Data->nodes_count;
-	Scene->Models[Scene->ModelsCount].Meshes = M_ArenaAlloc(&Scene->SceneArena, NodeCount * sizeof(R_Mesh));
-	Scene->Models[Scene->ModelsCount].MeshesCount = 0;
-	Scene->Models[Scene->ModelsCount].Scale.x = 1;
-	Scene->Models[Scene->ModelsCount].Scale.y = 1;
-	Scene->Models[Scene->ModelsCount].Scale.z = 1;
-	Scene->Models[Scene->ModelsCount].Rotation.x = 0.0f;
-	Scene->Models[Scene->ModelsCount].Rotation.y = 0.0f;
-	Scene->Models[Scene->ModelsCount].Rotation.z = 0.0f;
+	Model->MeshesCount = 0;
+	Model->Scale.x = 1;
+	Model->Scale.y = 1;
+	Model->Scale.z = 1;
+	Model->Rotation.x = 0.0f;
+	Model->Rotation.y = 0.0f;
+	Model->Rotation.z = 0.0f;
 
-	for (size_t NodeIndex = 0; NodeIndex < NodeCount; NodeIndex++, Scene->Models[Scene->ModelsCount].MeshesCount++) {
+	// I'm simplyfing Node == Mesh here, as my renderer is single Camera
+	for (size_t NodeIndex = 0; NodeIndex < NodeCount; NodeIndex++, Model->MeshesCount++) {
 		cgltf_node *NodeData = &Data->nodes[NodeIndex];
 		if (NodeData->mesh == NULL) {
 			continue;
 		}
 
-		R_Mesh *Mesh = &Scene->Models[Scene->ModelsCount].Meshes[Scene->Models[Scene->ModelsCount].MeshesCount];
-		cgltf_mesh *MeshData = NodeData->mesh;
+		UINT CurrentMeshIndex = Model->MeshesCount;
+		R_Mesh *CurrentMesh = &Model->Meshes[CurrentMeshIndex];
+		cgltf_mesh *NodeMeshData = NodeData->mesh;
 
 		cgltf_float TransformColMajor[4][4];
 		cgltf_node_transform_world(NodeData, TransformColMajor);
@@ -129,148 +143,22 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 		// This way, the matrix is automatically transposed already, because XMLoadFloat4x4
 		// will pick as row what is col and vice-versa. Therefore, ModelMatrix is Mesh->Transform
 		// converted to row-major.
-		memcpy(&Mesh->ModelMatrix, TransformColMajor, sizeof(XMFLOAT4X4));
+		memcpy(&CurrentMesh->ModelMatrix, TransformColMajor, sizeof(XMFLOAT4X4));
 
-		Mesh->PrimitivesCount = MeshData->primitives_count;
-		Mesh->Primitives = M_ArenaAlloc(&Scene->SceneArena, Mesh->PrimitivesCount * sizeof(R_Primitive));
+		CurrentMesh->PrimitivesCount = NodeMeshData->primitives_count;
+		CurrentMesh->Primitives = M_ArenaAlloc(&Scene->SceneArena, CurrentMesh->PrimitivesCount * sizeof(R_Primitive));
 
-		for (cgltf_size PrimitiveId = 0; PrimitiveId < MeshData->primitives_count; PrimitiveId++) {
-			cgltf_primitive *PrimitiveData = &MeshData->primitives[PrimitiveId];
-			R_Primitive *Primitive = &Mesh->Primitives[PrimitiveId];
+		for (cgltf_size PrimitiveId = 0; PrimitiveId < NodeMeshData->primitives_count; PrimitiveId++) {
+			cgltf_primitive *PrimitiveData = &NodeMeshData->primitives[PrimitiveId];
+			
 			cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum] = {0};
 			cgltf_accessor *UVAccessorsData[2] = {0};
+			RetriveAttributeData(PrimitiveData, UVAccessorsData, AccessorsData);
 
-			for (int AttributeId = 0; AttributeId < PrimitiveData->attributes_count; ++AttributeId) {
-				cgltf_attribute *AttributeData = &PrimitiveData->attributes[AttributeId];
-
-				if (AttributeData->type == cgltf_attribute_type_texcoord) {
-					if (AttributeData->index > 1) {
-						continue;
-					}
-					UVAccessorsData[AttributeData->index] = AttributeData->vertex_data;
-				} else {
-					AccessorsData[AttributeData->type] = AttributeData->vertex_data;
-				}
-			}
-
-			const R_Texture *const Images = Scene->Models[Scene->ModelsCount].Images;
-			Primitive->Albedo = NULL; 
-			Primitive->Normal = NULL; 
-			Primitive->Metallic = NULL; 
-			Primitive->Roughness = NULL; 
-			Primitive->Occlusion = NULL; 
-			Primitive->Emissive = NULL; 
-			if (PrimitiveData->material) {
-				cgltf_material *PrimitiveMaterialData = PrimitiveData->material;
-				if (PrimitiveMaterialData->has_pbr_metallic_roughness) {
-					cgltf_pbr_metallic_roughness *MetallicRoughnessData = &PrimitiveMaterialData->pbr_metallic_roughness;
-					memcpy(&Primitive->cb.BaseColorFactor, MetallicRoughnessData->base_color_factor, sizeof(float) * 4);
-					Primitive->cb.MetallicFactor = MetallicRoughnessData->metallic_factor;
-					Primitive->cb.RoughnessFactor = MetallicRoughnessData->roughness_factor;
-					
-					if (MetallicRoughnessData->base_color_texture.texture) {
-						Primitive->Albedo = &Images[MetallicRoughnessData->base_color_texture.texture->image - Data->images];
-
-						if (MetallicRoughnessData->base_color_texture.has_transform) {
-							cgltf_texture_transform *Transform = &MetallicRoughnessData->base_color_texture.transform;
-							int uvIndex = MetallicRoughnessData->base_color_texture.texcoord;
-							Primitive->UVChannel = uvIndex;
-							Primitive->cb.UVScale.x = Transform->scale[0];
-							Primitive->cb.UVScale.y = Transform->scale[1];
-							Primitive->cb.UVOffset.x = Transform->offset[0];
-							Primitive->cb.UVOffset.y = Transform->offset[1];
-							Primitive->cb.UVRotation = Transform->rotation; 
-						} else {
-							Primitive->cb.UVScale.x = 1.0f;
-							Primitive->cb.UVScale.y = 1.0f;
-							Primitive->cb.UVOffset.x = 0.0f;
-							Primitive->cb.UVOffset.y = 0.0f;
-							Primitive->cb.UVRotation = 0.0f;
-						}
-					}
-
-					if (MetallicRoughnessData->metallic_roughness_texture.texture) {
-						Primitive->Metallic = &Images[MetallicRoughnessData->metallic_roughness_texture.texture->image - Data->images];
-					}
-				}
-
-				cgltf_texture_view *NormalTextureView = &PrimitiveMaterialData->normal_texture;
-				if (NormalTextureView->texture) {
-					Primitive->Normal = &Images[NormalTextureView->texture->image - Data->images];
-				}
-
-				if (PrimitiveMaterialData->pbr_metallic_roughness.metallic_roughness_texture.texture) {
-					Primitive->Roughness = &Images[PrimitiveMaterialData->pbr_metallic_roughness.metallic_roughness_texture.texture->image - Data->images];
-				}
-
-				if (PrimitiveMaterialData->occlusion_texture.texture) {
-					Primitive->Occlusion = &Images[PrimitiveMaterialData->occlusion_texture.texture->image - Data->images];
-				}
+			R_Primitive *Primitive = &CurrentMesh->Primitives[PrimitiveId];
+			LoadPBRData(Model, Primitive, PrimitiveData, Data);
+			LoadVertexData(AccessorsData, Scene, UVAccessorsData, PrimitiveData, Primitive);
 			
-				memcpy(&Primitive->cb.EmissiveFactor, PrimitiveMaterialData->emissive_factor, sizeof(cgltf_float) * 3);
-				if (PrimitiveMaterialData->emissive_texture.texture) {
-					Primitive->Emissive = &Images[PrimitiveMaterialData->emissive_texture.texture->image - Data->images];
-				}
-			}
-
-			cgltf_accessor *PositionAccessor = AccessorsData[cgltf_attribute_type_position];
-			if (!PositionAccessor) {
-				S_LogAppend(L"Mesh has no POSITION attribute\n");
-				break;
-			}
-
-			UINT VertexCount = PositionAccessor->count;
-			R_Vertex *Vertices = M_ArenaAlloc(&Scene->SceneArena, sizeof(R_Vertex) * VertexCount);
-
-			for (UINT VertexIndex = 0; VertexIndex < VertexCount; VertexIndex++) {
-				float Position[3];
-				cgltf_accessor_read_float(PositionAccessor, VertexIndex, Position, 3);
-				Vertices[VertexIndex].Position = (XMFLOAT3){Position[0], Position[1], Position[2]};
-
-				cgltf_accessor *NormalAccessor = AccessorsData[cgltf_attribute_type_normal];
-				if (NormalAccessor) {
-					float Normal[4];
-					cgltf_accessor_read_float(NormalAccessor, VertexIndex, Normal, 3);
-					Vertices[VertexIndex].Normal.x = Normal[0];
-					Vertices[VertexIndex].Normal.y = Normal[1];
-					Vertices[VertexIndex].Normal.z = Normal[2];
-				}
-
-				if (UVAccessorsData[0]) {
-					float uv[2];
-					cgltf_accessor_read_float(UVAccessorsData[0], VertexIndex, uv, 2);
-					Vertices[VertexIndex].UV0.x = uv[0];
-					Vertices[VertexIndex].UV0.y = uv[1];
-				}
-
-				if (UVAccessorsData[1]) {
-					float uv[2];
-					cgltf_accessor_read_float(UVAccessorsData[1], VertexIndex, uv, 2);
-					Vertices[VertexIndex].UV1.x = uv[0];
-					Vertices[VertexIndex].UV1.y = uv[1];
-				} else {
-					Vertices[VertexIndex].UV1.x = 0.0f;
-					Vertices[VertexIndex].UV1.y = 0.0f;
-				}
-			}
-
-			cgltf_accessor *IndicesAccessor = PrimitiveData->indices;
-			size_t IndexCount = IndicesAccessor ? IndicesAccessor->count : 0;
-
-			uint16_t *Indices = NULL;
-			if (IndexCount > 0) {
-				Indices = M_ArenaAlloc(&Scene->SceneArena, sizeof(uint16_t) * IndexCount);
-				for (size_t i = 0; i < IndexCount; i++) {
-					uint32_t Index;
-					cgltf_accessor_read_uint(IndicesAccessor, (int)i, &Index, 1);
-					Indices[i] = (uint16_t)Index;
-				}
-			}
-
-			Primitive->Vertices = Vertices;
-			Primitive->VertexCount = VertexCount;
-			Primitive->Indices = Indices;
-			Primitive->IndexCount = IndexCount;
 		}
 	}
 
@@ -285,10 +173,93 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 *****************************************************/
 
 void
-PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path)
+RetriveAttributeData(cgltf_primitive *PrimitiveData, cgltf_accessor *UVAccessorsData[2], cgltf_accessor *AccessorsData[9])
 {
-	Scene->Models[Scene->ModelsCount].Images = M_ArenaAlloc(&Scene->SceneArena, Data->images_count * sizeof(R_Texture));
-	Scene->Models[Scene->ModelsCount].ImagesCount = Data->images_count;
+	for (int AttributeId = 0; AttributeId < PrimitiveData->attributes_count; ++AttributeId) {
+		cgltf_attribute *AttributeData = &PrimitiveData->attributes[AttributeId];
+
+		if (AttributeData->type == cgltf_attribute_type_texcoord) {
+			if (AttributeData->index > 1) {
+				continue;
+			}
+			UVAccessorsData[AttributeData->index] = AttributeData->vertex_data;
+		} else {
+			AccessorsData[AttributeData->type] = AttributeData->vertex_data;
+		}
+	}
+}
+
+void
+LoadVertexData(
+	cgltf_accessor *AccessorsData[9], S_Scene *Scene, cgltf_accessor *UVAccessorsData[2], cgltf_primitive *PrimitiveData, R_Primitive *Primitive)
+{
+	cgltf_accessor *PositionAccessor = AccessorsData[cgltf_attribute_type_position];
+	if (!PositionAccessor) {
+		S_LogAppend(L"Mesh has no POSITION attribute\n");
+		{
+			return;
+		};
+	}
+
+	UINT VertexCount = PositionAccessor->count;
+	R_Vertex *Vertices = M_ArenaAlloc(&Scene->UploadArena, sizeof(R_Vertex) * VertexCount);
+
+	for (UINT VertexIndex = 0; VertexIndex < VertexCount; VertexIndex++) {
+		float Position[3];
+		cgltf_accessor_read_float(PositionAccessor, VertexIndex, Position, 3);
+		Vertices[VertexIndex].Position = (XMFLOAT3){Position[0], Position[1], Position[2]};
+
+		cgltf_accessor *NormalAccessor = AccessorsData[cgltf_attribute_type_normal];
+		if (NormalAccessor) {
+			float Normal[4];
+			cgltf_accessor_read_float(NormalAccessor, VertexIndex, Normal, 3);
+			Vertices[VertexIndex].Normal.x = Normal[0];
+			Vertices[VertexIndex].Normal.y = Normal[1];
+			Vertices[VertexIndex].Normal.z = Normal[2];
+		}
+
+		if (UVAccessorsData[0]) {
+			float uv[2];
+			cgltf_accessor_read_float(UVAccessorsData[0], VertexIndex, uv, 2);
+			Vertices[VertexIndex].UV0.x = uv[0];
+			Vertices[VertexIndex].UV0.y = uv[1];
+		}
+
+		if (UVAccessorsData[1]) {
+			float uv[2];
+			cgltf_accessor_read_float(UVAccessorsData[1], VertexIndex, uv, 2);
+			Vertices[VertexIndex].UV1.x = uv[0];
+			Vertices[VertexIndex].UV1.y = uv[1];
+		} else {
+			Vertices[VertexIndex].UV1.x = 0.0f;
+			Vertices[VertexIndex].UV1.y = 0.0f;
+		}
+	}
+
+	cgltf_accessor *IndicesAccessor = PrimitiveData->indices;
+	size_t IndexCount = IndicesAccessor ? IndicesAccessor->count : 0;
+
+	uint16_t *Indices = NULL;
+	if (IndexCount > 0) {
+		Indices = M_ArenaAlloc(&Scene->UploadArena, sizeof(uint16_t) * IndexCount);
+		for (size_t i = 0; i < IndexCount; i++) {
+			uint32_t Index;
+			cgltf_accessor_read_uint(IndicesAccessor, (int)i, &Index, 1);
+			Indices[i] = (uint16_t)Index;
+		}
+	}
+
+	Primitive->Vertices = Vertices;
+	Primitive->VertexCount = VertexCount;
+	Primitive->Indices = Indices;
+	Primitive->IndexCount = IndexCount;
+}
+
+void
+PreloadImages(R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena* UploadArena)
+{
+	Model->Images = M_ArenaAlloc(UploadArena, Data->images_count * sizeof(R_Texture));
+	Model->ImagesCount = Data->images_count;
 
 	for (int i = 0; i < Data->images_count; ++i) {
 		cgltf_image *BaseImage = &Data->images[i];
@@ -298,25 +269,11 @@ PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path)
 		WCHAR BasePath[MAX_PATH];
 		wcscpy_s(BasePath, MAX_PATH, Path);
 		RemoveAllAfterLastSlash(BasePath);
-		if (ExtractImageData(BasePath, BaseImage, &Scene->TextureArena, &Pixels, &Size, &W, &H, &Channels)) {
-			R_Texture *Texture = &Scene->Models[Scene->ModelsCount].Images[i];
-			Texture->Pixels = Pixels;
-			Texture->Width = W;
-			Texture->Height = H;
-
-			PWSTR UniqueNameW = M_ArenaAlloc(&Scene->TextureArena, MAX_PATH * sizeof(WCHAR));
-			if (BaseImage->uri && !IsDataEmbedded(BaseImage)) {
-				WCHAR UriW[MAX_PATH];
-				MultiByteToWideChar(CP_UTF8, 0, BaseImage->uri, -1, UriW, MAX_PATH);
-				swprintf_s(UniqueNameW, MAX_PATH, L"%s_%d_%s", Path, i, UriW);
-			} else {
-				swprintf_s(UniqueNameW, MAX_PATH, L"%s_Internal_%d", Path, i);
-			}
-
-			int UTF8Size = WideCharToMultiByte(CP_UTF8, 0, UniqueNameW, -1, NULL, 0, NULL, NULL);
-			char *UniqueName = M_ArenaAlloc(&Scene->SceneArena, UTF8Size);
-			WideCharToMultiByte(CP_UTF8, 0, UniqueNameW, -1, UniqueName, UTF8Size, NULL, NULL);
-			Texture->Name = UniqueName;
+		if (ExtractImageData(BasePath, BaseImage, UploadArena, &Pixels, &Size, &W, &H, &Channels)) {
+			Model->Images[i].Pixels = Pixels;
+			Model->Images[i].Width = W;
+			Model->Images[i].Height = H;
+			Model->Images[i].Name = CreateTextureName(UploadArena, BaseImage, Path, i);
 		}
 	}
 }
@@ -324,7 +281,7 @@ PreloadImages(S_Scene *Scene, cgltf_data *Data, PCWSTR Path)
 BOOL
 ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 				 _In_ cgltf_image *Img,
-				 _In_ M_Arena *TextureArena,
+				 _In_ M_Arena *UploadArena,
 				 _Outptr_result_bytebuffer_(*Size) UINT8 **Pixels,
 				 _Out_ size_t *Size,
 				 _Out_ int *W,
@@ -348,7 +305,7 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 			const char *EncodedB64 = FirstCommaPtr + 1;
 			size_t EncLen = strlen(EncodedB64);
 			size_t DecodedMaxCap = (EncLen / 4) * 3 + 4;
-			stbi_uc *Decoded = M_ArenaAlloc(TextureArena, DecodedMaxCap);
+			stbi_uc *Decoded = M_ArenaAlloc(UploadArena, DecodedMaxCap);
 			if (Decoded == NULL) {
 				return FALSE;
 			}
@@ -379,7 +336,7 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
 		return FALSE;
 	}
 	*Size = (size_t)(*W) * (size_t)(*H) * 4;
-	*Pixels = M_ArenaAlloc(TextureArena, *Size);
+	*Pixels = M_ArenaAlloc(UploadArena, *Size);
 	memcpy(*Pixels, StbiData, *Size);
 	stbi_image_free(StbiData);
 	return TRUE;
@@ -536,6 +493,90 @@ int
 IsDataEmbedded(const cgltf_image *const BaseImage)
 {
 	return BaseImage->uri && strncmp(BaseImage->uri, "data:", 5) == 0;
+}
+
+PSTR
+CreateTextureName(M_Arena *UploadArena, cgltf_image *BaseImage, PCWSTR Path, int i)
+{
+	PWSTR UniqueNameW = M_ArenaAlloc(UploadArena, MAX_PATH * sizeof(WCHAR));
+	if (BaseImage->uri && !IsDataEmbedded(BaseImage)) {
+		WCHAR UriW[MAX_PATH];
+		MultiByteToWideChar(CP_UTF8, 0, BaseImage->uri, -1, UriW, MAX_PATH);
+		swprintf_s(UniqueNameW, MAX_PATH, L"%s_%d_%s", Path, i, UriW);
+	} else {
+		swprintf_s(UniqueNameW, MAX_PATH, L"%s_Internal_%d", Path, i);
+	}
+
+	int UTF8Size = WideCharToMultiByte(CP_UTF8, 0, UniqueNameW, -1, NULL, 0, NULL, NULL);
+	PSTR UniqueName = M_ArenaAlloc(UploadArena, UTF8Size);
+	WideCharToMultiByte(CP_UTF8, 0, UniqueNameW, -1, UniqueName, UTF8Size, NULL, NULL);
+	return UniqueName;
+}
+
+void
+LoadPBRData(R_Model *Model, R_Primitive *Primitive, cgltf_primitive *PrimitiveData, cgltf_data *Data)
+{
+	const R_Texture *const Images = Model->Images;
+	Primitive->Albedo = NULL;
+	Primitive->Normal = NULL;
+	Primitive->Metallic = NULL;
+	Primitive->Roughness = NULL;
+	Primitive->Occlusion = NULL;
+	Primitive->Emissive = NULL;
+	if (PrimitiveData->material) {
+		cgltf_material *PrimitiveMaterialData = PrimitiveData->material;
+		if (PrimitiveMaterialData->has_pbr_metallic_roughness) {
+			cgltf_pbr_metallic_roughness *MetallicRoughnessData = &PrimitiveMaterialData->pbr_metallic_roughness;
+			memcpy(&Primitive->cb.BaseColorFactor, MetallicRoughnessData->base_color_factor, sizeof(float) * 4);
+			Primitive->cb.MetallicFactor = MetallicRoughnessData->metallic_factor;
+			Primitive->cb.RoughnessFactor = MetallicRoughnessData->roughness_factor;
+
+			if (MetallicRoughnessData->base_color_texture.texture) {
+				UINT AlbedoIndex = MetallicRoughnessData->base_color_texture.texture->image - Data->images;
+				Primitive->Albedo = &Images[AlbedoIndex];
+
+				if (MetallicRoughnessData->base_color_texture.has_transform) {
+					cgltf_texture_transform *Transform = &MetallicRoughnessData->base_color_texture.transform;
+					int uvIndex = MetallicRoughnessData->base_color_texture.texcoord;
+					Primitive->UVChannel = uvIndex;
+					Primitive->cb.UVScale.x = Transform->scale[0];
+					Primitive->cb.UVScale.y = Transform->scale[1];
+					Primitive->cb.UVOffset.x = Transform->offset[0];
+					Primitive->cb.UVOffset.y = Transform->offset[1];
+					Primitive->cb.UVRotation = Transform->rotation;
+				} else {
+					Primitive->cb.UVScale.x = 1.0f;
+					Primitive->cb.UVScale.y = 1.0f;
+					Primitive->cb.UVOffset.x = 0.0f;
+					Primitive->cb.UVOffset.y = 0.0f;
+					Primitive->cb.UVRotation = 0.0f;
+				}
+			}
+
+			if (MetallicRoughnessData->metallic_roughness_texture.texture) {
+				UINT MetallicIndex = MetallicRoughnessData->metallic_roughness_texture.texture->image - Data->images;
+				Primitive->Metallic = &Images[MetallicIndex];
+			}
+		}
+
+		cgltf_texture_view *NormalTextureView = &PrimitiveMaterialData->normal_texture;
+		if (NormalTextureView->texture) {
+			Primitive->Normal = &Images[NormalTextureView->texture->image - Data->images];
+		}
+
+		if (PrimitiveMaterialData->pbr_metallic_roughness.metallic_roughness_texture.texture) {
+			Primitive->Roughness = &Images[PrimitiveMaterialData->pbr_metallic_roughness.metallic_roughness_texture.texture->image - Data->images];
+		}
+
+		if (PrimitiveMaterialData->occlusion_texture.texture) {
+			Primitive->Occlusion = &Images[PrimitiveMaterialData->occlusion_texture.texture->image - Data->images];
+		}
+
+		memcpy(&Primitive->cb.EmissiveFactor, PrimitiveMaterialData->emissive_factor, sizeof(cgltf_float) * 3);
+		if (PrimitiveMaterialData->emissive_texture.texture) {
+			Primitive->Emissive = &Images[PrimitiveMaterialData->emissive_texture.texture->image - Data->images];
+		}
+	}
 }
 
 void *
