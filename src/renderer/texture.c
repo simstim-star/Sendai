@@ -190,5 +190,6 @@ R_LoadPBRTextures(R_Primitive *const Primitive, R_Core *const Renderer, S_Scene 
 	Primitive->cb.MetallicTextureIndex = R_GetTextureIndex(Renderer, Primitive->Metallic);
 	Primitive->cb.RoughnessTextureIndex = R_GetTextureIndex(Renderer, Primitive->Roughness);
 	Primitive->cb.OcclusionTextureIndex = R_GetTextureIndex(Renderer, Primitive->Occlusion);
+	Primitive->cb.EmissiveTextureIndex = R_GetTextureIndex(Renderer, Primitive->Emissive);
 	M_ArenaReset(&Scene->TextureArena);
 }

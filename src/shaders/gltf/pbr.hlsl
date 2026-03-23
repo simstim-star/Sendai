@@ -3,8 +3,15 @@
 
 #define TextureSpace space1
 
+float3 getNormalFromMap(float2 texCoords, float3 worldPos, float3 normal);
+float DistributionGGX(float3 N, float3 H, float roughness);
+float GeometrySchlickGGX(float NdotV, float roughness);
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness);
+float3 fresnelSchlick(float cosTheta, float3 F0);
+
 static const uint TEXTURES_N_DESCRIPTORS = 15;
 static const uint MAX_LIGHT_NUMBER = 7;
+static const float PI = 3.14159265359;
 
 cbuffer MeshData : register(b0)
 {
@@ -19,6 +26,7 @@ cbuffer PBRData : register(b1)
     float4 baseColorFactor;
     float metallicFactor; 
     float roughnessFactor;
+    float3 emissiveFactor;
     
     // KHR_texture_transform
     float2 uvOffset;
@@ -30,6 +38,7 @@ cbuffer PBRData : register(b1)
     uint metallicTextureIndex;
     uint roughnessTextureIndex;
     uint aoTextureIndex;
+    uint emissiveTextureIndex;
 };
 
 struct Light
@@ -43,8 +52,6 @@ cbuffer SceneData : register(b2)
     Light lights[MAX_LIGHT_NUMBER];
     float3 camPos;
 };
-
-static const float PI = 3.14159265359;
 
 Texture2D Texture2DTable[TEXTURES_N_DESCRIPTORS] : register(t0, TextureSpace);
 
@@ -90,75 +97,13 @@ PSIn VSMain(VSIn v)
     return o;
 }
 
-// ----------------------------------------------------------------------------
-float3 getNormalFromMap(float2 texCoords, float3 worldPos, float3 normal)
-{
-    float3 tangentNormal = Texture2DTable[normalTextureIndex].Sample(defaultSampler, texCoords).xyz * 2.0 - 1.0;
-
-    float3 Q1 = ddx(worldPos);
-    float3 Q2 = ddy(worldPos);
-    float2 st1 = ddx(texCoords);
-    float2 st2 = ddy(texCoords);
-
-    float3 N = normalize(normal);
-    float3 T = normalize(Q1 * st2.y - Q2 * st1.y);
-    float3 B = -normalize(cross(N, T));
-    float3x3 TBN = float3x3(T, B, N);
-
-    return normalize(mul(tangentNormal, TBN));
-}
-
-// ----------------------------------------------------------------------------
-float DistributionGGX(float3 N, float3 H, float roughness)
-{
-    float a = roughness * roughness;
-    float a2 = a * a;
-    float NdotH = max(dot(N, H), 0.0);
-    float NdotH2 = NdotH * NdotH;
-
-    float nom = a2;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = PI * denom * denom;
-
-    return nom / denom;
-}
-
-// ----------------------------------------------------------------------------
-float GeometrySchlickGGX(float NdotV, float roughness)
-{
-    float r = (roughness + 1.0);
-    float k = (r * r) / 8.0;
-
-    float nom = NdotV;
-    float denom = NdotV * (1.0 - k) + k;
-
-    return nom / denom;
-}
-
-// ----------------------------------------------------------------------------
-float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
-{
-    float NdotV = max(dot(N, V), 0.0);
-    float NdotL = max(dot(N, L), 0.0);
-    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
-
-    return ggx1 * ggx2;
-}
-
-// ----------------------------------------------------------------------------
-float3 fresnelSchlick(float cosTheta, float3 F0)
-{
-    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}
-
-// ----------------------------------------------------------------------------
 float4 PSMain(PSIn input) : SV_TARGET
 {
     float3 albedo = baseColorFactor.xyz * pow(Texture2DTable[albedoTextureIndex].Sample(defaultSampler, input.uv).rgb, 2.2);
     float metallic = metallicFactor * Texture2DTable[metallicTextureIndex].Sample(defaultSampler, input.uv).b;
     float roughness = roughnessFactor * Texture2DTable[roughnessTextureIndex].Sample(defaultSampler, input.uv).g;
     float ao = Texture2DTable[aoTextureIndex].Sample(defaultSampler, input.uv2).r;
+    float3 emissive = emissiveFactor.xyz * Texture2DTable[emissiveTextureIndex].Sample(defaultSampler, input.uv).rgb;
 
     float3 N = getNormalFromMap(input.uv, input.fragPos, input.norm);
     float3 V = normalize(camPos - input.fragPos);
@@ -192,10 +137,67 @@ float4 PSMain(PSIn input) : SV_TARGET
     }
     
     float3 ambient = float3(0.03, 0.03, 0.03) * albedo * ao;
-    float3 color = ambient + Lo;
+    float3 color = ambient + Lo + emissive;
 
     color = color / (color + float3(1.0, 1.0, 1.0));
     color = pow(color, 1.0 / 2.2);
 
     return float4(color, 1.0);
+}
+
+float3 getNormalFromMap(float2 texCoords, float3 worldPos, float3 normal)
+{
+    float3 tangentNormal = Texture2DTable[normalTextureIndex].Sample(defaultSampler, texCoords).xyz * 2.0 - 1.0;
+
+    float3 Q1 = ddx(worldPos);
+    float3 Q2 = ddy(worldPos);
+    float2 st1 = ddx(texCoords);
+    float2 st2 = ddy(texCoords);
+
+    float3 N = normalize(normal);
+    float3 T = normalize(Q1 * st2.y - Q2 * st1.y);
+    float3 B = -normalize(cross(N, T));
+    float3x3 TBN = float3x3(T, B, N);
+
+    return normalize(mul(tangentNormal, TBN));
+}
+
+float DistributionGGX(float3 N, float3 H, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
+
+    float nom = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return nom / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r * r) / 8.0;
+
+    float nom = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+
+float3 fresnelSchlick(float cosTheta, float3 F0)
+{
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }

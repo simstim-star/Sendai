@@ -159,6 +159,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 			Primitive->Metallic = NULL; 
 			Primitive->Roughness = NULL; 
 			Primitive->Occlusion = NULL; 
+			Primitive->Emissive = NULL; 
 			if (PrimitiveData->material) {
 				cgltf_material *PrimitiveMaterialData = PrimitiveData->material;
 				if (PrimitiveMaterialData->has_pbr_metallic_roughness) {
@@ -204,6 +205,11 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 
 				if (PrimitiveMaterialData->occlusion_texture.texture) {
 					Primitive->Occlusion = &Images[PrimitiveMaterialData->occlusion_texture.texture->image - Data->images];
+				}
+			
+				memcpy(&Primitive->cb.EmissiveFactor, PrimitiveMaterialData->emissive_factor, sizeof(cgltf_float) * 3);
+				if (PrimitiveMaterialData->emissive_texture.texture) {
+					Primitive->Emissive = &Images[PrimitiveMaterialData->emissive_texture.texture->image - Data->images];
 				}
 			}
 
@@ -442,16 +448,16 @@ LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ 
 			continue;
 		}
 
-		const char *URI = Data->buffers[i].uri;
+		const char *Uri = Data->buffers[i].uri;
 
-		if (URI == NULL) {
+		if (Uri == NULL) {
 			continue;
 		}
 
-		if (strncmp(URI, "data:", 5) == 0) {
-			char *Comma = strrchr(URI, ',');
+		if (strncmp(Uri, "data:", 5) == 0) {
+			char *Comma = strrchr(Uri, ',');
 
-			if (Comma && Comma - URI >= 7 && strncmp(Comma - 7, ";base64", 7) == 0) {
+			if (Comma && Comma - Uri >= 7 && strncmp(Comma - 7, ";base64", 7) == 0) {
 				cgltf_result Result = cgltf_load_buffer_base64(Options, Data->buffers[i].size, Comma + 1, &Data->buffers[i].vertex_data);
 				Data->buffers[i].data_free_method = cgltf_data_free_method_memory_free;
 
@@ -461,8 +467,10 @@ LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ 
 			} else {
 				return cgltf_result_unknown_format;
 			}
-		} else if (strstr(URI, "://") == NULL && Path) {
-			cgltf_result Result = LoadGLTFBuffer(Path, URI, Arena, &Data->buffers[i].size, &Data->buffers[i].vertex_data);
+		} else if (strstr(Uri, "://") == NULL && Path) {
+			WCHAR UriW[MAX_PATH];
+			MultiByteToWideChar(CP_UTF8, 0, Uri, -1, UriW, MAX_PATH);
+			cgltf_result Result = LoadGLTFBuffer(Path, UriW, Arena, &Data->buffers[i].size, &Data->buffers[i].vertex_data);
 			Data->buffers[i].data_free_method = cgltf_data_free_method_file_release;
 
 			if (Result != cgltf_result_success) {

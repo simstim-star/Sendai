@@ -13,6 +13,10 @@ typedef struct R_PBRConstantBuffer {
 	XMFLOAT4 BaseColorFactor;
 	FLOAT MetallicFactor;
 	FLOAT RoughnessFactor;
+	FLOAT Padding0[2];
+
+	XMFLOAT3 EmissiveFactor;
+	FLOAT Padding1;
 
 	XMFLOAT2 UVOffset;
 	XMFLOAT2 UVScale;
@@ -23,6 +27,7 @@ typedef struct R_PBRConstantBuffer {
 	UINT32 MetallicTextureIndex;
 	UINT32 RoughnessTextureIndex;
 	UINT32 OcclusionTextureIndex;
+	UINT32 EmissiveTextureIndex;
 } R_PBRConstantBuffer;
 
 #define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 4
@@ -69,6 +74,7 @@ typedef struct R_Primitive {
 	R_Texture *Metallic;
 	R_Texture *Roughness;
 	R_Texture *Occlusion;
+	R_Texture *Emissive;
 
 	INT UVChannel;
 	R_PBRConstantBuffer cb;
