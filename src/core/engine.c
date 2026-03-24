@@ -209,6 +209,7 @@ EngineUpdate(Sendai *const Engine)
 	Engine->UI.State.BottomBar.FrameCounter = Engine->FrameCounter;
 	Engine->UI.State.BottomBar.Scene = &Engine->Scene;
 	Engine->UI.State.ToolBar.Camera = &Engine->Camera;
+	Engine->UI.State.TopBar.Adapter = Engine->RendererCore.Adapter;
 	void (*Action)(Sendai *const Engine) = UI_GetAction(&Engine->UI);
 	Action(Engine);
 }

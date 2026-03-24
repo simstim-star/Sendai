@@ -30,6 +30,8 @@ typedef struct R_Core {
 	UINT Height;
 	FLOAT AspectRatio;
 
+	IDXGIAdapter3 *Adapter;
+
 	D3D12_VIEWPORT Viewport;
 	D3D12_RECT ScissorRect;
 
@@ -98,6 +100,7 @@ typedef struct R_Core {
 } R_Core;
 
 void R_Init(R_Core *const Renderer, HWND hWnd);
+void GetAdapterDesc(IDXGIFactory2 *Factory);
 void R_Destroy(R_Core *Renderer);
 void R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const Camera);
 void Draw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);

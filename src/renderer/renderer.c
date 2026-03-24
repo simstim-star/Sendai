@@ -33,6 +33,7 @@ static void CreateShaders(R_Core *const Renderer);
 static R_SceneData PreprocessSceneData(const S_Scene *const Scene);
 static void CreateBaseEngineTextures(R_Core *const Renderer);
 static void Draw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
+static void GetAdapter(IDXGIFactory2 *Factory, R_Core *Renderer);
 
 static void SignalAndWait(R_Core *const Renderer);
 static void RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
@@ -67,7 +68,9 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 
 	IDXGIFactory2 *Factory = NULL;
 	HRESULT hr = CreateDXGIFactory2(bIsDebugFactory, &IID_IDXGIFactory2, &Factory);
-	ExitIfFailed(hr);
+	ExitIfFailed(hr); 
+
+	GetAdapter(Factory, Renderer);
 
 	hr = D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_11_0, &IID_ID3D12Device, &Renderer->Device);
 	ExitIfFailed(hr);
@@ -476,4 +479,18 @@ Draw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const 
 
 	Renderer->MeshDataOffset = StartMeshDataOffset;
 	Renderer->SceneDataOffset = StartSceneDataOffset;
+}
+
+void
+GetAdapter(IDXGIFactory2 *Factory, R_Core *Renderer)
+{
+	for (UINT i = 0; SUCCEEDED(IDXGIFactory2_EnumAdapters1(Factory, i, &Renderer->Adapter)); ++i) {
+		DXGI_ADAPTER_DESC1 Desc = {0};
+		HRESULT hr = IDXGIAdapter3_GetDesc1(Renderer->Adapter, &Desc);
+		if (FAILED(hr) || Desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
+			IDXGIAdapter3_Release(Renderer->Adapter);
+			continue;
+		}
+		break;
+	}
 }
