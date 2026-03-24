@@ -10,4 +10,4 @@ typedef struct R_Core R_Core;
 
 void R_LightsInit(S_Scene *const Scene, const R_Camera *const Camera);
 void R_UpdateLights(BYTE ActiveLightMask, const R_Light *const InLights, R_Light *const OutLights, UINT NumLights);
-void R_RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint, UINT SrvIndex);
+void R_RenderLightBillboards(R_Core *const Renderer, R_Light *Lights, BYTE ActiveLightMask, R_MeshConstants *const MeshConstants);

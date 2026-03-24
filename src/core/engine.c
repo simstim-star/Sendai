@@ -216,15 +216,12 @@ EngineUpdate(Sendai *const Engine)
 void
 LoadPrimitivesIntoBuffers(R_Core *const Renderer, const R_Model *const Model)
 {
-	void *MappedVertexUploadData;
-	ID3D12Resource_Map(Renderer->VertexBufferUpload, 0, NULL, &MappedVertexUploadData);
-
 	for (int MeshIdx = 0; MeshIdx < Model->MeshesCount; ++MeshIdx) {
 		const R_Mesh *const Mesh = &Model->Meshes[MeshIdx];
 		for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
 			R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
 			UINT VertexBufferSize = sizeof(R_Vertex) * Primitive->VertexCount;
-			memcpy((BYTE *)MappedVertexUploadData + Renderer->CurrentUploadBufferOffset, Primitive->Vertices, VertexBufferSize);
+			memcpy(Renderer->VertexBufferUploadCpuAddress + Renderer->CurrentUploadBufferOffset, Primitive->Vertices, VertexBufferSize);
 			Primitive->VertexBufferView.BufferLocation =
 				ID3D12Resource_GetGPUVirtualAddress(Renderer->VertexBufferDefault) + Renderer->CurrentVertexBufferOffset;
 			Primitive->VertexBufferView.SizeInBytes = VertexBufferSize;
@@ -235,7 +232,7 @@ LoadPrimitivesIntoBuffers(R_Core *const Renderer, const R_Model *const Model)
 			Renderer->CurrentUploadBufferOffset += VertexBufferSize;
 
 			UINT IndexBufferSize = Primitive->IndexCount * sizeof(UINT16);
-			memcpy((BYTE *)MappedVertexUploadData + Renderer->CurrentUploadBufferOffset, Primitive->Indices, IndexBufferSize);
+			memcpy(Renderer->VertexBufferUploadCpuAddress + Renderer->CurrentUploadBufferOffset, Primitive->Indices, IndexBufferSize);
 			Primitive->IndexBufferView.BufferLocation =
 				ID3D12Resource_GetGPUVirtualAddress(Renderer->IndexBufferDefault) + Renderer->CurrentIndexBufferOffset;
 			Primitive->IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
@@ -262,6 +259,4 @@ LoadPrimitivesIntoBuffers(R_Core *const Renderer, const R_Model *const Model)
 												 .Transition.StateAfter = D3D12_RESOURCE_STATE_INDEX_BUFFER,
 												 .Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES};
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &BarrierIndexBuffer);
-
-	ID3D12Resource_Unmap(Renderer->VertexBufferUpload, 0, NULL);
 }

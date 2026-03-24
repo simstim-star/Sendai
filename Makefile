@@ -52,6 +52,7 @@ ALL_OBJS = \
     $(OBJ_DIR)\renderer\light.obj \
     $(OBJ_DIR)\renderer\texture.obj \
     $(OBJ_DIR)\renderer\shader.obj \
+    $(OBJ_DIR)\renderer\billboard.obj \
     $(OBJ_DIR)\ui\ui.obj \
     $(OBJ_DIR)\ui\ui_bottom_panel.obj \
     $(OBJ_DIR)\ui\ui_tool_bar.obj \

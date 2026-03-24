@@ -11,8 +11,6 @@
 
 typedef struct ID3D12Resource ID3D12Resource;
 
-void M_UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize, UINT64 Offset);
-
 typedef struct M_Arena {
 	UINT8 *Base;
 	size_t SizeReserved;

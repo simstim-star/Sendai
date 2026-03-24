@@ -183,7 +183,6 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 				nk_property_float(Ctx, "#X:", 0.01f, &SelModel->Scale.x, 500.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Y:", 0.01f, &SelModel->Scale.y, 500.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Z:", 0.01f, &SelModel->Scale.z, 500.0f, 0.1f, 0.05f);
-
 			} else {
 				nk_layout_row_dynamic(Ctx, 20, 1);
 				nk_label(Ctx, "No model selected", NK_TEXT_CENTERED);

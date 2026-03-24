@@ -46,12 +46,21 @@ typedef struct R_SceneData {
 	FLOAT Padding0;
 } R_SceneData;
 
-typedef struct R_MeshConstants {
+typedef struct R_MVP {
 	XMMATRIX Model;
 	XMMATRIX View;
 	XMMATRIX Proj;
+} R_MVP;
+
+typedef struct R_MeshConstants {
+	R_MVP MVP;
 	XMMATRIX Normal;
 } R_MeshConstants;
+
+typedef struct R_LightBillboardConstants {
+	R_MVP MVP;
+	XMFLOAT3 Tint;
+} R_LightBillboardConstants;
 
 typedef struct R_Texture {
 	const UINT8 *Pixels;

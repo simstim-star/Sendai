@@ -5,7 +5,8 @@ set(CMAKE_C_STANDARD 99)
 
 set(CORE_SOURCES "src/core/camera.c" "src/core/memory.c" "src/core/timer.c" "src/core/engine.c" "src/core/log.c" 
 "src/error/error.c" "src/core/grid.c")
-set(RENDERER_SOURCES "src/renderer/renderer.c" "src/renderer/shader.c" "src/renderer/light.c" "src/renderer/texture.c")
+set(RENDERER_SOURCES "src/renderer/renderer.c" "src/renderer/shader.c" "src/renderer/light.c" "src/renderer/texture.c"
+"src/renderer/billboard.c")
 set(WIN32_SOURCES "src/win32/win_main.c" "src/win32/win_path.c" "src/win32/file_dialog.c")
 set(UI_SOURCES "src/ui/sendai_nk.c" "src/ui/ui.c" "src/ui/ui_bottom_panel.c" "src/ui/ui_top_bar.c" "src/ui/ui_tool_bar.c")
 set(GLTF_SOURCES "src/assets/gltf.c")
@@ -13,7 +14,8 @@ set(SOURCE_FILES ${CORE_SOURCES} ${WIN32_SOURCES} ${RENDERER_SOURCES} ${UI_SOURC
 
 set(CORE_HEADERS "src/core/camera.h" "src/core/memory.h" "src/core/timer.h" "src/core/engine.h" "src/core/log.h" 
 "src/core/scene.h" "src/error/error.h" "src/core/grid.h")
-set(RENDERER_HEADERS "src/renderer/renderer.h" "src/renderer/render_types.h" "src/renderer/shader.h" "src/renderer/light.h" "src/renderer/texture.h")
+set(RENDERER_HEADERS "src/renderer/renderer.h" "src/renderer/render_types.h" "src/renderer/shader.h" "src/renderer/light.h" 
+"src/renderer/texture.h" "src/renderer/billboard.h")
 set(WIN32_HEADERS "src/win32/win_path.h" "src/win32/file_dialog.h")
 set(UI_HEADERS "src/ui/sendai_nk.h" "src/ui/ui.h" "src/ui/ui_bottom_panel.h" "src/ui/ui_top_bar.h" "src/ui/ui_tool_bar.c")
 set(DX_HELPERS "src/dx_helpers/barrier_helpers.h" "src/dx_helpers/desc_helpers.h")

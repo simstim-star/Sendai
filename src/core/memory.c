@@ -3,17 +3,6 @@
 #include "memory.h"
 #include "../error/error.h"
 
-void
-M_UpdateResourceData(ID3D12Resource *Resource, const void *Data, size_t DataSize, UINT64 Offset)
-{
-	UINT8 *Begin = NULL;
-	const D3D12_RANGE ReadRange = {0, 0};
-	HRESULT hr = ID3D12Resource_Map(Resource, 0, &ReadRange, &Begin);
-	ExitIfFailed(hr);
-	memcpy(Begin + Offset, Data, DataSize);
-	ID3D12Resource_Unmap(Resource, 0, NULL);
-}
-
 M_Arena
 M_ArenaInit(size_t ReserveSize)
 {

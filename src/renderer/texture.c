@@ -61,10 +61,9 @@ R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source)
 	  .HeapIndex = SlotIndex,
 	};
 
-	UINT IncrementSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	D3D12_CPU_DESCRIPTOR_HANDLE CpuDescHandle;
 	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &CpuDescHandle);
-	CpuDescHandle.ptr += (SIZE_T)SlotIndex * IncrementSize;
+	CpuDescHandle.ptr += (SIZE_T)SlotIndex * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC SrvDesc = {
 	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
