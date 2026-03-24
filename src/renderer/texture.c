@@ -74,7 +74,7 @@ R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source)
 	};
 	ID3D12Device_CreateShaderResourceView(Renderer->Device, NewTex.GpuTexture, &SrvDesc, CpuDescHandle);
 
-	TextureLookup Lookup = {.key = _strdup(Source->Name), .Texture = NewTex};
+	TextureLookup Lookup = {.key = Source->Name, .Texture = NewTex};
 	shputs(Renderer->Textures, Lookup);
 
 	return NewTex;

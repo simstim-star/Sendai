@@ -3,18 +3,20 @@
 project(__sendai LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 
-set(CORE_SOURCES "src/core/camera.c" "src/core/memory.c" "src/core/timer.c" "src/core/engine.c" "src/core/log.c")
-set(RENDER_SOURCES "src/renderer/renderer.c" "src/renderer/shader.c" "src/renderer/light.c" "src/renderer/texture.c")
+set(CORE_SOURCES "src/core/camera.c" "src/core/memory.c" "src/core/timer.c" "src/core/engine.c" "src/core/log.c" "src/error/error.c")
+set(RENDERER_SOURCES "src/renderer/renderer.c" "src/renderer/shader.c" "src/renderer/light.c" "src/renderer/texture.c")
 set(WIN32_SOURCES "src/win32/win_main.c" "src/win32/win_path.c" "src/win32/file_dialog.c")
-set(UI_SOURCES "src/ui/ui.c" )
-set(SOURCE_FILES ${CORE_SOURCES} ${WIN32_SOURCES} ${RENDER_SOURCES} ${UI_SOURCES} "src/error/error.c" "src/assets/gltf.c")
+set(UI_SOURCES "src/ui/sendai_nk.c" "src/ui/ui.c" "src/ui/ui_bottom_panel.c" "src/ui/ui_top_bar.c" "src/ui/ui_tool_bar.c")
+set(GLTF_SOURCES "src/assets/gltf.c")
+set(SOURCE_FILES ${CORE_SOURCES} ${WIN32_SOURCES} ${RENDERER_SOURCES} ${UI_SOURCES} ${GLTF_SOURCES})
 
-set(CORE_HEADERS "src/core/camera.h" "src/core/memory.h" "src/core/timer.h" "src/core/engine.h" "src/core/log.h" "src/core/scene.h")
-set(RENDER_HEADERS "src/renderer/renderer.h" "src/renderer/render_types.h" "src/renderer/shader.h" "src/renderer/light.h" "src/renderer/texture.h")
+set(CORE_HEADERS "src/core/camera.h" "src/core/memory.h" "src/core/timer.h" "src/core/engine.h" "src/core/log.h" "src/core/scene.h" "src/error/error.h")
+set(RENDERER_HEADERS "src/renderer/renderer.h" "src/renderer/render_types.h" "src/renderer/shader.h" "src/renderer/light.h" "src/renderer/texture.h")
 set(WIN32_HEADERS "src/win32/win_path.h" "src/win32/file_dialog.h")
-set(UI_HEADERS "src/ui/ui.h" )
+set(UI_HEADERS "src/ui/sendai_nk.h" "src/ui/ui.h" "src/ui/ui_bottom_panel.h" "src/ui/ui_top_bar.h" "src/ui/ui_tool_bar.c")
 set(DX_HELPERS "src/dx_helpers/barrier_helpers.h" "src/dx_helpers/desc_helpers.h")
-set(HEADER_FILES ${CORE_HEADERS} ${WIN32_HEADERS} ${RENDER_HEADERS} ${UI_HEADERS} ${DX_HELPERS} ${DX_HELPERS} "src/assets/gltf.h" "src/error/error.h")
+set(GLTF_HEADERS "src/assets/gltf.h")
+set(HEADER_FILES ${CORE_HEADERS} ${WIN32_HEADERS} ${RENDERER_HEADERS} ${UI_HEADERS} ${DX_HELPERS} ${DX_HELPERS} ${GLTF_HEADERS})
 
 set(DEPS_FILES "deps/b64.h" "deps/cgltf.h" "deps/nuklear.h" "deps/stb_ds.h" "deps/stb_image.h")
 
@@ -22,12 +24,16 @@ set(SHADER_FILES "src/shaders/gltf/gltf.hlsl" "src/shaders/gltf/pbr.hlsl" "src/s
 
 set_source_files_properties(${SHADER_FILES} PROPERTIES LANGUAGE HLSL)
 
-source_group("Sources" FILES ${SOURCE_FILES})
-source_group("Headers" FILES ${HEADER_FILES})
+source_group("Core" FILES ${CORE_SOURCES} ${CORE_HEADERS})
+source_group("Renderer" FILES ${RENDERER_SOURCES} ${RENDERER_HEADERS})
+source_group("Win32" FILES ${WIN32_SOURCES} ${WIN32_HEADERS})
+source_group("UI" FILES ${UI_SOURCES} ${UI_HEADERS})
+source_group("GLTF" FILES ${GLTF_SOURCES} ${GLTF_HEADERS})
+source_group("DX Helpers" FILES ${DX_HELPERS})
 source_group("Shaders" FILES ${SHADER_FILES})
 source_group("Libs" FILES ${DEPS_FILES})
 
-set(ALL_PROJECT_FILES ${SOURCE_FILES} ${HEADER_FILES} ${SHADER_FILES} ${LIB_FILES})
+set(ALL_PROJECT_FILES ${SOURCE_FILES} ${HEADER_FILES} ${SHADER_FILES})
 
 # You need to add all files on the executable for them to be visible on 
 # the source_group in Visual Studio

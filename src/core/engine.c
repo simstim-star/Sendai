@@ -203,35 +203,34 @@ LoadPrimitivesIntoBuffers(R_Core *const Renderer, const S_Scene *const Scene)
 {
 	void *pData;
 	ID3D12Resource_Map(Renderer->VertexBufferUpload, 0, NULL, &pData);
-	for (int ModelIdx = Scene->ModelsCount-1; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
-		for (int MeshIdx = 0; MeshIdx < Scene->Models[ModelIdx].MeshesCount; ++MeshIdx) {
-			const R_Mesh *const Mesh = &Scene->Models[ModelIdx].Meshes[MeshIdx];
-			for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
-				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
-				UINT VertexBufferSize = sizeof(R_Vertex) * Primitive->VertexCount;
-				memcpy((BYTE *)pData + Renderer->CurrentUploadBufferOffset, Primitive->Vertices, VertexBufferSize);
-				Primitive->VertexBufferView.BufferLocation =
-					ID3D12Resource_GetGPUVirtualAddress(Renderer->VertexBufferDefault) + Renderer->CurrentVertexBufferOffset;
-				Primitive->VertexBufferView.SizeInBytes = VertexBufferSize;
-				Primitive->VertexBufferView.StrideInBytes = sizeof(R_Vertex);
-				ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->VertexBufferDefault, Renderer->CurrentVertexBufferOffset,
-														   Renderer->VertexBufferUpload, Renderer->CurrentUploadBufferOffset, VertexBufferSize);
-				Renderer->CurrentVertexBufferOffset += VertexBufferSize;
-				Renderer->CurrentUploadBufferOffset += VertexBufferSize;
+	UINT ModelIdx = Scene->ModelsCount - 1;
+	for (int MeshIdx = 0; MeshIdx < Scene->Models[ModelIdx].MeshesCount; ++MeshIdx) {
+		const R_Mesh *const Mesh = &Scene->Models[ModelIdx].Meshes[MeshIdx];
+		for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
+			R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
+			UINT VertexBufferSize = sizeof(R_Vertex) * Primitive->VertexCount;
+			memcpy((BYTE *)pData + Renderer->CurrentUploadBufferOffset, Primitive->Vertices, VertexBufferSize);
+			Primitive->VertexBufferView.BufferLocation =
+				ID3D12Resource_GetGPUVirtualAddress(Renderer->VertexBufferDefault) + Renderer->CurrentVertexBufferOffset;
+			Primitive->VertexBufferView.SizeInBytes = VertexBufferSize;
+			Primitive->VertexBufferView.StrideInBytes = sizeof(R_Vertex);
+			ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->VertexBufferDefault, Renderer->CurrentVertexBufferOffset,
+													   Renderer->VertexBufferUpload, Renderer->CurrentUploadBufferOffset, VertexBufferSize);
+			Renderer->CurrentVertexBufferOffset += VertexBufferSize;
+			Renderer->CurrentUploadBufferOffset += VertexBufferSize;
 
-				UINT IndexBufferSize = Primitive->IndexCount * sizeof(UINT16);
-				memcpy((BYTE *)pData + Renderer->CurrentUploadBufferOffset, Primitive->Indices, IndexBufferSize);
-				Primitive->IndexBufferView.BufferLocation =
-					ID3D12Resource_GetGPUVirtualAddress(Renderer->IndexBufferDefault) + Renderer->CurrentIndexBufferOffset;
-				Primitive->IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
-				Primitive->IndexBufferView.SizeInBytes = IndexBufferSize;
-				ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->IndexBufferDefault, Renderer->CurrentIndexBufferOffset,
-														   Renderer->VertexBufferUpload, Renderer->CurrentUploadBufferOffset, IndexBufferSize);
-				Renderer->CurrentIndexBufferOffset += IndexBufferSize;
-				Renderer->CurrentUploadBufferOffset += IndexBufferSize;
+			UINT IndexBufferSize = Primitive->IndexCount * sizeof(UINT16);
+			memcpy((BYTE *)pData + Renderer->CurrentUploadBufferOffset, Primitive->Indices, IndexBufferSize);
+			Primitive->IndexBufferView.BufferLocation =
+				ID3D12Resource_GetGPUVirtualAddress(Renderer->IndexBufferDefault) + Renderer->CurrentIndexBufferOffset;
+			Primitive->IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
+			Primitive->IndexBufferView.SizeInBytes = IndexBufferSize;
+			ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->IndexBufferDefault, Renderer->CurrentIndexBufferOffset,
+													   Renderer->VertexBufferUpload, Renderer->CurrentUploadBufferOffset, IndexBufferSize);
+			Renderer->CurrentIndexBufferOffset += IndexBufferSize;
+			Renderer->CurrentUploadBufferOffset += IndexBufferSize;
 
-				R_LoadPBRTextures(Primitive, Renderer, Scene);
-			}
+			R_LoadPBRTextures(Primitive, Renderer, Scene);
 		}
 	}
 

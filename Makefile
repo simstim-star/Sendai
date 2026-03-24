@@ -41,6 +41,7 @@ LDFLAGS = /nologo /SUBSYSTEM:WINDOWS /MACHINE:X64 $(CONF_LDFLAGS)
 
 # --- Objects ---
 # We must use the full path here so the linker can find them
+# (this will not scale well...)
 ALL_OBJS = \
     $(OBJ_DIR)\core\camera.obj \
     $(OBJ_DIR)\core\timer.obj \
@@ -52,6 +53,10 @@ ALL_OBJS = \
     $(OBJ_DIR)\renderer\texture.obj \
     $(OBJ_DIR)\renderer\shader.obj \
     $(OBJ_DIR)\ui\ui.obj \
+    $(OBJ_DIR)\ui\ui_bottom_panel.obj \
+    $(OBJ_DIR)\ui\ui_tool_bar.obj \
+    $(OBJ_DIR)\ui\ui_top_bar.obj \
+    $(OBJ_DIR)\ui\sendai_nk.obj \
     $(OBJ_DIR)\error\error.obj \
     $(OBJ_DIR)\core\engine.obj \
     $(OBJ_DIR)\core\log.obj \

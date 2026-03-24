@@ -1,5 +1,11 @@
 #pragma once
 
+#include "sendai_nk.h"
+
+#include "ui_bottom_panel.h"
+#include "ui_top_bar.h"
+#include "ui_tool_bar.h"
+
 typedef struct nk_context nk_context;
 typedef struct S_Scene S_Scene;
 typedef struct R_Camera R_Camera;
@@ -7,8 +13,7 @@ typedef struct Sendai Sendai;
 typedef struct ID3D12GraphicsCommandList ID3D12GraphicsCommandList;
 typedef struct ID3D12Resource ID3D12Resource;
 
-typedef enum { UI_ACTION_NONE = 0, UI_ACTION_FILE_OPEN, UI_ACTION_WIREFRAME_BUTTON_CLICKED } UI_EAction;
-typedef enum { UI_EUT_WIREFRAME, UI_EUT_CAMERA, UI_EUT_NUM_USER_TEXTURES } UI_EUserTextures;
+extern struct nk_image UI_TEXTURES[UI_EUT_NUM_USER_TEXTURES];
 
 typedef struct UI_Renderer {
 	nk_context *Context;
@@ -16,30 +21,9 @@ typedef struct UI_Renderer {
 	UINT Height;
 } UI_Renderer;
 
-typedef struct UI_BottomBarState {
-	FLOAT BottomBarHeight;
-	BOOL bIsDraggingBottom;
-	UINT32 FPS;
-	UINT FrameCounter;
-	UINT SelectedModelIndex;
-	UINT SelectedLightIndex;
-	S_Scene *Scene;
-	enum E_BottomBarTab { EBBS_LOG_TAB, EBBS_SCENE_TAB, EBBS_LIGHT_TAB } ActiveTab;
-} UI_BottomBarState;
-
-typedef struct UI_TopBarState {
-	BOOL ShowLog;
-	enum E_TopBarTab { ETBS_FILE_TAB, ETBS_LOG_TAB } ActiveTab;
-} UI_TopBarState;
-
-typedef struct UI_ToolBarState {
-	BOOL Wireframe;
-	R_Camera *Camera;
-} UI_ToolBarState;
-
 typedef struct UI_State {
 	UI_TopBarState TopBar;
-	UI_BottomBarState BottomBar;
+	UI_BottomPanelState BottomBar;
 	UI_ToolBarState ToolBar;
 } UI_State;
 
@@ -52,12 +36,6 @@ void UI_InputBegin(const UI_Renderer *UI);
 void UI_InputEnd(const UI_Renderer *UI);
 
 UI_EAction UI_LogWindow(UI_Renderer *const UI);
-
-UI_EAction UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State);
-
-UI_EAction UI_DrawToolbar(UI_Renderer *UI, UI_ToolBarState *State);
-
-UI_EAction UI_DrawBottomBar(UI_Renderer *UI, UI_BottomBarState *State);
 
 void UI_Draw(ID3D12GraphicsCommandList *CommandList);
 
