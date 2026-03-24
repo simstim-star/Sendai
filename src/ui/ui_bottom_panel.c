@@ -132,7 +132,8 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 
 		nk_layout_row_template_begin(Ctx, SafeHeight);
 		nk_layout_row_template_push_variable(Ctx, 200);
-		nk_layout_row_template_push_static(Ctx, 250);
+		nk_layout_row_template_push_static(Ctx, 550);
+		nk_layout_row_template_push_variable(Ctx, 100);
 		nk_layout_row_template_end(Ctx);
 
 		if (nk_group_begin(Ctx, "SceneTableGroup", NK_WINDOW_BORDER)) {
@@ -157,24 +158,28 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 			if (State->SelectedModelIndex >= 0 && State->SelectedModelIndex < State->Scene->ModelsCount) {
 				R_Model *SelModel = &State->Scene->Models[State->SelectedModelIndex];
 
-				nk_layout_row_dynamic(Ctx, 20, 1);
+				nk_layout_row_dynamic(Ctx, 20, 3);
 				nk_label(Ctx, "Name:", NK_TEXT_LEFT);
 				nk_label_colored(Ctx, SelModel->Name, NK_TEXT_LEFT, nk_rgb(255, 255, 0));
 
 				nk_layout_row_dynamic(Ctx, 20, 1);
 				nk_label(Ctx, "Position:", NK_TEXT_LEFT);
 
-				nk_layout_row_dynamic(Ctx, 20, 1);
+				nk_layout_row_dynamic(Ctx, 20, 3);
 				nk_property_float(Ctx, "#X:", -1000.0f, &SelModel->Position.x, 1000.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Y:", -1000.0f, &SelModel->Position.y, 1000.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Z:", -1000.0f, &SelModel->Position.z, 1000.0f, 0.1f, 0.05f);
 
+				nk_layout_row_dynamic(Ctx, 20, 1);
 				nk_label(Ctx, "Rotation:", NK_TEXT_LEFT);
+				nk_layout_row_dynamic(Ctx, 20, 3);
 				nk_property_float(Ctx, "#X:", -100.0f, &SelModel->Rotation.x, 100.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Y:", -100.0f, &SelModel->Rotation.y, 100.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Z:", -100.0f, &SelModel->Rotation.z, 100.0f, 0.1f, 0.05f);
 
+				nk_layout_row_dynamic(Ctx, 20, 1);
 				nk_label(Ctx, "Scale:", NK_TEXT_LEFT);
+				nk_layout_row_dynamic(Ctx, 20, 3);
 				nk_property_float(Ctx, "#X:", 0.01f, &SelModel->Scale.x, 500.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Y:", 0.01f, &SelModel->Scale.y, 500.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Z:", 0.01f, &SelModel->Scale.z, 500.0f, 0.1f, 0.05f);
@@ -193,7 +198,8 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 
 		nk_layout_row_template_begin(Ctx, SafeHeight);
 		nk_layout_row_template_push_variable(Ctx, 200);
-		nk_layout_row_template_push_static(Ctx, 250);
+		nk_layout_row_template_push_static(Ctx, 550);
+		nk_layout_row_template_push_variable(Ctx, 100);
 		nk_layout_row_template_end(Ctx);
 
 		if (nk_group_begin(Ctx, "LightTableGroup", NK_WINDOW_BORDER)) {
@@ -234,12 +240,14 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 				nk_layout_row_dynamic(Ctx, 20, 1);
 				nk_label(Ctx, "Position:", NK_TEXT_LEFT);
 
-				nk_layout_row_dynamic(Ctx, 20, 1);
+				nk_layout_row_dynamic(Ctx, 20, 3);
 				nk_property_float(Ctx, "#X:", -1000.0f, &SelectedLight->LightPosition.x, 1000.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Y:", -1000.0f, &SelectedLight->LightPosition.y, 1000.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Z:", -1000.0f, &SelectedLight->LightPosition.z, 1000.0f, 0.1f, 0.05f);
 
+				nk_layout_row_dynamic(Ctx, 20, 1);
 				nk_label(Ctx, "Color:", NK_TEXT_LEFT);
+				nk_layout_row_dynamic(Ctx, 20, 3);
 				nk_property_float(Ctx, "#R:", 0.0f, &SelectedLight->LightColor.x, 5000.0f, 10.0f, 1.0f);
 				nk_property_float(Ctx, "#G:", 0.0f, &SelectedLight->LightColor.y, 5000.0f, 10.0f, 1.0f);
 				nk_property_float(Ctx, "#B:", 0.0f, &SelectedLight->LightColor.z, 5000.0f, 10.0f, 1.0f);

@@ -153,14 +153,6 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	ExitIfFailed(hr);
 }
 
-XMMATRIX
-R_NormalMatrix(XMFLOAT4X4 *Model)
-{
-	XMMATRIX ModelMatrix = XMLoadFloat4x4(Model);
-	XMMATRIX ModelInv = XM_MAT_INV(NULL, ModelMatrix);
-	return XM_MAT_TRANSP(ModelInv);
-}
-
 void
 R_CreateBillboardPipelineState(R_Core *Renderer)
 {
@@ -265,4 +257,97 @@ R_CreateBillboardPipelineState(R_Core *Renderer)
 	hr =
 		ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_BILLBOARD]);
 	ExitIfFailed(hr);
+}
+
+void
+R_CreateGridPipelineState(R_Core *Renderer)
+{
+	WCHAR ShadersPath[MAX_PATH];
+	Win32FullPath(L"/shaders/gltf/grid.hlsl", ShadersPath, _countof(ShadersPath));
+	ID3DBlob *VS = NULL;
+	HRESULT hr = R_CompileShader(ShadersPath, &VS, EST_VERTEX_SHADER);
+	ExitIfFailed(hr);
+	ID3DBlob *PS = NULL;
+	hr = R_CompileShader(ShadersPath, &PS, EST_PIXEL_SHADER);
+	ExitIfFailed(hr);
+
+	D3D12_ROOT_PARAMETER RootParameters[1];
+
+	// MeshData (b0)
+	RootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	RootParameters[0].Descriptor.ShaderRegister = 0;
+	RootParameters[0].Descriptor.RegisterSpace = 0;
+	RootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+
+	D3D12_ROOT_SIGNATURE_DESC RootSignatureDesc = {
+	  .NumParameters = _countof(RootParameters),
+	  .pParameters = RootParameters,
+	  .NumStaticSamplers = 0,
+	  .pStaticSamplers = NULL,
+	  .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
+	};
+
+	ID3DBlob *Signature = NULL;
+	ID3DBlob *Error = NULL;
+	hr = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &Error);
+
+	if (FAILED(hr)) {
+		if (Error) {
+			S_LogAppend((PWSTR)ID3D10Blob_GetBufferPointer(Error));
+		}
+		ExitIfFailed(hr);
+	}
+
+	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature),
+										  &IID_ID3D12RootSignature, &Renderer->RootSignGrid);
+
+	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
+	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
+	  .pRootSignature = Renderer->RootSignGrid,
+	  .InputLayout = (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
+	  .VS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS), .BytecodeLength = ID3D10Blob_GetBufferSize(VS)},
+	  .PS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(PS), .BytecodeLength = ID3D10Blob_GetBufferSize(PS)},
+	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
+	  .DSVFormat = DXGI_FORMAT_D32_FLOAT,
+	  .SampleMask = UINT_MAX,
+	  .PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE,
+	  .NumRenderTargets = 1,
+	  .RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM,
+	  .SampleDesc.Count = 1,
+	};
+	PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	D3D12_RENDER_TARGET_BLEND_DESC TransparencyBlend = {
+	  .BlendEnable = TRUE,
+	  .LogicOpEnable = FALSE,
+	  .SrcBlend = D3D12_BLEND_SRC_ALPHA,
+	  .DestBlend = D3D12_BLEND_INV_SRC_ALPHA,
+	  .BlendOp = D3D12_BLEND_OP_ADD,
+	  .SrcBlendAlpha = D3D12_BLEND_ONE,
+	  .DestBlendAlpha = D3D12_BLEND_ZERO,
+	  .BlendOpAlpha = D3D12_BLEND_OP_ADD,
+	  .LogicOp = D3D12_LOGIC_OP_NOOP,
+	  .RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+	};
+	PSODesc.BlendState.RenderTarget[0] = TransparencyBlend;
+
+	PSODesc.DepthStencilState = (D3D12_DEPTH_STENCIL_DESC){
+	  .DepthEnable = TRUE,
+	  .DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO,
+	  .DepthFunc = D3D12_COMPARISON_FUNC_LESS,
+	  .StencilEnable = FALSE,
+	};
+
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_GRID]);
+	ExitIfFailed(hr);
+}
+
+XMMATRIX
+R_NormalMatrix(XMFLOAT4X4 *Model)
+{
+	XMMATRIX ModelMatrix = XMLoadFloat4x4(Model);
+	XMMATRIX ModelInv = XM_MAT_INV(NULL, ModelMatrix);
+	return XM_MAT_TRANSP(ModelInv);
 }

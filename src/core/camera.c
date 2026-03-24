@@ -1,17 +1,18 @@
-#include "pch.h"
 #include "camera.h"
+#include "pch.h"
 
 /*****************************************************************
  Private functions
 ******************************************************************/
 
 static void
-CameraReset(R_Camera *camera)
+CameraReset(R_Camera *Camera)
 {
-	camera->Position = camera->InitialPosition;
-	camera->Yaw = 2 * XM_PI;
-	camera->Pitch = 0.0f;
-	camera->LookDirection = (XMFLOAT3){0, 0, 0};
+	Camera->Position = Camera->InitialPosition;
+	Camera->Yaw = 2 * XM_PI;
+	Camera->Pitch = 0.0f;
+	Camera->LookDirection = (XMFLOAT3){0, 0, 0};
+	Camera->SpeedEnhance = 1.0f;
 }
 
 /*****************************************************************
@@ -30,6 +31,7 @@ R_CameraSpawn(XMFLOAT3 Position)
 	  .UpDirection = {0, 1, 0},
 	  .MoveSpeed = {5.0f},
 	  .TurnSpeed = XM_PIDIV4,
+	  .SpeedEnhance = 1.0f,
 	};
 }
 
@@ -98,7 +100,7 @@ R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 	XMVECTOR Zero = XMVectorZero();
 	if (!XM_VEC3_EQ(Movement, Zero)) {
 		Movement = XM_VEC3_NORM(Movement);
-		Movement = XM_VEC_SCALE(Movement, Camera->MoveSpeed * ElapsedSeconds);
+		Movement = XM_VEC_SCALE(Movement, Camera->SpeedEnhance * Camera->MoveSpeed * ElapsedSeconds);
 
 		XMFLOAT3 Delta;
 		XM_STORE_FLOAT3(&Delta, Movement);
@@ -155,6 +157,9 @@ R_CameraOnKeyDown(R_Camera *Camera, WPARAM Key)
 	case VK_ESCAPE:
 		CameraReset(Camera);
 		break;
+	case VK_SHIFT:
+		Camera->SpeedEnhance = 3.0f;
+		break;
 	}
 }
 
@@ -185,6 +190,9 @@ R_CameraOnKeyUp(R_Camera *Camera, WPARAM Key)
 		break;
 	case VK_DOWN:
 		Camera->KeysPressed.DownArrow = FALSE;
+		break;
+	case VK_SHIFT:
+		Camera->SpeedEnhance = 1.0f;
 		break;
 	}
 }

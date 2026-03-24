@@ -1,7 +1,12 @@
 // PBR inspired by https://learnopengl.com/PBR/Lighting
 // Bindless inspired by https://alextardif.com/Bindless.html
 
+
 #define TextureSpace space1
+
+static const uint MAX_LIGHT_NUMBER = 7;
+static const float PI = 3.14159265359;
+static const uint TEXTURES_N_DESCRIPTORS = 15;
 
 float3 getNormalFromMap(float2 texCoords, float3 worldPos, float3 normal);
 float DistributionGGX(float3 N, float3 H, float roughness);
@@ -9,9 +14,12 @@ float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(float3 N, float3 V, float3 L, float roughness);
 float3 fresnelSchlick(float cosTheta, float3 F0);
 
-static const uint TEXTURES_N_DESCRIPTORS = 15;
-static const uint MAX_LIGHT_NUMBER = 7;
-static const float PI = 3.14159265359;
+
+struct Light
+{
+    float3 position;
+    float3 color;
+};
 
 cbuffer MeshData : register(b0)
 {
@@ -39,12 +47,6 @@ cbuffer PBRData : register(b1)
     uint roughnessTextureIndex;
     uint aoTextureIndex;
     uint emissiveTextureIndex;
-};
-
-struct Light
-{
-    float3 position;
-    float3 color;
 };
 
 cbuffer SceneData : register(b2)

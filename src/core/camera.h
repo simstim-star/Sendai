@@ -11,6 +11,7 @@ typedef struct R_Camera {
 	XMFLOAT3 UpDirection;
 	float MoveSpeed; // units per second
 	float TurnSpeed; // radians per second
+	float SpeedEnhance;
 
 	struct {
 		bool W;

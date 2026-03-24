@@ -32,6 +32,7 @@ UI_Init(S_UI *const UI, R_Core *Renderer)
 	UI->Action[UI_ACTION_NONE] = S_DoNothing;
 	UI->Action[UI_ACTION_FILE_OPEN] = S_FileOpen;
 	UI->Action[UI_ACTION_WIREFRAME_BUTTON_CLICKED] = S_WireframeMode;
+	UI->Action[UI_ACTION_GRID_BUTTON_CLICKED] = S_GridMode;
 
 	struct nk_font_atlas *Atlas;
 	nk_d3d12_font_stash_begin(&Atlas);
@@ -134,10 +135,13 @@ UI_SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *Texture)
 void
 LoadCustomTextures(R_Core *Renderer)
 {
-	WCHAR WireframePath[512];
-	Win32FullPath(L"/assets/images/wireframe.png", WireframePath, _countof(WireframePath));
-	R_CreateUITexture(WireframePath, Renderer, UI_EUT_WIREFRAME);
-	WCHAR CameraPath[512];
-	Win32FullPath(L"/assets/images/camera.png", CameraPath, _countof(CameraPath));
-	R_CreateUITexture(CameraPath, Renderer, UI_EUT_CAMERA);
+	WCHAR Path[512];
+	Win32FullPath(L"/assets/images/wireframe.png", Path, _countof(Path));
+	R_CreateUITexture(Path, Renderer, UI_EUT_WIREFRAME);
+	
+	Win32FullPath(L"/assets/images/camera.png", Path, _countof(Path));
+	R_CreateUITexture(Path, Renderer, UI_EUT_CAMERA);
+
+	Win32FullPath(L"/assets/images/grid.png", Path, _countof(Path));
+	R_CreateUITexture(Path, Renderer, UI_EUT_GRID);
 }

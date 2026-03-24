@@ -7,7 +7,8 @@
 
 static const float HEIGHT_PERCENTAGE = 0.05f;
 static const float BUTTON_SIZE = 50.0f;
-static const float WINDOW_WIDTH = 450.0f;
+static const float WINDOW_WIDTH = 650.0f;
+static const int TAB_COLS = 8;
 
 UI_EAction
 UI_DrawToolbar(UI_Renderer *UI, UI_ToolBarState *State)
@@ -21,12 +22,18 @@ UI_DrawToolbar(UI_Renderer *UI, UI_ToolBarState *State)
 	nk_style_push_vec2(Ctx, &Ctx->style.window.padding, nk_vec2(5, 5));
 
 	if (nk_begin(Ctx, "Toolbar", WindowRect, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_layout_row_begin(Ctx, NK_STATIC, BUTTON_SIZE - 10, 7);
+		nk_layout_row_begin(Ctx, NK_STATIC, BUTTON_SIZE - 10, TAB_COLS);
 		{
 			nk_layout_row_push(Ctx, BUTTON_SIZE - 10);
 			if (nk_button_image(Ctx, UI_TEXTURES[UI_EUT_WIREFRAME])) {
 				Action = UI_ACTION_WIREFRAME_BUTTON_CLICKED;
 				State->Wireframe = !State->Wireframe;
+			}
+
+			nk_layout_row_push(Ctx, BUTTON_SIZE - 10);
+			if (nk_button_image(Ctx, UI_TEXTURES[UI_EUT_GRID])) {
+				Action = UI_ACTION_GRID_BUTTON_CLICKED;
+				State->Grid = !State->Grid;
 			}
 
 			nk_layout_row_push(Ctx, 10);
@@ -40,13 +47,13 @@ UI_DrawToolbar(UI_Renderer *UI, UI_ToolBarState *State)
 				nk_button_image_styled(Ctx, &static_btn, UI_TEXTURES[UI_EUT_CAMERA]);
 			}
 
-			nk_layout_row_push(Ctx, 70);
+			nk_layout_row_push(Ctx, 110);
 			nk_property_float(Ctx, "#X:", -1000.0f, &State->Camera->Position.x, 1000.0f, 0.1f, 0.05f);
-			nk_layout_row_push(Ctx, 70);
+			nk_layout_row_push(Ctx, 110);
 			nk_property_float(Ctx, "#Y:", -1000.0f, &State->Camera->Position.y, 1000.0f, 0.1f, 0.05f);
-			nk_layout_row_push(Ctx, 70);
+			nk_layout_row_push(Ctx, 110);
 			nk_property_float(Ctx, "#Z:", -1000.0f, &State->Camera->Position.z, 1000.0f, 0.1f, 0.05f);
-			nk_layout_row_push(Ctx, 100);
+			nk_layout_row_push(Ctx, 110);
 			nk_property_float(Ctx, "Speed:", 0.0f, &State->Camera->MoveSpeed, 100.0f, 1.0f, 0.5f);
 		}
 		nk_layout_row_end(Ctx);

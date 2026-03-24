@@ -8,6 +8,7 @@
 
 #include "../core/camera.h"
 #include "../core/memory.h"
+#include "../core/grid.h"
 #include "../dx_helpers/desc_helpers.h"
 #include "../error/error.h"
 #include "../ui/ui.h"
@@ -50,6 +51,7 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	  .TopLeftX = 0.0f, .TopLeftY = 0.0f, .Width = (FLOAT)(Renderer->Width), .Height = (FLOAT)(Renderer->Height), .MinDepth = 0.0f, .MaxDepth = 1.0f};
 	Renderer->ScissorRect = (D3D12_RECT){0, 0, (LONG)(Renderer->Width), (LONG)(Renderer->Height)};
 	Renderer->State = ERS_GLTF;
+	Renderer->bDrawGrid = TRUE;
 
 	/* D3D12 setup */
 
@@ -175,6 +177,9 @@ R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const
 	  .Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f),
 	};
 	RenderPrimitives(Scene, Renderer, &MeshConstants);
+	if (Renderer->bDrawGrid) {
+		R_RenderGrid(&MeshConstants, Renderer, 100.0f);
+	}
 	RenderLightBillboards(Scene, Renderer, &MeshConstants);
 	UI_Draw(Renderer->CommandList);
 
@@ -448,6 +453,7 @@ CreateShaders(R_Core *const Renderer)
 {
 	R_CreatePBRPipelineState(Renderer);
 	R_CreateBillboardPipelineState(Renderer);
+	R_CreateGridPipelineState(Renderer);
 }
 
 R_SceneData

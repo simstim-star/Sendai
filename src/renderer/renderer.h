@@ -11,7 +11,7 @@ typedef struct R_Primitive R_Primitive;
 typedef struct R_Texture R_Texture;
 typedef struct TextureLookup TextureLookup;
 
-typedef enum ERenderState { ERS_GLTF, ERS_WIREFRAME, ERS_BILLBOARD, ERS_N_RENDER_STATES } ERenderState;
+typedef enum ERenderState { ERS_GLTF, ERS_WIREFRAME, ERS_BILLBOARD, ERS_GRID, ERS_N_RENDER_STATES } ERenderState;
 
 typedef struct R_UploadBuffer {
 	ID3D12Resource *Buffer;
@@ -45,6 +45,7 @@ typedef struct R_Core {
 
 	ID3D12RootSignature *RootSignPBR;
 	ID3D12RootSignature *RootSignBillboard;
+	ID3D12RootSignature *RootSignGrid;
 
 	ID3D12Resource *DepthStencil;
 	ID3D12DescriptorHeap *DepthStencilHeap;
@@ -54,6 +55,7 @@ typedef struct R_Core {
 	ID3D12GraphicsCommandList *CommandList;
 
 	ERenderState State;
+	BOOL bDrawGrid;
 	ID3D12PipelineState *PipelineState[ERS_N_RENDER_STATES];
 
 	/*****************************

@@ -7,6 +7,7 @@ typedef struct R_Camera R_Camera;
 
 typedef struct UI_ToolBarState {
 	BOOL Wireframe;
+	BOOL Grid;
 	R_Camera *Camera;
 } UI_ToolBarState;
 

@@ -28,7 +28,7 @@ S_Run(void)
 {
 	Sendai Engine = {.Title = L"Sendai",
 					 .RendererCore = {.Width = 1280, .Height = 720},
-					 .Camera = R_CameraSpawn((XMFLOAT3){0, 2, -15}),
+					 .Camera = R_CameraSpawn((XMFLOAT3){0, 10, -20}),
 					 .Scene =
 						 {
 						   .SceneArena = M_ArenaInit(MEGABYTES(512)),
@@ -113,6 +113,12 @@ S_WireframeMode(Sendai *const Engine)
 	} else {
 		Engine->RendererCore.State = ERS_GLTF;
 	}
+}
+
+void
+S_GridMode(Sendai *const Engine)
+{
+	Engine->RendererCore.bDrawGrid = !Engine->RendererCore.bDrawGrid;
 }
 
 /****************************************************
