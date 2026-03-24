@@ -124,6 +124,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 	Model->Rotation.x = 0.0f;
 	Model->Rotation.y = 0.0f;
 	Model->Rotation.z = 0.0f;
+	Model->Visible = TRUE;
 
 	// I'm simplyfing Node == Mesh here, as my renderer is single Camera
 	for (size_t NodeIndex = 0; NodeIndex < NodeCount; NodeIndex++, Model->MeshesCount++) {

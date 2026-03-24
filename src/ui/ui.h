@@ -27,9 +27,15 @@ typedef struct UI_State {
 	UI_ToolBarState ToolBar;
 } UI_State;
 
-void UI_Init(UI_Renderer *const UI, struct R_Core *Renderer);
+typedef struct S_UI {
+	UI_Renderer Renderer;
+	UI_State State;
+	void (*Action[N_UI_ACTIONS])(Sendai *const Engine);
+} S_UI;
 
-void UI_Update(Sendai *Engine);
+void UI_Init(S_UI *const UI, struct R_Core *Renderer);
+
+void (*UI_GetAction(S_UI *const UI))(Sendai *const Engine);
 
 void UI_InputBegin(const UI_Renderer *UI);
 

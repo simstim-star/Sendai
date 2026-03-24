@@ -1,14 +1,14 @@
 #include "pch.h"
 
 #include "../assets/gltf.h"
+#include "../renderer/light.h"
 #include "../renderer/renderer.h"
 #include "../renderer/shader.h"
+#include "../renderer/texture.h"
 #include "../ui/ui.h"
 #include "../win32/file_dialog.h"
 #include "../win32/win_path.h"
 #include "engine.h"
-#include "../renderer/light.h"
-#include "../renderer/texture.h"
 
 /****************************************************
 	Forward declaration of private functions
@@ -17,8 +17,7 @@
 static void InitWindow(Sendai *const Engine);
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam);
 static void EngineUpdate(Sendai *const Engine);
-static void EngineDraw(Sendai *const Engine);
-static void LoadPrimitivesIntoBuffers(R_Core *const Renderer, const S_Scene *const Scene);
+static void LoadPrimitivesIntoBuffers(R_Core *const Renderer, const R_Model *const Model);
 
 /****************************************************
 	Public functions
@@ -42,7 +41,7 @@ S_Run(void)
 
 	InitWindow(&Engine);
 	R_Init(&Engine.RendererCore, Engine.hWnd);
-	UI_Init(&Engine.RendererUI, &Engine.RendererCore);
+	UI_Init(&Engine.UI, &Engine.RendererCore);
 	R_LightsInit(&Engine.Scene, &Engine.Camera);
 	S_TimerInit(&Engine.Timer);
 
@@ -50,7 +49,7 @@ S_Run(void)
 
 	MSG msg = {0};
 	while (Engine.bRunning) {
-		UI_InputBegin(&Engine.RendererUI);
+		UI_InputBegin(&Engine.UI.Renderer);
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
 			if (msg.message == WM_QUIT) {
 				Engine.bRunning = false;
@@ -58,11 +57,11 @@ S_Run(void)
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		UI_InputEnd(&Engine.RendererUI);
+		UI_InputEnd(&Engine.UI.Renderer);
 
 		if (Engine.bRunning) {
 			EngineUpdate(&Engine);
-			EngineDraw(&Engine);
+			R_Draw(&Engine.RendererCore, &Engine.Scene, &Engine.Camera);
 		}
 	}
 
@@ -79,6 +78,11 @@ S_Run(void)
 }
 
 void
+S_DoNothing(Sendai *const Engine)
+{
+}
+
+void
 S_FileOpen(Sendai *const Engine)
 {
 	PWSTR FilePath = Win32SelectGLTFPath();
@@ -86,14 +90,19 @@ S_FileOpen(Sendai *const Engine)
 		return;
 	}
 
-	if (Engine->Scene.UploadArena.Base) {
-		M_ArenaRelease(&Engine->Scene.UploadArena);
+	S_Scene *Scene = &Engine->Scene;
+	if (Scene->UploadArena.Base) {
+		M_ArenaRelease(&Scene->UploadArena);
 	}
-	Engine->Scene.UploadArena = M_ArenaInit(MEGABYTES(512));
-
-	SendaiGLTF_LoadModel(FilePath, &Engine->Scene);
-	LoadPrimitivesIntoBuffers(&Engine->RendererCore, &Engine->Scene);
+	
+	Scene->UploadArena = M_ArenaInit(MEGABYTES(512));
+	
+	SendaiGLTF_LoadModel(FilePath, Scene);
+	UINT ModelIdx = Scene->ModelsCount - 1;
+	LoadPrimitivesIntoBuffers(&Engine->RendererCore, &Scene->Models[ModelIdx]);
+	
 	CoTaskMemFree(FilePath);
+	M_ArenaRelease(&Scene->UploadArena);
 }
 
 void
@@ -148,7 +157,7 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			int width = LOWORD(lParam);
 			int height = HIWORD(lParam);
 			R_SwapchainResize(&Engine->RendererCore, width, height);
-			UI_Resize(&Engine->RendererUI, width, height);
+			UI_Resize(&Engine->UI.Renderer, width, height);
 		}
 		return 0;
 
@@ -189,27 +198,27 @@ EngineUpdate(Sendai *const Engine)
 
 	S_Tick(&Engine->Timer);
 	R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
-	UI_Update(Engine);
-}
 
-static void
-EngineDraw(Sendai *const Engine)
-{
-	R_Draw(&Engine->RendererCore, &Engine->Scene, &Engine->Camera);
+	Engine->UI.State.BottomBar.FPS = Engine->Timer.FramesPerSecond;
+	Engine->UI.State.BottomBar.FrameCounter = Engine->FrameCounter;
+	Engine->UI.State.BottomBar.Scene = &Engine->Scene;
+	Engine->UI.State.ToolBar.Camera = &Engine->Camera;
+	void (*Action)(Sendai *const Engine) = UI_GetAction(&Engine->UI);
+	Action(Engine);
 }
 
 void
-LoadPrimitivesIntoBuffers(R_Core *const Renderer, const S_Scene *const Scene)
+LoadPrimitivesIntoBuffers(R_Core *const Renderer, const R_Model *const Model)
 {
-	void *pData;
-	ID3D12Resource_Map(Renderer->VertexBufferUpload, 0, NULL, &pData);
-	UINT ModelIdx = Scene->ModelsCount - 1;
-	for (int MeshIdx = 0; MeshIdx < Scene->Models[ModelIdx].MeshesCount; ++MeshIdx) {
-		const R_Mesh *const Mesh = &Scene->Models[ModelIdx].Meshes[MeshIdx];
+	void *MappedVertexUploadData;
+	ID3D12Resource_Map(Renderer->VertexBufferUpload, 0, NULL, &MappedVertexUploadData);
+
+	for (int MeshIdx = 0; MeshIdx < Model->MeshesCount; ++MeshIdx) {
+		const R_Mesh *const Mesh = &Model->Meshes[MeshIdx];
 		for (int PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
 			R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
 			UINT VertexBufferSize = sizeof(R_Vertex) * Primitive->VertexCount;
-			memcpy((BYTE *)pData + Renderer->CurrentUploadBufferOffset, Primitive->Vertices, VertexBufferSize);
+			memcpy((BYTE *)MappedVertexUploadData + Renderer->CurrentUploadBufferOffset, Primitive->Vertices, VertexBufferSize);
 			Primitive->VertexBufferView.BufferLocation =
 				ID3D12Resource_GetGPUVirtualAddress(Renderer->VertexBufferDefault) + Renderer->CurrentVertexBufferOffset;
 			Primitive->VertexBufferView.SizeInBytes = VertexBufferSize;
@@ -220,7 +229,7 @@ LoadPrimitivesIntoBuffers(R_Core *const Renderer, const S_Scene *const Scene)
 			Renderer->CurrentUploadBufferOffset += VertexBufferSize;
 
 			UINT IndexBufferSize = Primitive->IndexCount * sizeof(UINT16);
-			memcpy((BYTE *)pData + Renderer->CurrentUploadBufferOffset, Primitive->Indices, IndexBufferSize);
+			memcpy((BYTE *)MappedVertexUploadData + Renderer->CurrentUploadBufferOffset, Primitive->Indices, IndexBufferSize);
 			Primitive->IndexBufferView.BufferLocation =
 				ID3D12Resource_GetGPUVirtualAddress(Renderer->IndexBufferDefault) + Renderer->CurrentIndexBufferOffset;
 			Primitive->IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
@@ -230,7 +239,7 @@ LoadPrimitivesIntoBuffers(R_Core *const Renderer, const S_Scene *const Scene)
 			Renderer->CurrentIndexBufferOffset += IndexBufferSize;
 			Renderer->CurrentUploadBufferOffset += IndexBufferSize;
 
-			R_LoadPBRTextures(Primitive, Renderer, Scene);
+			R_LoadPBRTextures(Primitive, Renderer);
 		}
 	}
 
@@ -249,5 +258,4 @@ LoadPrimitivesIntoBuffers(R_Core *const Renderer, const S_Scene *const Scene)
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &BarrierIndexBuffer);
 
 	ID3D12Resource_Unmap(Renderer->VertexBufferUpload, 0, NULL);
-	M_ArenaRelease(&Scene->UploadArena);
 }

@@ -100,5 +100,7 @@ typedef struct R_Model {
 
 	R_Texture *Images;
 	size_t ImagesCount;
+
+	BOOL Visible;
 } R_Model;
 

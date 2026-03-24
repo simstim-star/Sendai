@@ -138,16 +138,17 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 		if (nk_group_begin(Ctx, "SceneTableGroup", NK_WINDOW_BORDER)) {
 			nk_layout_row_dynamic(Ctx, 22, 2);
 			nk_label(Ctx, "Name", NK_TEXT_LEFT);
-			nk_label(Ctx, "Status", NK_TEXT_LEFT);
+			nk_label(Ctx, "Visible", NK_TEXT_LEFT);
 
 			for (int i = 0; i < State->Scene->ModelsCount; i++) {
 				R_Model *Model = &State->Scene->Models[i];
 				int IsSelected = (State->SelectedModelIndex == i);
 
-				nk_layout_row_dynamic(Ctx, 20, 1);
+				nk_layout_row_dynamic(Ctx, 20, 2);
 				if (nk_selectable_label(Ctx, Model->Name, NK_TEXT_LEFT, &IsSelected)) {
 					State->SelectedModelIndex = i;
 				}
+				nk_checkbox_label(Ctx, "", &Model->Visible);
 			}
 			nk_group_end(Ctx);
 		}

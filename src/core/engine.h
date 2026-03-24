@@ -14,9 +14,8 @@ typedef struct Sendai {
 	BOOL bRunning;
 
 	R_Core RendererCore;
-	UI_Renderer RendererUI;
-	UI_State UIState;
-
+	
+	S_UI UI;
 	R_Camera Camera;
 	S_StepTimer Timer;
 	S_Scene Scene;
@@ -25,5 +24,6 @@ typedef struct Sendai {
 
 INT S_Run(void);
 
+void S_DoNothing(Sendai *const Engine);
 void S_FileOpen(Sendai *const Engine);
 void S_WireframeMode(Sendai *const Engine);

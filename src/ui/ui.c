@@ -2,7 +2,6 @@
 
 #include "ui.h"
 
-#include "../core/camera.h"
 #include "../core/engine.h"
 #include "../core/log.h"
 #include "../dx_helpers/desc_helpers.h"
@@ -24,11 +23,15 @@ static void LoadCustomTextures(R_Core *Renderer);
 *****************************************************/
 
 void
-UI_Init(UI_Renderer *const UI, R_Core *Renderer)
+UI_Init(S_UI *const UI, R_Core *Renderer)
 {
-	UI->Context = nk_d3d12_init(Renderer->Device, Renderer->Width, Renderer->Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, UI_EUT_NUM_USER_TEXTURES);
-	UI->Width = Renderer->Width;
-	UI->Height = Renderer->Height;
+	UI->Renderer.Context = nk_d3d12_init(Renderer->Device, Renderer->Width, Renderer->Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, UI_EUT_NUM_USER_TEXTURES);
+	UI->Renderer.Width = Renderer->Width;
+	UI->Renderer.Height = Renderer->Height;
+
+	UI->Action[UI_ACTION_NONE] = S_DoNothing;
+	UI->Action[UI_ACTION_FILE_OPEN] = S_FileOpen;
+	UI->Action[UI_ACTION_WIREFRAME_BUTTON_CLICKED] = S_WireframeMode;
 
 	struct nk_font_atlas *Atlas;
 	nk_d3d12_font_stash_begin(&Atlas);
@@ -36,28 +39,12 @@ UI_Init(UI_Renderer *const UI, R_Core *Renderer)
 	LoadCustomTextures(Renderer);
 }
 
-void
-UI_Update(Sendai *Engine)
+void (*UI_GetAction(S_UI *const UI))(Sendai *const Engine)
 {
-	Engine->UIState.BottomBar.FPS = Engine->Timer.FramesPerSecond;
-	Engine->UIState.BottomBar.FrameCounter = Engine->FrameCounter;
-	Engine->UIState.BottomBar.Scene = &Engine->Scene;
-	Engine->UIState.ToolBar.Camera = &Engine->Camera;
-	
-	UI_EAction Action = UI_DrawTopBar(&Engine->RendererUI, &Engine->UIState.TopBar) | UI_DrawToolbar(&Engine->RendererUI, &Engine->UIState.ToolBar) |
-						UI_DrawBottomPanel(&Engine->RendererUI, &Engine->UIState.BottomBar);
+	UI_EAction Action = UI_DrawTopBar(&UI->Renderer, &UI->State.TopBar) | UI_DrawToolbar(&UI->Renderer, &UI->State.ToolBar) |
+						UI_DrawBottomPanel(&UI->Renderer, &UI->State.BottomBar);
 
-	switch (Action) {
-	case UI_ACTION_FILE_OPEN: {
-		S_FileOpen(Engine);
-		break;
-	}
-	case UI_ACTION_WIREFRAME_BUTTON_CLICKED:
-		S_WireframeMode(Engine);
-		break;
-	default:
-		break;
-	}
+	return UI->Action[Action];
 }
 
 UI_EAction

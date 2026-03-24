@@ -176,7 +176,7 @@ R_GetTextureIndex(R_Core *const Renderer, const R_Texture *const Texture)
 }
 
 void
-R_LoadPBRTextures(R_Primitive *const Primitive, R_Core *const Renderer, S_Scene *const Scene)
+R_LoadPBRTextures(R_Primitive *const Primitive, R_Core *const Renderer)
 {
 	Primitive->cb.AlbedoTextureIndex = R_GetTextureIndex(Renderer, Primitive->Albedo);
 	Primitive->cb.NormalTextureIndex = R_GetTextureIndex(Renderer, Primitive->Normal);
@@ -184,5 +184,4 @@ R_LoadPBRTextures(R_Primitive *const Primitive, R_Core *const Renderer, S_Scene 
 	Primitive->cb.RoughnessTextureIndex = R_GetTextureIndex(Renderer, Primitive->Roughness);
 	Primitive->cb.OcclusionTextureIndex = R_GetTextureIndex(Renderer, Primitive->Occlusion);
 	Primitive->cb.EmissiveTextureIndex = R_GetTextureIndex(Renderer, Primitive->Emissive);
-	M_ArenaReset(&Scene->UploadArena);
 }
