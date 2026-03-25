@@ -6,6 +6,7 @@
 #include "../core/log.h"
 #include "../core/scene.h"
 #include "../renderer/render_types.h"
+#include "../shaders/sendai/shader_defs.h"
 
 static const float HANDLE_HEIGHT = 10.0f;
 static const float INFO_BAR_HEIGHT = 22.0f;
@@ -206,7 +207,7 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 			nk_label(Ctx, "Name", NK_TEXT_LEFT);
 			nk_label(Ctx, "Active", NK_TEXT_LEFT);
 
-			for (int i = 0; i < 7; i++) {
+			for (int i = 0; i < PBR_MAX_LIGHT_NUMBER; i++) {
 				BOOL IsSelected = (State->SelectedLightIndex == i);
 				char AsStr[12];
 				sprintf_s(AsStr, sizeof(AsStr), "%d", i);
@@ -233,7 +234,7 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 		}
 
 		if (nk_group_begin(Ctx, "InspectorGroup", NK_WINDOW_BORDER)) {
-			if (State->SelectedLightIndex >= 0 && State->SelectedLightIndex < 7) {
+			if (State->SelectedLightIndex >= 0 && State->SelectedLightIndex < PBR_MAX_LIGHT_NUMBER) {
 				R_Light *SelectedLight = &State->Scene->Data.Lights[State->SelectedLightIndex];
 
 				nk_layout_row_dynamic(Ctx, 20, 1);

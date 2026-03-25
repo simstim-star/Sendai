@@ -12,7 +12,7 @@
 static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
 
 static const R_Texture WhiteTexture = {
-  .Name = "fallback_black",
+  .Name = "fallback_white",
   .Pixels = WHITE_PIXEL,
   .Width = 1,
   .Height = 1,

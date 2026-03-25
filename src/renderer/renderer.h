@@ -42,7 +42,7 @@ typedef struct R_Core {
 	ID3D12Resource *RtvBuffers[FRAME_COUNT];
 	D3D12_CPU_DESCRIPTOR_HANDLE RtvHandles[FRAME_COUNT];
 	UINT RtvIndex;
-	
+
 	ID3D12DescriptorHeap *TexturesHeap;
 	UINT TexturesCount;
 	R_UploadBuffer TextureUploadBuffer;
@@ -100,7 +100,6 @@ typedef struct R_Core {
 } R_Core;
 
 void R_Init(R_Core *const Renderer, HWND hWnd);
-void GetAdapterDesc(IDXGIFactory2 *Factory);
 void R_Destroy(R_Core *Renderer);
 void R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const Camera);
 void Draw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);

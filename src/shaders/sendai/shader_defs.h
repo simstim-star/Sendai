@@ -1,0 +1,4 @@
+#pragma once
+
+#define PBR_MAX_LIGHT_NUMBER 7
+#define PBR_N_TEXTURES_DESCRIPTORS 2046

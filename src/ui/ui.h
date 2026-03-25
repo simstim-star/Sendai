@@ -3,8 +3,8 @@
 #include "sendai_nk.h"
 
 #include "ui_bottom_panel.h"
-#include "ui_top_bar.h"
 #include "ui_tool_bar.h"
+#include "ui_top_bar.h"
 
 typedef struct nk_context nk_context;
 typedef struct S_Scene S_Scene;

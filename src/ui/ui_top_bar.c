@@ -5,7 +5,6 @@
 
 static const INT LAYOUT_ROW_COLS = 10;
 static const FLOAT BAR_HEIGHT_PERCENTAGE = 0.05f;
-// how much of the bar it will take
 static const FLOAT BUTTON_LAOYUT_PERCENTAGE = 0.8f;
 
 void InfoPopup(UI_Renderer *UI, UI_TopBarState *State);

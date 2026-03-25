@@ -1,12 +1,11 @@
 // PBR inspired by https://learnopengl.com/PBR/Lighting
 // Bindless inspired by https://alextardif.com/Bindless.html
 
+#include "shader_defs.h"
 
 #define TextureSpace space1
 
-static const uint MAX_LIGHT_NUMBER = 7;
 static const float PI = 3.14159265359;
-static const uint TEXTURES_N_DESCRIPTORS = 15;
 
 float3 getNormalFromMap(float2 texCoords, float3 worldPos, float3 normal);
 float DistributionGGX(float3 N, float3 H, float roughness);
@@ -51,11 +50,11 @@ cbuffer PBRData : register(b1)
 
 cbuffer SceneData : register(b2)
 {
-    Light lights[MAX_LIGHT_NUMBER];
+    Light lights[PBR_MAX_LIGHT_NUMBER];
     float3 camPos;
 };
 
-Texture2D Texture2DTable[TEXTURES_N_DESCRIPTORS] : register(t0, TextureSpace);
+Texture2D Texture2DTable[PBR_N_TEXTURES_DESCRIPTORS] : register(t0, TextureSpace);
 
 SamplerState defaultSampler : register(s0);
 
@@ -114,7 +113,7 @@ float4 PSMain(PSIn input) : SV_TARGET
     F0 = lerp(F0, albedo, metallic);
 
     float3 Lo = float3(0.0, 0.0, 0.0);
-    for (int i = 0; i < MAX_LIGHT_NUMBER; ++i)
+    for (int i = 0; i < PBR_MAX_LIGHT_NUMBER; ++i)
     {
         float3 L = normalize(lights[i].position - input.fragPos);
         float3 H = normalize(V + L);

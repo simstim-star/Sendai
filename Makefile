@@ -82,8 +82,8 @@ setup:
 	@if not exist $(OBJ_DIR)\assets mkdir $(OBJ_DIR)\assets
 
 copy_shaders:
-	@if not exist $(OUT_DIR)\shaders\gltf mkdir $(OUT_DIR)\shaders\gltf
-	@xcopy /Y /S src\shaders\gltf\* $(OUT_DIR)\shaders\gltf\
+	@if not exist $(OUT_DIR)\shaders\sendai mkdir $(OUT_DIR)\shaders\sendai
+	@xcopy /Y /S src\shaders\sendai\* $(OUT_DIR)\shaders\sendai\
 
 copy_assets:
 	@if not exist $(OUT_DIR)\assets mkdir $(OUT_DIR)\assets

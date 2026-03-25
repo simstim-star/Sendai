@@ -28,7 +28,7 @@ S_Run(void)
 {
 	Sendai Engine = {.Title = L"Sendai",
 					 .RendererCore = {.Width = 1280, .Height = 720},
-					 .Camera = R_CameraSpawn((XMFLOAT3){0, 10, -20}),
+					 .Camera = R_CameraSpawn((XMFLOAT3){0, 3, -20}),
 					 .Scene =
 						 {
 						   .SceneArena = M_ArenaInit(MEGABYTES(512)),

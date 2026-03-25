@@ -13,11 +13,10 @@
 #include "../error/error.h"
 #include "../ui/ui.h"
 #include "../win32/win_path.h"
+#include "../shaders/sendai/shader_defs.h"
 
 #include "../../deps/stb_ds.h"
 #include "billboard.h"
-
-#define MAX_TEXTURES 4096
 
 static const FLOAT CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
@@ -68,7 +67,7 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 
 	IDXGIFactory2 *Factory = NULL;
 	HRESULT hr = CreateDXGIFactory2(bIsDebugFactory, &IID_IDXGIFactory2, &Factory);
-	ExitIfFailed(hr); 
+	ExitIfFailed(hr);
 
 	GetAdapter(Factory, Renderer);
 
@@ -94,7 +93,7 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 
 	D3D12_DESCRIPTOR_HEAP_DESC SrvHeapDesc = {
 	  .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-	  .NumDescriptors = MAX_TEXTURES,
+	  .NumDescriptors = PBR_N_TEXTURES_DESCRIPTORS,
 	  .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 	  .NodeMask = 0,
 	};
@@ -457,7 +456,7 @@ PreprocessSceneData(const S_Scene *const Scene)
 {
 	R_SceneData Result = {0};
 	Result.CameraPosition = Scene->Data.CameraPosition;
-	R_UpdateLights(Scene->ActiveLightMask, Scene->Data.Lights, Result.Lights, NUM_LIGHTS);
+	R_UpdateLights(Scene->ActiveLightMask, Scene->Data.Lights, Result.Lights, PBR_MAX_LIGHT_NUMBER);
 	return Result;
 }
 

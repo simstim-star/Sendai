@@ -1,11 +1,13 @@
 #include "../core/pch.h"
 
+#include "billboard.h"
+#include "light.h"
+
 #include "../core/camera.h"
 #include "../core/engine.h"
 #include "../core/memory.h"
 #include "../core/scene.h"
-#include "light.h"
-#include "billboard.h"
+#include "../shaders/sendai/shader_defs.h"
 
 static void RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint);
 
@@ -49,7 +51,7 @@ R_RenderLightBillboards(R_Core *const Renderer, R_Light *Lights, BYTE ActiveLigh
 	LampTextureHandle.ptr += (UINT64)ERSI_BILLBOARD_LAMP * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
 	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, LampTextureHandle);
 
-	for (int i = 0; i < NUM_LIGHTS; ++i) {
+	for (int i = 0; i < PBR_MAX_LIGHT_NUMBER; ++i) {
 		if (ActiveLightMask & (1 << i)) {
 			XMVECTOR LightPos = XMLoadFloat3(&Lights[i].LightPosition);
 			MeshConstants->MVP.Model = XM_MAT_TRANSLATION_FROM_VEC(LightPos);

@@ -4,11 +4,12 @@
 
 #include "../core/log.h"
 #include "../dx_helpers/desc_helpers.h"
-#include "../win32/win_path.h"
 #include "../error/error.h"
+#include "../win32/win_path.h"
 #include "render_types.h"
 #include "renderer.h"
 #include "shader.h"
+#include "../shaders/sendai/shader_defs.h"
 
 HRESULT
 R_CompileShader(PCWSTR FilePath, ID3DBlob **Blob, EShaderType ShaderType)
@@ -23,10 +24,10 @@ R_CompileShader(PCWSTR FilePath, ID3DBlob **Blob, EShaderType ShaderType)
 
 	switch (ShaderType) {
 	case EST_VERTEX_SHADER:
-		hr = D3DCompileFromFile(FilePath, NULL, NULL, "VSMain", "vs_5_1", CompileFlags, 0, Blob, &ErrorBlob);
+		hr = D3DCompileFromFile(FilePath, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_1", CompileFlags, 0, Blob, &ErrorBlob);
 		break;
 	case EST_PIXEL_SHADER:
-		hr = D3DCompileFromFile(FilePath, NULL, NULL, "PSMain", "ps_5_1", CompileFlags, 0, Blob, &ErrorBlob);
+		hr = D3DCompileFromFile(FilePath, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_1", CompileFlags, 0, Blob, &ErrorBlob);
 		break;
 	}
 
@@ -61,7 +62,7 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	// Texture Table (Bindless)
 	D3D12_DESCRIPTOR_RANGE SrvRange = {
 	  .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-	  .NumDescriptors = 15, 
+	  .NumDescriptors = PBR_N_TEXTURES_DESCRIPTORS,
 	  .BaseShaderRegister = 0,
 	  .RegisterSpace = 1,
 	  .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
@@ -87,8 +88,7 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	  .pParameters = RootParameters,
 	  .NumStaticSamplers = 1,
 	  .pStaticSamplers = &Sampler,
-	  .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-			   D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED,
+	  .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED,
 	};
 
 	ID3DBlob *Signature = NULL;
@@ -107,7 +107,7 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	ExitIfFailed(hr);
 
 	WCHAR GLTFShadersPath[512];
-	Win32FullPath(L"/shaders/gltf/pbr.hlsl", GLTFShadersPath, _countof(GLTFShadersPath));
+	Win32FullPath(L"/shaders/sendai/pbr.hlsl", GLTFShadersPath, _countof(GLTFShadersPath));
 	ID3DBlob *VS = NULL;
 	hr = R_CompileShader(GLTFShadersPath, &VS, EST_VERTEX_SHADER);
 	ExitIfFailed(hr);
@@ -157,7 +157,7 @@ void
 R_CreateBillboardPipelineState(R_Core *Renderer)
 {
 	WCHAR LightShadersPath[512];
-	Win32FullPath(L"/shaders/gltf/billboard.hlsl", LightShadersPath, _countof(LightShadersPath));
+	Win32FullPath(L"/shaders/sendai/billboard.hlsl", LightShadersPath, _countof(LightShadersPath));
 	ID3DBlob *VS = NULL;
 	HRESULT hr = R_CompileShader(LightShadersPath, &VS, EST_VERTEX_SHADER);
 	ExitIfFailed(hr);
@@ -219,10 +219,8 @@ R_CreateBillboardPipelineState(R_Core *Renderer)
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
 	  .pRootSignature = Renderer->RootSignBillboard,
 	  .InputLayout = (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
-	  .VS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS),
-									.BytecodeLength = ID3D10Blob_GetBufferSize(VS)},
-	  .PS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(PS),
-									.BytecodeLength = ID3D10Blob_GetBufferSize(PS)},
+	  .VS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS), .BytecodeLength = ID3D10Blob_GetBufferSize(VS)},
+	  .PS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(PS), .BytecodeLength = ID3D10Blob_GetBufferSize(PS)},
 	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
 	  .DSVFormat = DXGI_FORMAT_D32_FLOAT,
 	  .SampleMask = UINT_MAX,
@@ -253,8 +251,7 @@ R_CreateBillboardPipelineState(R_Core *Renderer)
 	  .StencilEnable = FALSE,
 	};
 
-	hr =
-		ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_BILLBOARD]);
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_BILLBOARD]);
 	ExitIfFailed(hr);
 }
 
@@ -262,7 +259,7 @@ void
 R_CreateGridPipelineState(R_Core *Renderer)
 {
 	WCHAR ShadersPath[MAX_PATH];
-	Win32FullPath(L"/shaders/gltf/grid.hlsl", ShadersPath, _countof(ShadersPath));
+	Win32FullPath(L"/shaders/sendai/grid.hlsl", ShadersPath, _countof(ShadersPath));
 	ID3DBlob *VS = NULL;
 	HRESULT hr = R_CompileShader(ShadersPath, &VS, EST_VERTEX_SHADER);
 	ExitIfFailed(hr);
@@ -277,7 +274,6 @@ R_CreateGridPipelineState(R_Core *Renderer)
 	RootParameters[0].Descriptor.ShaderRegister = 0;
 	RootParameters[0].Descriptor.RegisterSpace = 0;
 	RootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
 
 	D3D12_ROOT_SIGNATURE_DESC RootSignatureDesc = {
 	  .NumParameters = _countof(RootParameters),

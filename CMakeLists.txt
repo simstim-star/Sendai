@@ -24,8 +24,8 @@ set(HEADER_FILES ${CORE_HEADERS} ${WIN32_HEADERS} ${RENDERER_HEADERS} ${UI_HEADE
 
 set(DEPS_FILES "deps/b64.h" "deps/cgltf.h" "deps/nuklear.h" "deps/stb_ds.h" "deps/stb_image.h")
 
-set(SHADER_FILES "src/shaders/gltf/gltf.hlsl" "src/shaders/gltf/pbr.hlsl" "src/shaders/gltf/billboard.hlsl" 
-"src/shaders/gltf/grid.hlsl")
+set(SHADER_FILES "src/shaders/sendai/gltf.hlsl" "src/shaders/sendai/pbr.hlsl" "src/shaders/sendai/billboard.hlsl" 
+"src/shaders/sendai/grid.hlsl" "src/shaders/sendai/shader_defs.h")
 
 set_source_files_properties(${SHADER_FILES} PROPERTIES LANGUAGE HLSL)
 
@@ -56,7 +56,7 @@ target_link_options(${PROJECT_NAME} PRIVATE /INCREMENTAL:NO)
 
 add_custom_command(
     TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/gltf $<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders/gltf
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/sendai $<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders/sendai
     COMMENT "Copying triangle shaders" VERBATIM
 )
 

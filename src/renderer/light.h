@@ -1,7 +1,6 @@
 #pragma once
 #include "render_types.h"
 
-#define NUM_LIGHTS 7
 #define IS_LIGHT_ACTIVE(mask, i) (((mask) >> (i)) & 1)
 
 typedef struct S_Scene S_Scene;

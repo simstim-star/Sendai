@@ -13,8 +13,8 @@
 
 #include "../core/log.h"
 #include "../core/scene.h"
-#include "../win32/win_path.h"
 #include "../renderer/render_types.h"
+#include "../win32/win_path.h"
 #include "gltf.h"
 
 /****************************************************
@@ -121,12 +121,9 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 	Model->Scale.x = 1;
 	Model->Scale.y = 1;
 	Model->Scale.z = 1;
-	Model->Rotation.x = 0.0f;
-	Model->Rotation.y = 0.0f;
-	Model->Rotation.z = 0.0f;
 	Model->Visible = TRUE;
 
-	// I'm simplyfing Node == Mesh here, as my renderer is single Camera
+	// I'm simplyfing Node == Mesh here, as my renderer has its own Camera
 	for (size_t NodeIndex = 0; NodeIndex < NodeCount; NodeIndex++, Model->MeshesCount++) {
 		cgltf_node *NodeData = &Data->nodes[NodeIndex];
 		if (NodeData->mesh == NULL) {
@@ -151,7 +148,7 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 
 		for (cgltf_size PrimitiveId = 0; PrimitiveId < NodeMeshData->primitives_count; PrimitiveId++) {
 			cgltf_primitive *PrimitiveData = &NodeMeshData->primitives[PrimitiveId];
-			
+
 			cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum] = {0};
 			cgltf_accessor *UVAccessorsData[2] = {0};
 			RetriveAttributeData(PrimitiveData, UVAccessorsData, AccessorsData);
@@ -159,7 +156,6 @@ SendaiGLTF_LoadModel(PCWSTR Path, S_Scene *Scene)
 			R_Primitive *Primitive = &CurrentMesh->Primitives[PrimitiveId];
 			LoadPBRData(Model, Primitive, PrimitiveData, Data);
 			LoadVertexData(AccessorsData, Scene, UVAccessorsData, PrimitiveData, Primitive);
-			
 		}
 	}
 
@@ -257,7 +253,7 @@ LoadVertexData(
 }
 
 void
-PreloadImages(R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena* UploadArena)
+PreloadImages(R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena *UploadArena)
 {
 	Model->Images = M_ArenaAlloc(UploadArena, Data->images_count * sizeof(R_Texture));
 	Model->ImagesCount = Data->images_count;
@@ -518,12 +514,6 @@ void
 LoadPBRData(R_Model *Model, R_Primitive *Primitive, cgltf_primitive *PrimitiveData, cgltf_data *Data)
 {
 	const R_Texture *const Images = Model->Images;
-	Primitive->Albedo = NULL;
-	Primitive->Normal = NULL;
-	Primitive->Metallic = NULL;
-	Primitive->Roughness = NULL;
-	Primitive->Occlusion = NULL;
-	Primitive->Emissive = NULL;
 	if (PrimitiveData->material) {
 		cgltf_material *PrimitiveMaterialData = PrimitiveData->material;
 		if (PrimitiveMaterialData->has_pbr_metallic_roughness) {
