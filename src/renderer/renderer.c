@@ -260,6 +260,7 @@ R_Destroy(R_Core *Renderer)
 	ID3D12Resource_Release(Renderer->IndexBufferDefault);
 	ID3D12Resource_Release(Renderer->UploadBuffer);
 	ID3D12Resource_Release(Renderer->SceneDataUploadBuffer);
+	IDXGIAdapter3_Release(Renderer->Adapter);
 
 	for (INT i = 0; i < hmlen(Renderer->Textures); ++i) {
 		ID3D12Resource_Release(Renderer->Textures[i].Texture.GpuTexture);

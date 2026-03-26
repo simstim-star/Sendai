@@ -78,6 +78,7 @@ typedef struct R_Primitive {
 	UINT IndexCount;
 
 	R_PBRConstantBuffer ConstantBuffer;
+	BOOL bDoubleSided;
 } R_Primitive;
 
 typedef struct R_Mesh {

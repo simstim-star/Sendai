@@ -27,8 +27,8 @@
 *****************************************************/
 
 typedef struct MeshLookup {
-	char *key;
-	R_Mesh *Mesh;
+	cgltf_mesh *key;
+	R_Mesh *value;
 } MeshLookup;
 
 /****************************************************
@@ -162,6 +162,7 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 			RetriveAttributeData(PrimitiveData, UVAccessorsData, Accessors);
 
 			R_Primitive *Primitive = &CurrentMesh->Primitives[PrimitiveId];
+			Primitive->bDoubleSided = PrimitiveData->material && PrimitiveData->material->double_sided;
 			LoadPBRData(Renderer, Model->Images, Data->images, PrimitiveData->material, &Primitive->ConstantBuffer);
 
 			LoadVerticesAndIndicesIntoBuffers(Renderer, Primitive, Accessors[cgltf_attribute_type_position],
@@ -171,8 +172,8 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 											  UploadArena);
 		}
 
-		MeshLookup Lookup = {.key = MeshData->name, .Mesh = CurrentMesh};
-		shputs(MeshMap, Lookup);
+		MeshLookup Lookup = {.key = MeshData, .value = CurrentMesh};
+		hmput(MeshMap, MeshData, CurrentMesh);
 	}
 
 	Model->Nodes = M_ArenaAlloc(SceneArena, Data->nodes_count * sizeof(R_Node));
@@ -198,13 +199,10 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 		memcpy(&CurrentNode->ModelMatrix, TransformColMajor, sizeof(XMFLOAT4X4));
 
 		if (NodeData->mesh) {
-			ptrdiff_t Index = shgeti(MeshMap, NodeData->mesh->name);
-			if (Index != -1) {
-				CurrentNode->Mesh = MeshMap[Index].Mesh;
-			}
+			CurrentNode->Mesh = hmget(MeshMap, NodeData->mesh);
 		}
 	}
-	shfree(MeshMap);
+	hmfree(MeshMap);
 }
 
 cgltf_data *
