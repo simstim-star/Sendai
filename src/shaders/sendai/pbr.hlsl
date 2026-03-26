@@ -1,5 +1,6 @@
 // PBR inspired by https://learnopengl.com/PBR/Lighting
 // Bindless inspired by https://alextardif.com/Bindless.html
+// Tangents inspired by https://github.com/salvatorespoto/gLTFViewer/tree/master/DX12Engine/Source/Shaders
 
 #include "shader_defs.h"
 
@@ -7,12 +8,11 @@
 
 static const float PI = 3.14159265359;
 
-float3 getNormalFromMap(float2 texCoords, float3 worldPos, float3 normal);
+float3 getNormalFromMap(float2 texCoords, float3 normal, float4 tangent);
 float DistributionGGX(float3 N, float3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(float3 N, float3 V, float3 L, float roughness);
 float3 fresnelSchlick(float cosTheta, float3 F0);
-
 
 struct Light
 {
@@ -53,7 +53,7 @@ cbuffer SceneData : register(b2)
     float3 camPos;
 };
 
-Texture2D Texture2DTable[PBR_N_TEXTURES_DESCRIPTORS] : register(t0, TextureSpace);
+Texture2D pbrTextures[PBR_N_TEXTURES_DESCRIPTORS] : register(t0, TextureSpace);
 
 SamplerState defaultSampler : register(s0);
 
@@ -61,6 +61,7 @@ struct VSIn
 {
     float3 pos : POSITION;
     float3 norm : NORMAL;
+    float4 tangent : TANGENT;
     float2 uv : TEXCOORD0;
     float2 uv2 : TEXCOORD1;
 };
@@ -70,6 +71,7 @@ struct PSIn
     float4 pos : SV_POSITION;
     float3 fragPos : POSITION;
     float3 norm : NORMAL;
+    float4 tangent : TANGENT;
     float2 uv : TEXCOORD0;
     float2 uv2 : TEXCOORD1;
 };
@@ -94,18 +96,24 @@ PSIn VSMain(VSIn v)
     
     o.uv = mul(float3(v.uv, 1.0), uvMatrix).xy;
     o.uv2 = v.uv2;
+    
+    o.tangent.xyz = mul(float4(v.tangent.xyz, 0.0), normal).xyz;
+    o.tangent.w = v.tangent.w;
+    
     return o;
 }
 
 float4 PSMain(PSIn input) : SV_TARGET
 {
-    float3 albedo = baseColorFactor.xyz * pow(Texture2DTable[albedoTextureIndex].Sample(defaultSampler, input.uv).rgb, 2.2);
-    float3 metallic = metallicFactor * Texture2DTable[metallicTextureIndex].Sample(defaultSampler, input.uv).b;
-    float roughness = roughnessFactor * Texture2DTable[metallicTextureIndex].Sample(defaultSampler, input.uv).g;
-    float ao = Texture2DTable[aoTextureIndex].Sample(defaultSampler, input.uv2).r;
-    float3 emissive = emissiveFactor.xyz * Texture2DTable[emissiveTextureIndex].Sample(defaultSampler, input.uv).rgb;
+    float3 albedo = baseColorFactor.xyz * pow(pbrTextures[albedoTextureIndex].Sample(defaultSampler, input.uv).rgb, 2.2);
+    float metallic = metallicFactor * pbrTextures[metallicTextureIndex].Sample(defaultSampler, input.uv).b;
+    float roughness = roughnessFactor * pbrTextures[metallicTextureIndex].Sample(defaultSampler, input.uv).g;
+    float ao = pbrTextures[aoTextureIndex].Sample(defaultSampler, input.uv2).r;
+    float3 emissive = emissiveFactor.xyz * pbrTextures[emissiveTextureIndex].Sample(defaultSampler, input.uv).rgb;
 
-    float3 N = getNormalFromMap(input.uv, input.fragPos, input.norm);
+    input.norm = normalize(input.norm);
+    input.tangent.xyz = normalize(input.tangent.xyz);
+    float3 N = getNormalFromMap(input.uv, input.norm, input.tangent);
     float3 V = normalize(camPos - input.fragPos);
 
     float3 F0 = float3(0.04, 0.04, 0.04);
@@ -145,21 +153,21 @@ float4 PSMain(PSIn input) : SV_TARGET
     return float4(color, 1.0);
 }
 
-float3 getNormalFromMap(float2 texCoords, float3 worldPos, float3 normal)
+float3 getNormalFromMap(float2 texCoords, float3 normal, float4 tangent)
 {
-    float3 tangentNormal = Texture2DTable[normalTextureIndex].Sample(defaultSampler, texCoords).xyz * 2.0 - 1.0;
-
-    float3 Q1 = ddx(worldPos);
-    float3 Q2 = ddy(worldPos);
-    float2 st1 = ddx(texCoords);
-    float2 st2 = ddy(texCoords);
-
+    float3 tangentNormal = pbrTextures[normalTextureIndex].Sample(defaultSampler, texCoords).xyz * 2.0 - 1.0;
     float3 N = normalize(normal);
-    float3 T = normalize(Q1 * st2.y - Q2 * st1.y);
-    float3 B = -normalize(cross(N, T));
-    float3x3 TBN = float3x3(T, B, N);
-
-    return normalize(mul(tangentNormal, TBN));
+    float3 T = normalize(tangent.xyz);
+    
+    T = normalize(T - dot(T, N) * N);
+    
+    float3 B = cross(N, T) * tangent.w;
+    float3x3 TBN = float3x3(
+        T.x, B.x, N.x,
+        T.y, B.y, N.y,
+        T.z, B.z, N.z
+    );
+    return normalize(mul(TBN, tangentNormal));
 }
 
 float DistributionGGX(float3 N, float3 H, float roughness)

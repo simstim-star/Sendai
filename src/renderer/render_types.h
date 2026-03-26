@@ -5,6 +5,7 @@
 typedef struct R_Vertex {
 	XMFLOAT3 Position;
 	XMFLOAT3 Normal;
+	XMFLOAT4 Tangent;
 	XMFLOAT2 UV0;
 	XMFLOAT2 UV1;
 } R_Vertex;

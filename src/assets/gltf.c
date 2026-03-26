@@ -57,7 +57,9 @@ static PSTR CreateTextureName(M_Arena *UploadArena, cgltf_image *BaseImage, PCWS
 
 static BOOL IsDataEmbedded(const cgltf_image *const BaseImage);
 
-static void RetriveAttributeData(cgltf_primitive *PrimitiveData, cgltf_accessor *UVAccessorsData[2], cgltf_accessor *AccessorsData[9]);
+static void RetriveAttributeData(cgltf_primitive *PrimitiveData,
+								 cgltf_accessor *UVAccessorsData[2],
+								 cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum]);
 
 static void
 LoadPBRData(R_Core *Renderer, const R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB);
@@ -66,9 +68,16 @@ static void LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 											  R_Primitive *Primitive,
 											  cgltf_accessor *PositionAccessor,
 											  cgltf_accessor *NormalAccessor,
+											  cgltf_accessor *TangentAccessor,
 											  cgltf_accessor *IndicesAccessor,
 											  cgltf_accessor *UVAccessorsData[2],
 											  M_Arena *Arena);
+
+static XMFLOAT4 *ComputeTangents(cgltf_accessor *PositionAccessor,
+								 cgltf_accessor *NormalAccessor,
+								 cgltf_accessor *UVAccessor,
+								 cgltf_accessor *IndicesAccessor,
+								 M_Arena *Arena);
 
 /* The below functions are to inject into gltf loader to use my arena */
 
@@ -157,6 +166,7 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 
 			LoadVerticesAndIndicesIntoBuffers(Renderer, Primitive, Accessors[cgltf_attribute_type_position],
 											  Accessors[cgltf_attribute_type_normal],
+											  Accessors[cgltf_attribute_type_tangent],
 											  PrimitiveData->indices, UVAccessorsData,
 											  UploadArena);
 		}
@@ -239,7 +249,9 @@ SetModelName(PCWSTR Path, R_Model *Model, M_Arena *Arena)
 }
 
 void
-RetriveAttributeData(cgltf_primitive *PrimitiveData, cgltf_accessor *UVAccessorsData[2], cgltf_accessor *AccessorsData[9])
+RetriveAttributeData(cgltf_primitive *PrimitiveData,
+					 cgltf_accessor *UVAccessorsData[2],
+					 cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum])
 {
 	for (int AttributeId = 0; AttributeId < PrimitiveData->attributes_count; ++AttributeId) {
 		cgltf_attribute *AttributeData = &PrimitiveData->attributes[AttributeId];
@@ -260,6 +272,7 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 								  R_Primitive *Primitive,
 								  cgltf_accessor *PositionAccessor,
 								  cgltf_accessor *NormalAccessor,
+								  cgltf_accessor *TangentAccessor,
 								  cgltf_accessor *IndicesAccessor,
 								  cgltf_accessor *UVAccessorsData[2],
 								  M_Arena *Arena)
@@ -272,6 +285,10 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	UINT VertexCount = PositionAccessor->count;
 	UINT VertexBufferSize = sizeof(R_Vertex) * VertexCount;
 	R_Vertex *Vertices = M_ArenaAlloc(Arena, VertexBufferSize);
+	XMFLOAT4 *Tangents = NULL;
+	if (PositionAccessor && NormalAccessor && UVAccessorsData[0] && IndicesAccessor) {
+		Tangents = ComputeTangents(PositionAccessor, NormalAccessor, UVAccessorsData[0], IndicesAccessor, Arena);
+	}
 
 	for (UINT VertexIndex = 0; VertexIndex < VertexCount; VertexIndex++) {
 		FLOAT Position[3];
@@ -284,6 +301,20 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 			Vertices[VertexIndex].Normal.x = Normal[0];
 			Vertices[VertexIndex].Normal.y = Normal[1];
 			Vertices[VertexIndex].Normal.z = Normal[2];
+		}
+
+		if (TangentAccessor) {
+			FLOAT Tangent[4];
+			cgltf_accessor_read_float(TangentAccessor, VertexIndex, Tangent, 4);
+			Vertices[VertexIndex].Tangent.x = Tangent[0];
+			Vertices[VertexIndex].Tangent.y = Tangent[1];
+			Vertices[VertexIndex].Tangent.z = Tangent[2];
+			Vertices[VertexIndex].Tangent.w = Tangent[3];
+		} else if (Tangents) {
+			Vertices[VertexIndex].Tangent.x = Tangents[VertexIndex].x;
+			Vertices[VertexIndex].Tangent.y = Tangents[VertexIndex].y;
+			Vertices[VertexIndex].Tangent.z = Tangents[VertexIndex].z;
+			Vertices[VertexIndex].Tangent.w = Tangents[VertexIndex].w;
 		}
 
 		if (UVAccessorsData[0]) {
@@ -614,4 +645,85 @@ LoadPBRData(R_Core *Renderer, const R_Texture *const Images, cgltf_image *Images
 			CB->EmissiveTextureIndex = R_GetTextureIndex(Renderer, &Images[EmissiveIndex]);
 		}
 	}
+}
+
+// Based on https://github.com/salvatorespoto/gLTFViewer/blob/master/DX12Engine/Source/Utils/Cpp/GLTFSceneLoader.cpp#L508
+XMFLOAT4 *
+ComputeTangents(cgltf_accessor *PositionAccessor,
+				cgltf_accessor *NormalAccessor,
+				cgltf_accessor *UVAccessor,
+				cgltf_accessor *IndicesAccessor,
+				M_Arena *Arena)
+{
+	size_t VertexCount = PositionAccessor->count;
+	XMFLOAT3 *Tan1 = M_ArenaAlloc(Arena, VertexCount * sizeof(XMFLOAT3));
+	XMFLOAT3 *Tan2 = M_ArenaAlloc(Arena, VertexCount * sizeof(XMFLOAT3));
+	XMFLOAT4 *FinalTangents = M_ArenaAlloc(Arena, VertexCount * sizeof(XMFLOAT4));
+	
+	for (size_t i = 0; i < IndicesAccessor->count; i += 3) {
+		uint32_t i1 = (uint32_t)cgltf_accessor_read_index(IndicesAccessor, i);
+		uint32_t i2 = (uint32_t)cgltf_accessor_read_index(IndicesAccessor, i + 1);
+		uint32_t i3 = (uint32_t)cgltf_accessor_read_index(IndicesAccessor, i + 2);
+
+		XMFLOAT3 v1, v2, v3;
+		XMFLOAT2 w1, w2, w3;
+
+		cgltf_accessor_read_float(PositionAccessor, i1, &v1.x, 3);
+		cgltf_accessor_read_float(PositionAccessor, i2, &v2.x, 3);
+		cgltf_accessor_read_float(PositionAccessor, i3, &v3.x, 3);
+
+		cgltf_accessor_read_float(UVAccessor, i1, &w1.x, 2);
+		cgltf_accessor_read_float(UVAccessor, i2, &w2.x, 2);
+		cgltf_accessor_read_float(UVAccessor, i3, &w3.x, 2);
+
+		float x1 = v2.x - v1.x;
+		float x2 = v3.x - v1.x;
+		float y1 = v2.y - v1.y;
+		float y2 = v3.y - v1.y;
+		float z1 = v2.z - v1.z;
+		float z2 = v3.z - v1.z;
+
+		float s1 = w2.x - w1.x;
+		float s2 = w3.x - w1.x;
+		float t1 = w2.y - w1.y;
+		float t2 = w3.y - w1.y;
+
+		float r = 1.0f / (s1 * t2 - s2 * t1);
+
+		XMFLOAT3 sdir = (XMFLOAT3){(t2 * x1 - t1 * x2) * r, (t2 * y1 - t1 * y2) * r, (t2 * z1 - t1 * z2) * r};
+		XMFLOAT3 tdir = (XMFLOAT3){(s1 * x2 - s2 * x1) * r, (s1 * y2 - s2 * y1) * r, (s1 * z2 - s2 * z1) * r};
+
+		Tan1[i1] = (XMFLOAT3){Tan1[i1].x + sdir.x, Tan1[i1].y + sdir.y, Tan1[i1].z + sdir.z};
+		Tan1[i2] = (XMFLOAT3){Tan1[i2].x + sdir.x, Tan1[i2].y + sdir.y, Tan1[i2].z + sdir.z};
+		Tan1[i3] = (XMFLOAT3){Tan1[i3].x + sdir.x, Tan1[i3].y + sdir.y, Tan1[i3].z + sdir.z};
+
+		Tan2[i1] = (XMFLOAT3){Tan2[i1].x + tdir.x, Tan2[i1].y + tdir.y, Tan2[i1].z + tdir.z};
+		Tan2[i2] = (XMFLOAT3){Tan2[i2].x + tdir.x, Tan2[i2].y + tdir.y, Tan2[i2].z + tdir.z};
+		Tan2[i3] = (XMFLOAT3){Tan2[i3].x + tdir.x, Tan2[i3].y + tdir.y, Tan2[i3].z + tdir.z};
+	}
+
+	
+	for (size_t i = 0; i < VertexCount; i++) {
+		XMFLOAT3 N;
+		cgltf_accessor_read_float(NormalAccessor, i, &N.x, 3);
+
+		XMVECTOR N_XMVECTOR = XMLoadFloat3(&N);
+		XMVECTOR Tan1_XMVECTOR = XMLoadFloat3(&Tan1[i]);
+		XMVECTOR Tan2_XMVECTOR = XMLoadFloat3(&Tan2[i]);
+
+		// Gram-Schmidt orthogonalize
+		XMVECTOR NdotTan1 = XM_VEC3_DOT(N_XMVECTOR, Tan1_XMVECTOR);
+		XMVECTOR NxNT = XM_VEC_MULT(N_XMVECTOR, NdotTan1);
+		XMVECTOR TminusNNT = XM_VEC_SUBTRACT(Tan1_XMVECTOR, NxNT);
+		XMVECTOR TangetVector = XM_VEC3_NORM(TminusNNT);
+
+		// Calculate handedness (w)
+		XMVECTOR crossNT = XM_VEC3_CROSS(N_XMVECTOR, Tan1_XMVECTOR);
+		XMVECTOR Dot = XM_VEC3_DOT(crossNT, Tan2_XMVECTOR);
+		float Handedness = (XM_VECX(Dot) < 0.0f) ? -1.0f : 1.0f;
+		TangetVector = XM_VEC_SETW(TangetVector, Handedness);
+		XM_STORE_FLOAT4(&FinalTangents[i], TangetVector);
+	}
+
+	return FinalTangents;
 }
