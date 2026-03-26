@@ -323,8 +323,8 @@ RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConst
 	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &TexturesHeapStart);
 	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 3, TexturesHeapStart);
 
-	for (size_t ModelIdx = 0; ModelIdx < Scene->ModelsCount; ++ModelIdx) {
-		R_Model *Model = &Scene->Models[ModelIdx];
+	for (size_t ModelIndex = 0; ModelIndex < Scene->ModelsCount; ++ModelIndex) {
+		R_Model *Model = &Scene->Models[ModelIndex];
 		if (!Model->Visible) {
 			continue;
 		}
@@ -333,10 +333,10 @@ RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConst
 		XMMATRIX S = XMMatrixScaling(Model->Scale.x, Model->Scale.y, Model->Scale.z);
 		XMMATRIX M = XM_MAT_MULT(S, R);
 		M = XM_MAT_MULT(M, T);
-		for (size_t MeshIdx = 0; MeshIdx < Model->MeshesCount; ++MeshIdx) {
-			R_Mesh *Mesh = &Model->Meshes[MeshIdx];
+		for (size_t NodeIndex = 0; NodeIndex < Model->NodesCount; ++NodeIndex) {
+			R_Node *Node = &Model->Nodes[NodeIndex];
 
-			MeshConstants->MVP.Model = XMLoadFloat4x4(&Mesh->ModelMatrix);
+			MeshConstants->MVP.Model = XMLoadFloat4x4(&Node->ModelMatrix);
 			MeshConstants->MVP.Model = XM_MAT_MULT(MeshConstants->MVP.Model, M);
 			XMFLOAT4X4 ModelXMFLOAT;
 			XM_STORE_FLOAT4X4(&ModelXMFLOAT, MeshConstants->MVP.Model);
@@ -346,14 +346,18 @@ RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConst
 			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + Renderer->MeshDataOffset);
 			Renderer->MeshDataOffset += CB_ALIGN(R_MeshConstants);
 
-			for (INT PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
-				R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
-				ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES,
-																		&Primitive->ConstantBuffer, 0);
-				ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Primitive->VertexBufferView);
-				ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
-				ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);
+			if (Node->Mesh != NULL) {
+				R_Mesh *Mesh = Node->Mesh; 
+				for (INT PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
+					R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
+					ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES,
+																			&Primitive->ConstantBuffer, 0);
+					ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Primitive->VertexBufferView);
+					ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
+					ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);
+				}
 			}
+
 		}
 	}
 }

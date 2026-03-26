@@ -82,16 +82,20 @@ typedef struct R_Primitive {
 typedef struct R_Mesh {
 	R_Primitive *Primitives;
 	size_t PrimitivesCount;
+} R_Mesh;
+
+typedef struct R_Node {
+	R_Mesh *Mesh;
 
 	// RH and Row-Major
 	XMFLOAT4X4 ModelMatrix;
-} R_Mesh;
+} R_Node;
 
 typedef struct R_Model {
 	PSTR Name;
-	size_t Size;
-	R_Mesh *Meshes;
-	size_t MeshesCount;
+
+	R_Node *Nodes;
+	size_t NodesCount;
 
 	XMFLOAT3 Position;
 	XMFLOAT3 Rotation;

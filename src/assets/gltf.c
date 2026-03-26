@@ -9,6 +9,8 @@
 #define STBI_WINDOWS_UTF8
 #include "../../deps/stb_image.h"
 
+#include "../../deps/stb_ds.h"
+
 #include "../../deps/b64.h"
 
 #include "../core/log.h"
@@ -23,12 +25,20 @@
 #define W_TO_UTF8(StrW, StrUTF8, UTF8Size) WideCharToMultiByte(CP_UTF8, 0, StrW, -1, StrUTF8, UTF8Size, NULL, NULL)
 #define UTF8_TO_W(Str, StrW, WSize) MultiByteToWideChar(CP_UTF8, 0, Str, -1, StrW, WSize)
 
+typedef struct MeshLookup {
+	char *key;
+	R_Mesh *Mesh;
+} MeshLookup;
+
 /****************************************************
 	Forward declaration of private functions
 *****************************************************/
 
 static cgltf_data *GetData(PCWSTR Path, M_Arena *UploadArena);
-static void SetModelName(PCWSTR Path, R_Model *Model, S_Scene *Scene);
+
+static void SetModelName(PCWSTR Path, R_Model *Model, M_Arena *Arena);
+
+static void LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneArena, M_Arena *UploadArena);
 
 static void PreloadImages(R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena *UploadArena);
 
@@ -49,7 +59,7 @@ static BOOL IsDataEmbedded(const cgltf_image *const BaseImage);
 static void RetriveAttributeData(cgltf_primitive *PrimitiveData, cgltf_accessor *UVAccessorsData[2], cgltf_accessor *AccessorsData[9]);
 
 static void
-LoadPBRData(R_Core *Renderer, const R_Texture *const Images, R_PBRConstantBuffer *CB, cgltf_primitive *PrimitiveData, cgltf_image *ImagesData);
+LoadPBRData(R_Core *Renderer, const R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB);
 
 static void LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 											  R_Primitive *Primitive,
@@ -86,53 +96,15 @@ SendaiGLTF_LoadModel(R_Core *Renderer, PCWSTR Path, S_Scene *Scene)
 	}
 
 	R_Model *Model = &Scene->Models[Scene->ModelsCount];
-	Model->Meshes = M_ArenaAlloc(&Scene->SceneArena, Data->nodes_count * sizeof(R_Mesh));
-	Model->MeshesCount = Data->nodes_count;
-	Model->MeshesCount = 0;
 	Model->Scale = (XMFLOAT3){.x = 1, .y = 1, .z = 1};
 	Model->Visible = TRUE;
-	SetModelName(Path, Model, Scene);
+	SetModelName(Path, Model, &Scene->SceneArena);
 
 	if (Data->images_count > 0) {
 		PreloadImages(Model, Data, Path, &Scene->UploadArena);
 	}
 
-	// I'm simplyfing Node == Mesh here, as my renderer has its own Camera
-	for (size_t NodeIndex = 0; NodeIndex < Data->nodes_count; NodeIndex++, Model->MeshesCount++) {
-		cgltf_node *NodeData = &Data->nodes[NodeIndex];
-		if (NodeData->mesh == NULL) {
-			continue;
-		}
-
-		UINT CurrentMeshIndex = Model->MeshesCount;
-		R_Mesh *CurrentMesh = &Model->Meshes[CurrentMeshIndex];
-		cgltf_float TransformColMajor[4][4];
-		cgltf_node_transform_world(NodeData, TransformColMajor);
-		// Note: Mesh->Transform is col-major, but XMLoadFloat4x4 expects row-major.
-		// This way, the matrix is automatically transposed already, because XMLoadFloat4x4
-		// will pick as row what is col and vice-versa. Therefore, ModelMatrix is Mesh->Transform
-		// converted to row-major.
-		memcpy(&CurrentMesh->ModelMatrix, TransformColMajor, sizeof(XMFLOAT4X4));
-
-		cgltf_mesh *NodeMeshData = NodeData->mesh;
-		CurrentMesh->PrimitivesCount = NodeMeshData->primitives_count;
-		CurrentMesh->Primitives = M_ArenaAlloc(&Scene->SceneArena, CurrentMesh->PrimitivesCount * sizeof(R_Primitive));
-
-		for (cgltf_size PrimitiveId = 0; PrimitiveId < NodeMeshData->primitives_count; PrimitiveId++) {
-			cgltf_primitive *PrimitiveData = &NodeMeshData->primitives[PrimitiveId];
-
-			cgltf_accessor *Accessors[cgltf_attribute_type_max_enum] = {0};
-			cgltf_accessor *UVAccessorsData[2] = {0};
-			RetriveAttributeData(PrimitiveData, UVAccessorsData, Accessors);
-
-			R_Primitive *Primitive = &CurrentMesh->Primitives[PrimitiveId];
-			LoadPBRData(Renderer, Model->Images, &Primitive->ConstantBuffer, PrimitiveData, Data->images);
-
-			LoadVerticesAndIndicesIntoBuffers(Renderer, Primitive, Accessors[cgltf_attribute_type_position],
-											  Accessors[cgltf_attribute_type_normal], PrimitiveData->indices, UVAccessorsData,
-											  &Scene->UploadArena);
-		}
-	}
+	LoadNodes(Renderer, Model, Data, &Scene->SceneArena, &Scene->UploadArena);
 
 	cgltf_free(Data);
 
@@ -158,6 +130,64 @@ SendaiGLTF_LoadModel(R_Core *Renderer, PCWSTR Path, S_Scene *Scene)
 /****************************************************
 	Implementation of private functions
 *****************************************************/
+
+void
+LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneArena, M_Arena *UploadArena)
+{
+	R_Mesh *Meshes = M_ArenaAlloc(SceneArena, Data->meshes_count * sizeof(R_Mesh));
+
+	MeshLookup *MeshMap = NULL;
+
+	for (INT MeshIndex = 0; MeshIndex < Data->meshes_count; MeshIndex++) {
+		cgltf_mesh *MeshData = &Data->meshes[MeshIndex];
+		R_Mesh *CurrentMesh = &Meshes[MeshIndex];
+
+		CurrentMesh->PrimitivesCount = MeshData->primitives_count;
+		CurrentMesh->Primitives = M_ArenaAlloc(SceneArena, CurrentMesh->PrimitivesCount * sizeof(R_Primitive));
+
+		for (cgltf_size PrimitiveId = 0; PrimitiveId < MeshData->primitives_count; PrimitiveId++) {
+			cgltf_primitive *PrimitiveData = &MeshData->primitives[PrimitiveId];
+
+			cgltf_accessor *Accessors[cgltf_attribute_type_max_enum] = {0};
+			cgltf_accessor *UVAccessorsData[2] = {0};
+			RetriveAttributeData(PrimitiveData, UVAccessorsData, Accessors);
+
+			R_Primitive *Primitive = &CurrentMesh->Primitives[PrimitiveId];
+			LoadPBRData(Renderer, Model->Images, Data->images, PrimitiveData->material, &Primitive->ConstantBuffer);
+
+			LoadVerticesAndIndicesIntoBuffers(Renderer, Primitive, Accessors[cgltf_attribute_type_position],
+											  Accessors[cgltf_attribute_type_normal], PrimitiveData->indices, UVAccessorsData, UploadArena);
+		}
+
+		MeshLookup Lookup = {.key = MeshData->name, .Mesh = CurrentMesh};
+		shputs(MeshMap, Lookup);
+	}
+
+	Model->Nodes = M_ArenaAlloc(SceneArena, Data->nodes_count * sizeof(R_Node));
+	Model->NodesCount = 0;
+
+	for (; Model->NodesCount < Data->nodes_count; Model->NodesCount++) {
+		UINT NodeIndex = Model->NodesCount;
+		cgltf_node *NodeData = &Data->nodes[NodeIndex];
+		R_Node *CurrentNode = &Model->Nodes[NodeIndex];
+
+		cgltf_float TransformColMajor[4][4];
+		cgltf_node_transform_world(NodeData, TransformColMajor);
+		// Note: Mesh->Transform is col-major, but XMLoadFloat4x4 expects row-major.
+		// This way, the matrix is automatically transposed already, because XMLoadFloat4x4
+		// will pick as row what is col and vice-versa. Therefore, ModelMatrix is Mesh->Transform
+		// converted to row-major.
+		memcpy(&CurrentNode->ModelMatrix, TransformColMajor, sizeof(XMFLOAT4X4));
+
+		if (NodeData->mesh) {
+			ptrdiff_t Index = shgeti(MeshMap, NodeData->mesh->name);
+			if (Index != -1) {
+				CurrentNode->Mesh = MeshMap[Index].Mesh;
+			}
+		}
+	}
+	shfree(MeshMap);
+}
 
 cgltf_data *
 GetData(PCWSTR Path, M_Arena *UploadArena)
@@ -197,12 +227,12 @@ GetData(PCWSTR Path, M_Arena *UploadArena)
 }
 
 void
-SetModelName(PCWSTR Path, R_Model *Model, S_Scene *Scene)
+SetModelName(PCWSTR Path, R_Model *Model, M_Arena *Arena)
 {
 	WCHAR FileNameW[MAX_PATH];
 	Win32GetFileNameOnly(Path, FileNameW, MAX_PATH);
 	INT UTF8Size = UTF8_SIZE(FileNameW);
-	Model->Name = M_ArenaAlloc(&Scene->SceneArena, UTF8Size);
+	Model->Name = M_ArenaAlloc(Arena, UTF8Size);
 	W_TO_UTF8(FileNameW, Model->Name, UTF8Size);
 }
 
@@ -524,17 +554,17 @@ CreateTextureName(M_Arena *UploadArena, cgltf_image *BaseImage, PCWSTR Path, int
 }
 
 void
-LoadPBRData(R_Core *Renderer, const R_Texture *const Images, R_PBRConstantBuffer *CB, cgltf_primitive *PrimitiveData, cgltf_image *ImagesData)
+LoadPBRData(R_Core *Renderer, const R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB)
 {
-	CB->AlbedoTextureIndex = -1;
-	CB->NormalTextureIndex = -1;
-	CB->MetallicTextureIndex = -1;
-	CB->OcclusionTextureIndex = -1;
-	CB->EmissiveTextureIndex = -1;
-	if (PrimitiveData->material) {
-		cgltf_material *PrimitiveMaterialData = PrimitiveData->material;
-		if (PrimitiveMaterialData->has_pbr_metallic_roughness) {
-			cgltf_pbr_metallic_roughness *MetallicRoughnessData = &PrimitiveMaterialData->pbr_metallic_roughness;
+	CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, NULL);
+	CB->NormalTextureIndex = R_GetTextureIndex(Renderer, NULL);
+	CB->MetallicTextureIndex = R_GetTextureIndex(Renderer, NULL);
+	CB->OcclusionTextureIndex = R_GetTextureIndex(Renderer, NULL);
+	CB->EmissiveTextureIndex = R_GetTextureIndex(Renderer, NULL);
+
+	if (Material) {
+		if (Material->has_pbr_metallic_roughness) {
+			cgltf_pbr_metallic_roughness *MetallicRoughnessData = &Material->pbr_metallic_roughness;
 			memcpy(&CB->BaseColorFactor, MetallicRoughnessData->base_color_factor, sizeof(float) * 4);
 			CB->MetallicFactor = MetallicRoughnessData->metallic_factor;
 			CB->RoughnessFactor = MetallicRoughnessData->roughness_factor;
@@ -565,20 +595,20 @@ LoadPBRData(R_Core *Renderer, const R_Texture *const Images, R_PBRConstantBuffer
 				CB->MetallicTextureIndex = R_GetTextureIndex(Renderer, &Images[MetallicIndex]);
 			}
 		}
-		cgltf_texture_view *NormalTextureView = &PrimitiveMaterialData->normal_texture;
+		cgltf_texture_view *NormalTextureView = &Material->normal_texture;
 		if (NormalTextureView->texture) {
 			UINT NormalIndex = NormalTextureView->texture->image - ImagesData;
 			CB->NormalTextureIndex = R_GetTextureIndex(Renderer, &Images[NormalIndex]);
 		}
 
-		if (PrimitiveMaterialData->occlusion_texture.texture) {
-			UINT OcclusionIndex = PrimitiveMaterialData->occlusion_texture.texture->image - ImagesData;
+		if (Material->occlusion_texture.texture) {
+			UINT OcclusionIndex = Material->occlusion_texture.texture->image - ImagesData;
 			CB->OcclusionTextureIndex = R_GetTextureIndex(Renderer, &Images[OcclusionIndex]);
 		}
 
-		memcpy(&CB->EmissiveFactor, PrimitiveMaterialData->emissive_factor, sizeof(cgltf_float) * 3);
-		if (PrimitiveMaterialData->emissive_texture.texture) {
-			UINT EmissiveIndex = PrimitiveMaterialData->emissive_texture.texture->image - ImagesData;
+		memcpy(&CB->EmissiveFactor, Material->emissive_factor, sizeof(cgltf_float) * 3);
+		if (Material->emissive_texture.texture) {
+			UINT EmissiveIndex = Material->emissive_texture.texture->image - ImagesData;
 			CB->EmissiveTextureIndex = R_GetTextureIndex(Renderer, &Images[EmissiveIndex]);
 		}
 	}
