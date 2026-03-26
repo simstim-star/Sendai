@@ -22,4 +22,3 @@ ID3D12Resource *R_CommandCreateTextureGPU(R_Core *const Renderer, const R_Textur
 UINT64 R_SuballocateTextureUpload(R_Core *Renderer, UINT64 Size);
 UINT32
 R_GetTextureIndex(R_Core *const Renderer, const R_Texture *const Texture);
-void R_LoadPBRTextures(R_Primitive *const Primitive, R_Core *const Renderer);

@@ -25,7 +25,6 @@ typedef struct R_PBRConstantBuffer {
 	UINT32 AlbedoTextureIndex;
 	UINT32 NormalTextureIndex;
 	UINT32 MetallicTextureIndex;
-	UINT32 RoughnessTextureIndex;
 	UINT32 OcclusionTextureIndex;
 	UINT32 EmissiveTextureIndex;
 } R_PBRConstantBuffer;
@@ -66,27 +65,18 @@ typedef struct R_Texture {
 	const UINT8 *Pixels;
 	INT Width;
 	INT Height;
+	INT Channels;
 	PSTR Name;
+	size_t Size;
 } R_Texture;
 
 typedef struct R_Primitive {
-	R_Vertex *Vertices;
-	UINT VertexCount;
 	D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
 
-	UINT *Indices;
-	UINT IndexCount;
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView;
+	UINT IndexCount;
 
-	R_Texture *Albedo;
-	R_Texture *Normal;
-	R_Texture *Metallic;
-	R_Texture *Roughness;
-	R_Texture *Occlusion;
-	R_Texture *Emissive;
-
-	INT UVChannel;
-	R_PBRConstantBuffer cb;
+	R_PBRConstantBuffer ConstantBuffer;
 } R_Primitive;
 
 typedef struct R_Mesh {
@@ -112,4 +102,3 @@ typedef struct R_Model {
 
 	BOOL Visible;
 } R_Model;
-

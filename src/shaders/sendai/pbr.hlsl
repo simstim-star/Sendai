@@ -31,7 +31,7 @@ cbuffer MeshData : register(b0)
 cbuffer PBRData : register(b1)
 {
     float4 baseColorFactor;
-    float metallicFactor; 
+    float metallicFactor;
     float roughnessFactor;
     float3 emissiveFactor;
     
@@ -43,7 +43,6 @@ cbuffer PBRData : register(b1)
     uint albedoTextureIndex;
     uint normalTextureIndex;
     uint metallicTextureIndex;
-    uint roughnessTextureIndex;
     uint aoTextureIndex;
     uint emissiveTextureIndex;
 };
@@ -75,15 +74,15 @@ struct PSIn
     float2 uv2 : TEXCOORD1;
 };
 
-// Based in https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_texture_transform/README.md#overview
 PSIn VSMain(VSIn v)
 {
     PSIn o;
     float4x4 mvp = mul(model, mul(view, proj));
     o.pos = mul(float4(v.pos, 1.0), mvp);
     o.fragPos = mul(float4(v.pos, 1.0), model).xyz;
-    o.norm = mul(float4(v.norm, 1.0), normal).xyz;
-
+    o.norm = mul(float4(v.norm, 0.0), normal).xyz;
+    
+    // Based in https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_texture_transform/README.md#overview
     float s = sin(uvRotation);
     float c = cos(uvRotation);
     
@@ -101,8 +100,8 @@ PSIn VSMain(VSIn v)
 float4 PSMain(PSIn input) : SV_TARGET
 {
     float3 albedo = baseColorFactor.xyz * pow(Texture2DTable[albedoTextureIndex].Sample(defaultSampler, input.uv).rgb, 2.2);
-    float metallic = metallicFactor * Texture2DTable[metallicTextureIndex].Sample(defaultSampler, input.uv).b;
-    float roughness = roughnessFactor * Texture2DTable[roughnessTextureIndex].Sample(defaultSampler, input.uv).g;
+    float3 metallic = metallicFactor * Texture2DTable[metallicTextureIndex].Sample(defaultSampler, input.uv).b;
+    float roughness = roughnessFactor * Texture2DTable[metallicTextureIndex].Sample(defaultSampler, input.uv).g;
     float ao = Texture2DTable[aoTextureIndex].Sample(defaultSampler, input.uv2).r;
     float3 emissive = emissiveFactor.xyz * Texture2DTable[emissiveTextureIndex].Sample(defaultSampler, input.uv).rgb;
 

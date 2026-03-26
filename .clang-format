@@ -2,7 +2,7 @@ BasedOnStyle: LLVM
 IndentWidth: 4
 TabWidth: 4
 UseTab: Always
-ColumnLimit: 150
+ColumnLimit: 145
 
 BreakAfterReturnType: AllDefinitions
 
@@ -16,7 +16,7 @@ BinPackParameters: false
 
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: Inline
+AllowShortFunctionsOnASingleLine: All
 SpaceBeforeParens: ControlStatements
 KeepEmptyLinesAtTheStartOfBlocks: false
 BracedInitializerIndentWidth: 2

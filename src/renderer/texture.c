@@ -106,8 +106,8 @@ R_CommandCreateTextureGPU(R_Core *const Renderer, const R_Texture *const Source)
 								   .Flags = D3D12_RESOURCE_FLAG_NONE};
 
 	D3D12_HEAP_PROPERTIES HeapDefault = {.Type = D3D12_HEAP_TYPE_DEFAULT};
-	HRESULT hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &HeapDefault, D3D12_HEAP_FLAG_NONE, &TexDesc, D3D12_RESOURCE_STATE_COMMON,
-													  NULL, &IID_ID3D12Resource, &Texture);
+	HRESULT hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &HeapDefault, D3D12_HEAP_FLAG_NONE, &TexDesc,
+													  D3D12_RESOURCE_STATE_COMMON, NULL, &IID_ID3D12Resource, &Texture);
 	ExitIfFailed(hr);
 
 	UINT NumRows;
@@ -172,15 +172,4 @@ R_GetTextureIndex(R_Core *const Renderer, const R_Texture *const Texture)
 
 	GPUTexture Tex = R_UploadTexture(Renderer, &Target);
 	return Tex.HeapIndex;
-}
-
-void
-R_LoadPBRTextures(R_Primitive *const Primitive, R_Core *const Renderer)
-{
-	Primitive->cb.AlbedoTextureIndex = R_GetTextureIndex(Renderer, Primitive->Albedo);
-	Primitive->cb.NormalTextureIndex = R_GetTextureIndex(Renderer, Primitive->Normal);
-	Primitive->cb.MetallicTextureIndex = R_GetTextureIndex(Renderer, Primitive->Metallic);
-	Primitive->cb.RoughnessTextureIndex = R_GetTextureIndex(Renderer, Primitive->Roughness);
-	Primitive->cb.OcclusionTextureIndex = R_GetTextureIndex(Renderer, Primitive->Occlusion);
-	Primitive->cb.EmissiveTextureIndex = R_GetTextureIndex(Renderer, Primitive->Emissive);
 }
