@@ -8,6 +8,7 @@
 #define ROUND_UP_POWER_OF_2(val, power_of_two_boundary) ((val + (power_of_two_boundary - 1)) & (~(power_of_two_boundary - 1)))
 
 #define CB_ALIGN(type) ROUND_UP_POWER_OF_2(sizeof(type), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT)
+#define ALIGN_4_BYTES(Val) ROUND_UP_POWER_OF_2(Val, 4)
 
 typedef struct ID3D12Resource ID3D12Resource;
 

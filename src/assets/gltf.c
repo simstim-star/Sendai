@@ -183,12 +183,18 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 		cgltf_node *NodeData = &Data->nodes[NodeIndex];
 		R_Node *CurrentNode = &Model->Nodes[NodeIndex];
 
-		cgltf_float TransformColMajor[4][4];
-		cgltf_node_transform_world(NodeData, TransformColMajor);
 		// Note: Mesh->Transform is col-major, but XMLoadFloat4x4 expects row-major.
 		// This way, the matrix is automatically transposed already, because XMLoadFloat4x4
 		// will pick as row what is col and vice-versa. Therefore, ModelMatrix is Mesh->Transform
 		// converted to row-major.
+		cgltf_float TransformColMajor[4][4];
+		cgltf_node_transform_world(NodeData, TransformColMajor);
+		/* Corrections for left-hand system */
+		TransformColMajor[3][2] *= -1.0f;
+		TransformColMajor[0][2] *= -1.0f;
+		TransformColMajor[1][2] *= -1.0f;
+		TransformColMajor[2][0] *= -1.0f;
+		TransformColMajor[2][1] *= -1.0f;
 		memcpy(&CurrentNode->ModelMatrix, TransformColMajor, sizeof(XMFLOAT4X4));
 
 		if (NodeData->mesh) {
@@ -293,14 +299,14 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	for (UINT VertexIndex = 0; VertexIndex < VertexCount; VertexIndex++) {
 		FLOAT Position[3];
 		cgltf_accessor_read_float(PositionAccessor, VertexIndex, Position, 3);
-		Vertices[VertexIndex].Position = (XMFLOAT3){Position[0], Position[1], Position[2]};
+		Vertices[VertexIndex].Position = (XMFLOAT3){Position[0], Position[1], -Position[2]};
 
 		if (NormalAccessor) {
 			FLOAT Normal[3];
 			cgltf_accessor_read_float(NormalAccessor, VertexIndex, Normal, 3);
 			Vertices[VertexIndex].Normal.x = Normal[0];
 			Vertices[VertexIndex].Normal.y = Normal[1];
-			Vertices[VertexIndex].Normal.z = Normal[2];
+			Vertices[VertexIndex].Normal.z = -Normal[2];
 		}
 
 		if (TangentAccessor) {
@@ -308,8 +314,8 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 			cgltf_accessor_read_float(TangentAccessor, VertexIndex, Tangent, 4);
 			Vertices[VertexIndex].Tangent.x = Tangent[0];
 			Vertices[VertexIndex].Tangent.y = Tangent[1];
-			Vertices[VertexIndex].Tangent.z = Tangent[2];
-			Vertices[VertexIndex].Tangent.w = Tangent[3];
+			Vertices[VertexIndex].Tangent.z = -Tangent[2];
+			Vertices[VertexIndex].Tangent.w = -Tangent[3];
 		} else if (Tangents) {
 			Vertices[VertexIndex].Tangent.x = Tangents[VertexIndex].x;
 			Vertices[VertexIndex].Tangent.y = Tangents[VertexIndex].y;
@@ -333,13 +339,36 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	}
 
 	size_t IndexCount = IndicesAccessor ? IndicesAccessor->count : 0;
-	uint16_t *Indices = NULL;
+	void *Indices = NULL;
+	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
+	UINT IndexBufferSize = IndexCount * sizeof(UINT16);
+	UINT IndexStride = sizeof(uint16_t);
+
 	if (IndexCount > 0) {
-		Indices = M_ArenaAlloc(Arena, sizeof(uint16_t) * IndexCount);
-		for (size_t i = 0; i < IndexCount; i++) {
-			uint32_t Index;
-			cgltf_accessor_read_uint(IndicesAccessor, (int)i, &Index, 1);
-			Indices[i] = (uint16_t)Index;
+		if (VertexCount > UINT16_MAX) {
+			IndexStride = sizeof(uint32_t);
+			IndexFormat = DXGI_FORMAT_R32_UINT;
+			IndexBufferSize = IndexCount * sizeof(UINT32);
+		}
+
+		Indices = M_ArenaAlloc(Arena, IndexStride * IndexCount);
+
+		for (size_t i = 0; i < IndexCount; i += 3) {
+			uint32_t i0, i1, i2;
+			cgltf_accessor_read_uint(IndicesAccessor, i, &i0, 1);
+			cgltf_accessor_read_uint(IndicesAccessor, i + 1, &i1, 1);
+			cgltf_accessor_read_uint(IndicesAccessor, i + 2, &i2, 1);
+
+			/* Corrections for left-hand system */
+			if (IndexStride == sizeof(uint16_t)) {
+				((uint16_t *)Indices)[i] = (uint16_t)i0;
+				((uint16_t *)Indices)[i + 1] = (uint16_t)i2;
+				((uint16_t *)Indices)[i + 2] = (uint16_t)i1;
+			} else {
+				((uint32_t *)Indices)[i] = i0;
+				((uint32_t *)Indices)[i + 1] = i2;
+				((uint32_t *)Indices)[i + 2] = i1;
+			}
 		}
 	}
 
@@ -354,11 +383,13 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	Renderer->CurrentVertexBufferOffset += VertexBufferSize;
 	Renderer->CurrentUploadBufferOffset += VertexBufferSize;
 
-	UINT IndexBufferSize = IndexCount * sizeof(UINT16);
+	/* Ensure alignment for both 2 and 4 bytes indices */
+	Renderer->CurrentUploadBufferOffset = ROUND_UP_POWER_OF_2(Renderer->CurrentUploadBufferOffset, 4);
+	Renderer->CurrentIndexBufferOffset = ROUND_UP_POWER_OF_2(Renderer->CurrentIndexBufferOffset, 4);
 	memcpy(Renderer->UploadBufferCpuAddress + Renderer->CurrentUploadBufferOffset, Indices, IndexBufferSize);
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Renderer->IndexBufferDefault) +
 																 Renderer->CurrentIndexBufferOffset,
-											   .Format = DXGI_FORMAT_R16_UINT,
+											   .Format = IndexFormat,
 											   .SizeInBytes = IndexBufferSize};
 	ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->IndexBufferDefault, Renderer->CurrentIndexBufferOffset,
 											   Renderer->UploadBuffer, Renderer->CurrentUploadBufferOffset, IndexBufferSize);
