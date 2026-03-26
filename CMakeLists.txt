@@ -16,7 +16,7 @@ set(CORE_HEADERS "src/core/camera.h" "src/core/memory.h" "src/core/timer.h" "src
 "src/core/scene.h" "src/error/error.h" "src/core/grid.h")
 set(RENDERER_HEADERS "src/renderer/renderer.h" "src/renderer/render_types.h" "src/renderer/shader.h" "src/renderer/light.h" 
 "src/renderer/texture.h" "src/renderer/billboard.h")
-set(WIN32_HEADERS "src/win32/win_path.h" "src/win32/file_dialog.h")
+set(WIN32_HEADERS "src/win32/win_path.h" "src/win32/str_helper.h" "src/win32/file_dialog.h")
 set(UI_HEADERS "src/ui/sendai_nk.h" "src/ui/ui.h" "src/ui/ui_bottom_panel.h" "src/ui/ui_top_bar.h" "src/ui/ui_tool_bar.c")
 set(DX_HELPERS "src/dx_helpers/barrier_helpers.h" "src/dx_helpers/desc_helpers.h")
 set(GLTF_HEADERS "src/assets/gltf.h")

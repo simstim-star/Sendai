@@ -9,6 +9,7 @@
 #include "../renderer/texture.h"
 #include "../win32/file_dialog.h"
 #include "../win32/win_path.h"
+#include "../win32/str_helper.h"
 
 struct nk_image UI_TEXTURES[UI_EUT_NUM_USER_TEXTURES];
 

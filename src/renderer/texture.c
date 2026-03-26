@@ -4,6 +4,7 @@
 #include "../ui/ui.h"
 #include "renderer.h"
 #include "texture.h"
+#include "../win32/str_helper.h"
 
 #define STB_DS_IMPLEMENTATION
 #include "../../deps/stb_ds.h"
@@ -22,7 +23,7 @@ void
 R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
 {
 	char PathUTF8[MAX_PATH * 4];
-	WideCharToMultiByte(CP_UTF8, 0, Path, -1, PathUTF8, (INT)sizeof(PathUTF8), NULL, NULL);
+	W_TO_UTF8(Path, PathUTF8, UTF8_SIZE(Path));
 
 	if (shgeti(Renderer->Textures, PathUTF8) != -1) {
 		return;
@@ -83,7 +84,7 @@ void
 R_CreateCustomTexture(PCWSTR Path, R_Core *Renderer)
 {
 	char PathUTF8[MAX_PATH * 4];
-	WideCharToMultiByte(CP_UTF8, 0, Path, -1, PathUTF8, (INT)sizeof(PathUTF8), NULL, NULL);
+	W_TO_UTF8(Path, PathUTF8, UTF8_SIZE(Path));
 	INT W, H;
 	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
 	R_Texture Source = (R_Texture){.Height = H, .Width = W, .Pixels = Pixels, .Name = PathUTF8};

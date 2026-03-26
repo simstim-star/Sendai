@@ -20,10 +20,11 @@
 #include "../renderer/renderer.h"
 #include "../renderer/texture.h"
 #include "../win32/win_path.h"
+#include "../win32/str_helper.h"
 
-#define UTF8_SIZE(StrW) WideCharToMultiByte(CP_UTF8, 0, StrW, -1, NULL, 0, NULL, NULL)
-#define W_TO_UTF8(StrW, StrUTF8, UTF8Size) WideCharToMultiByte(CP_UTF8, 0, StrW, -1, StrUTF8, UTF8Size, NULL, NULL)
-#define UTF8_TO_W(Str, StrW, WSize) MultiByteToWideChar(CP_UTF8, 0, Str, -1, StrW, WSize)
+/****************************************************
+	Helper structs
+*****************************************************/
 
 typedef struct MeshLookup {
 	char *key;
@@ -135,7 +136,6 @@ void
 LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneArena, M_Arena *UploadArena)
 {
 	R_Mesh *Meshes = M_ArenaAlloc(SceneArena, Data->meshes_count * sizeof(R_Mesh));
-
 	MeshLookup *MeshMap = NULL;
 
 	for (INT MeshIndex = 0; MeshIndex < Data->meshes_count; MeshIndex++) {
@@ -156,7 +156,9 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 			LoadPBRData(Renderer, Model->Images, Data->images, PrimitiveData->material, &Primitive->ConstantBuffer);
 
 			LoadVerticesAndIndicesIntoBuffers(Renderer, Primitive, Accessors[cgltf_attribute_type_position],
-											  Accessors[cgltf_attribute_type_normal], PrimitiveData->indices, UVAccessorsData, UploadArena);
+											  Accessors[cgltf_attribute_type_normal],
+											  PrimitiveData->indices, UVAccessorsData,
+											  UploadArena);
 		}
 
 		MeshLookup Lookup = {.key = MeshData->name, .Mesh = CurrentMesh};
@@ -277,7 +279,7 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 		Vertices[VertexIndex].Position = (XMFLOAT3){Position[0], Position[1], Position[2]};
 
 		if (NormalAccessor) {
-			float Normal[4];
+			FLOAT Normal[3];
 			cgltf_accessor_read_float(NormalAccessor, VertexIndex, Normal, 3);
 			Vertices[VertexIndex].Normal.x = Normal[0];
 			Vertices[VertexIndex].Normal.y = Normal[1];
