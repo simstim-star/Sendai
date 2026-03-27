@@ -165,7 +165,7 @@ UINT32
 R_GetTextureIndex(R_Core *const Renderer, const R_Texture *const Texture)
 {
 	R_Texture Target;
-	if (Texture) {
+	if (Texture && Texture->Name) {
 		Target = *Texture;
 	} else {
 		Target = WhiteTexture;
