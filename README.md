@@ -1,12 +1,14 @@
 # Sendai Engine
-A game engine based on DirectX12 in pure C. This is a working in progress project that I created for educational purposes, in order to learn better about COM and DirectX.
+A game engine (actually just a renderer for now) based on DirectX12 in pure C. This is a working in progress project that I created for educational purposes, in order to learn better about COM and DirectX.
 
 Also check my ports of the official DirectX12 samples to pure C: https://github.com/simstim-star/DirectX-Graphics-Samples-in-C
 
 And my port of DirectX Math to pure C: https://github.com/simstim-star/DirectXMath-in-C
 
-Currently it is very rudimentary, only allowing very basic gltf loading:
-<img width="1919" height="981" alt="image" src="https://github.com/user-attachments/assets/2bfc39c5-2ca1-4c6f-a1ee-36252a61f314" />
+Currently it supports GLTF with PBR rendering, but with many limitations:
+
+<img width="1915" height="984" alt="image" src="https://github.com/user-attachments/assets/203dbd71-2060-43fc-aaa8-4968e2fe57a0" />
+
 
 ## How to build (MSVC)
 
