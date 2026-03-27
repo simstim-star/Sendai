@@ -94,7 +94,7 @@ S_FileOpen(Sendai *const Engine)
 		M_ArenaRelease(&Scene->UploadArena);
 	}
 
-	Scene->UploadArena = M_ArenaInit(MEGABYTES(512));
+	Scene->UploadArena = M_ArenaInit(GIGABYTES(1));
 	SendaiGLTF_LoadModel(&Engine->RendererCore, FilePath, Scene);
 	UINT ModelIdx = Scene->ModelsCount - 1;
 	CoTaskMemFree(FilePath);

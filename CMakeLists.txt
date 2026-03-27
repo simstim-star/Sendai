@@ -22,7 +22,7 @@ set(DX_HELPERS "src/dx_helpers/barrier_helpers.h" "src/dx_helpers/desc_helpers.h
 set(GLTF_HEADERS "src/assets/gltf.h")
 set(HEADER_FILES ${CORE_HEADERS} ${WIN32_HEADERS} ${RENDERER_HEADERS} ${UI_HEADERS} ${DX_HELPERS} ${DX_HELPERS} ${GLTF_HEADERS})
 
-set(DEPS_FILES "deps/b64.h" "deps/cgltf.h" "deps/nuklear.h" "deps/stb_ds.h" "deps/stb_image.h")
+set(DEPS_FILES "deps/b64.h" "deps/cgltf.h" "deps/nuklear.h" "deps/stb_ds.h" "deps/stb_image.h" "deps/stb_image_resize2.h")
 
 set(SHADER_FILES "src/shaders/sendai/gltf.hlsl" "src/shaders/sendai/pbr.hlsl" "src/shaders/sendai/billboard.hlsl" 
 "src/shaders/sendai/grid.hlsl" "src/shaders/sendai/shader_defs.h")

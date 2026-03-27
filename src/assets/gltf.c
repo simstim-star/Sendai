@@ -19,8 +19,8 @@
 #include "../renderer/render_types.h"
 #include "../renderer/renderer.h"
 #include "../renderer/texture.h"
-#include "../win32/win_path.h"
 #include "../win32/str_helper.h"
+#include "../win32/win_path.h"
 
 /****************************************************
 	Helper structs
@@ -34,6 +34,7 @@ typedef struct MeshLookup {
 /****************************************************
 	Forward declaration of private functions
 *****************************************************/
+
 
 static cgltf_data *GetData(PCWSTR Path, M_Arena *UploadArena);
 
@@ -61,8 +62,7 @@ static void RetriveAttributeData(cgltf_primitive *PrimitiveData,
 								 cgltf_accessor *UVAccessorsData[2],
 								 cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum]);
 
-static void
-LoadPBRData(R_Core *Renderer, const R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB);
+static void LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB);
 
 static void LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 											  R_Primitive *Primitive,
@@ -114,8 +114,8 @@ SendaiGLTF_LoadModel(R_Core *Renderer, PCWSTR Path, S_Scene *Scene)
 		PreloadImages(Model, Data, Path, &Scene->UploadArena);
 	}
 
+	R_GenerateMips(Model, &Scene->UploadArena);
 	LoadNodes(Renderer, Model, Data, &Scene->SceneArena, &Scene->UploadArena);
-
 	cgltf_free(Data);
 
 	D3D12_RESOURCE_BARRIER VBBarrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
@@ -162,14 +162,11 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 			RetriveAttributeData(PrimitiveData, UVAccessorsData, Accessors);
 
 			R_Primitive *Primitive = &CurrentMesh->Primitives[PrimitiveId];
-			Primitive->bDoubleSided = PrimitiveData->material && PrimitiveData->material->double_sided;
-			LoadPBRData(Renderer, Model->Images, Data->images, PrimitiveData->material, &Primitive->ConstantBuffer);
 
 			LoadVerticesAndIndicesIntoBuffers(Renderer, Primitive, Accessors[cgltf_attribute_type_position],
-											  Accessors[cgltf_attribute_type_normal],
-											  Accessors[cgltf_attribute_type_tangent],
-											  PrimitiveData->indices, UVAccessorsData,
-											  UploadArena);
+											  Accessors[cgltf_attribute_type_normal], Accessors[cgltf_attribute_type_tangent],
+											  PrimitiveData->indices, UVAccessorsData, UploadArena);
+			LoadPBRData(Renderer, Model->Images, Data->images, PrimitiveData->material, &Primitive->ConstantBuffer);
 		}
 
 		MeshLookup Lookup = {.key = MeshData, .value = CurrentMesh};
@@ -468,8 +465,9 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_
 		return FALSE;
 	}
 	Texture->Size = (size_t)(Texture->Width) * (size_t)(Texture->Height) * 4;
-	Texture->Pixels = M_ArenaAlloc(UploadArena, Texture->Size);
-	memcpy(Texture->Pixels, StbiData, Texture->Size);
+	Texture->MipLevels = R_CalculateMipLevels(Texture->Width, Texture->Height);
+	Texture->MipPixels[0] = M_ArenaAlloc(UploadArena, Texture->Size);
+	memcpy(Texture->MipPixels[0], StbiData, Texture->Size);
 	stbi_image_free(StbiData);
 	return TRUE;
 }
@@ -616,7 +614,7 @@ CreateTextureName(M_Arena *UploadArena, cgltf_image *BaseImage, PCWSTR Path, int
 }
 
 void
-LoadPBRData(R_Core *Renderer, const R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB)
+LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB)
 {
 	CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, NULL);
 	CB->NormalTextureIndex = R_GetTextureIndex(Renderer, NULL);
@@ -688,7 +686,7 @@ ComputeTangents(cgltf_accessor *PositionAccessor,
 	XMFLOAT3 *Tan1 = M_ArenaAlloc(Arena, VertexCount * sizeof(XMFLOAT3));
 	XMFLOAT3 *Tan2 = M_ArenaAlloc(Arena, VertexCount * sizeof(XMFLOAT3));
 	XMFLOAT4 *FinalTangents = M_ArenaAlloc(Arena, VertexCount * sizeof(XMFLOAT4));
-	
+
 	for (size_t i = 0; i < IndicesAccessor->count; i += 3) {
 		uint32_t i1 = (uint32_t)cgltf_accessor_read_index(IndicesAccessor, i);
 		uint32_t i2 = (uint32_t)cgltf_accessor_read_index(IndicesAccessor, i + 1);
@@ -731,7 +729,6 @@ ComputeTangents(cgltf_accessor *PositionAccessor,
 		Tan2[i3] = (XMFLOAT3){Tan2[i3].x + tdir.x, Tan2[i3].y + tdir.y, Tan2[i3].z + tdir.z};
 	}
 
-	
 	for (size_t i = 0; i < VertexCount; i++) {
 		XMFLOAT3 N;
 		cgltf_accessor_read_float(NormalAccessor, i, &N.x, 3);

@@ -63,12 +63,14 @@ typedef struct R_LightBillboardConstants {
 } R_LightBillboardConstants;
 
 typedef struct R_Texture {
-	const UINT8 *Pixels;
 	INT Width;
 	INT Height;
 	INT Channels;
 	PSTR Name;
 	size_t Size;
+
+	void *MipPixels[D3D12_REQ_MIP_LEVELS];
+	UINT MipLevels;
 } R_Texture;
 
 typedef struct R_Primitive {
@@ -78,7 +80,6 @@ typedef struct R_Primitive {
 	UINT IndexCount;
 
 	R_PBRConstantBuffer ConstantBuffer;
-	BOOL bDoubleSided;
 } R_Primitive;
 
 typedef struct R_Mesh {

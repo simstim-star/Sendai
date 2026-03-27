@@ -18,7 +18,9 @@ typedef struct TextureLookup {
 void R_CreateCustomTexture(PCWSTR Path, R_Core *Renderer);
 void R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex);
 GPUTexture R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source);
+UINT R_CalculateMipLevels(INT Width, INT Height);
 ID3D12Resource *R_CommandCreateTextureGPU(R_Core *const Renderer, const R_Texture *const Source);
 UINT64 R_SuballocateTextureUpload(R_Core *Renderer, UINT64 Size);
 UINT32
 R_GetTextureIndex(R_Core *const Renderer, const R_Texture *const Texture);
+void R_GenerateMips(R_Model *Model, M_Arena *UploadArena);

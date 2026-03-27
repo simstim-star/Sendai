@@ -75,10 +75,16 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 
 	// Sampler
 	D3D12_STATIC_SAMPLER_DESC Sampler = {
-	  .Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+	  .Filter = D3D12_FILTER_ANISOTROPIC,
 	  .AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
 	  .AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
 	  .AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+	  .MipLODBias = 0.0f,
+	  .MaxAnisotropy = 16,
+	  .ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
+	  .BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK,
+	  .MinLOD = 0.0f,			   
+	  .MaxLOD = D3D12_FLOAT32_MAX,
 	  .ShaderRegister = 0,
 	  .ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
 	};
