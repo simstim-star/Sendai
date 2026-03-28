@@ -66,8 +66,8 @@ RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const R
 	R_LightBillboardConstants CB = {.MVP = MeshConstants->MVP, .Tint = Tint};
 	memcpy(Renderer->MeshDataUploadBufferCpuAddress + Renderer->MeshDataOffset, &CB, sizeof(R_LightBillboardConstants));
 
-	D3D12_GPU_VIRTUAL_ADDRESS MeshDataGpuAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->MeshDataUploadBuffer);
-	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + Renderer->MeshDataOffset);
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0,
+																M_GpuAddress(Renderer->MeshDataUploadBuffer, Renderer->MeshDataOffset));
 
 	D3D12_VERTEX_BUFFER_VIEW VBV = {
 	  .BufferLocation = Renderer->BillboardBufferLocation,

@@ -25,7 +25,7 @@ R_CreateGrid(R_Core *const Renderer, const float HalfSide)
 	}
 
 	memcpy(Renderer->SceneDataUploadBufferCpuAddress + Renderer->SceneDataOffset, &GRID_VERTICES, sizeof(GRID_VERTICES));
-	Renderer->GridBufferLocation = ID3D12Resource_GetGPUVirtualAddress(Renderer->SceneDataUploadBuffer) + Renderer->SceneDataOffset;
+	Renderer->GridBufferLocation = M_GpuAddress(Renderer->SceneDataUploadBuffer, Renderer->SceneDataOffset);
 	Renderer->SceneDataOffset += CB_ALIGN(GRID_VERTICES);
 }
 
@@ -39,8 +39,7 @@ R_RenderGrid(R_Core *const Renderer, R_MeshConstants *const MeshConstants)
 	MeshConstants->MVP.Model = XMMatrixIdentity();
 	memcpy(Renderer->MeshDataUploadBufferCpuAddress + Renderer->MeshDataOffset, MeshConstants, sizeof(R_MeshConstants));
 
-	D3D12_GPU_VIRTUAL_ADDRESS MeshDataGpuAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->MeshDataUploadBuffer);
-	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + Renderer->MeshDataOffset);
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, M_GpuAddress(Renderer->MeshDataUploadBuffer, Renderer->MeshDataOffset));
 
 	D3D12_VERTEX_BUFFER_VIEW VBV = {
 	  .BufferLocation = Renderer->GridBufferLocation,

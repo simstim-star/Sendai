@@ -311,13 +311,10 @@ RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConst
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignPBR);
 	UINT8 *MeshDataCpuAddress = Renderer->MeshDataUploadBufferCpuAddress;
-	D3D12_GPU_VIRTUAL_ADDRESS MeshDataGpuAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->MeshDataUploadBuffer);
 
 	R_SceneData SceneData = PreprocessSceneData(Scene);
 	memcpy(Renderer->SceneDataUploadBufferCpuAddress + Renderer->SceneDataOffset, &SceneData, sizeof(R_SceneData));
-	D3D12_GPU_VIRTUAL_ADDRESS SceneDataGpuBaseAddress =
-		ID3D12Resource_GetGPUVirtualAddress(Renderer->SceneDataUploadBuffer) + Renderer->SceneDataOffset;
-	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2, SceneDataGpuBaseAddress);
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2, M_GpuAddress(Renderer->SceneDataUploadBuffer, Renderer->SceneDataOffset));
 	Renderer->SceneDataOffset += CB_ALIGN(R_SceneData);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE TexturesHeapStart;
@@ -344,7 +341,8 @@ RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConst
 			MeshConstants->Normal = R_NormalMatrix(&ModelXMFLOAT);
 
 			memcpy(MeshDataCpuAddress + Renderer->MeshDataOffset, MeshConstants, sizeof(R_MeshConstants));
-			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, MeshDataGpuAddress + Renderer->MeshDataOffset);
+			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0,
+																		M_GpuAddress(Renderer->MeshDataUploadBuffer, Renderer->MeshDataOffset));
 			Renderer->MeshDataOffset += CB_ALIGN(R_MeshConstants);
 
 			if (Node->Mesh != NULL) {
@@ -453,7 +451,7 @@ CreateBaseEngineTextures(R_Core *const Renderer)
 	Win32FullPath(L"/assets/images/lamp.png", LampImagePath, _countof(LampImagePath));
 	R_CreateCustomTexture(LampImagePath, Renderer);
 	memcpy(Renderer->SceneDataUploadBufferCpuAddress + Renderer->SceneDataOffset, BillboardVertices, sizeof(BillboardVertices));
-	Renderer->BillboardBufferLocation = ID3D12Resource_GetGPUVirtualAddress(Renderer->SceneDataUploadBuffer) + Renderer->SceneDataOffset;
+	Renderer->BillboardBufferLocation = M_GpuAddress(Renderer->SceneDataUploadBuffer, Renderer->SceneDataOffset);
 	Renderer->SceneDataOffset += CB_ALIGN(BillboardVertices);
 }
 

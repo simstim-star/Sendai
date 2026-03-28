@@ -219,8 +219,7 @@ GetData(PCWSTR Path, M_Arena *UploadArena)
 	Options.memory.user_data = UploadArena;
 
 	cgltf_data *Data = NULL;
-	cgltf_result Result = cgltf_parse(&Options, FileData, Size, &Data);
-	if (Result != cgltf_result_success) {
+	if (cgltf_parse(&Options, FileData, Size, &Data) != cgltf_result_success) {
 		if (Data) {
 			cgltf_free(Data);
 		}
@@ -228,8 +227,7 @@ GetData(PCWSTR Path, M_Arena *UploadArena)
 		return NULL;
 	}
 
-	Result = LoadGLTFBuffers(&Options, UploadArena, Data, Path);
-	if (Result != cgltf_result_success) {
+	if (LoadGLTFBuffers(&Options, UploadArena, Data, Path) != cgltf_result_success) {
 		if (Data) {
 			cgltf_free(Data);
 		}
@@ -369,7 +367,7 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 
 	memcpy(Renderer->UploadBufferCpuAddress + Renderer->CurrentUploadBufferOffset, Vertices, VertexBufferSize);
 	D3D12_VERTEX_BUFFER_VIEW VertexBufferView = {
-	  .BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Renderer->VertexBufferDefault) + Renderer->CurrentVertexBufferOffset,
+	  .BufferLocation = M_GpuAddress(Renderer->VertexBufferDefault, + Renderer->CurrentVertexBufferOffset),
 	  .SizeInBytes = VertexBufferSize,
 	  .StrideInBytes = sizeof(R_Vertex),
 	};
@@ -382,8 +380,7 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	Renderer->CurrentUploadBufferOffset = ROUND_UP_POWER_OF_2(Renderer->CurrentUploadBufferOffset, 4);
 	Renderer->CurrentIndexBufferOffset = ROUND_UP_POWER_OF_2(Renderer->CurrentIndexBufferOffset, 4);
 	memcpy(Renderer->UploadBufferCpuAddress + Renderer->CurrentUploadBufferOffset, Indices, IndexBufferSize);
-	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Renderer->IndexBufferDefault) +
-																 Renderer->CurrentIndexBufferOffset,
+	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {.BufferLocation = M_GpuAddress(Renderer->IndexBufferDefault, Renderer->CurrentIndexBufferOffset),
 											   .Format = IndexFormat,
 											   .SizeInBytes = IndexBufferSize};
 	ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->IndexBufferDefault, Renderer->CurrentIndexBufferOffset,
@@ -464,11 +461,14 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_
 	if (StbiData == NULL) {
 		return FALSE;
 	}
+
 	Texture->Size = (size_t)(Texture->Width) * (size_t)(Texture->Height) * 4;
 	Texture->MipLevels = R_CalculateMipLevels(Texture->Width, Texture->Height);
 	Texture->MipPixels[0] = M_ArenaAlloc(UploadArena, Texture->Size);
 	memcpy(Texture->MipPixels[0], StbiData, Texture->Size);
+	
 	stbi_image_free(StbiData);
+	
 	return TRUE;
 }
 

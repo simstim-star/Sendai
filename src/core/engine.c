@@ -136,9 +136,8 @@ InitWindow(Sendai *const Engine)
 	RegisterClassEx(&wc);
 	RECT rect = {0, 0, (LONG)(Engine->RendererCore.Width), (LONG)(Engine->RendererCore.Height)};
 	AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
-	Engine->hWnd =
-		CreateWindow(wc.lpszClassName, Engine->Title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
-					 rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, Engine->hInstance, Engine);
+	Engine->hWnd = CreateWindow(wc.lpszClassName, Engine->Title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
+								rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, Engine->hInstance, Engine);
 }
 
 LRESULT CALLBACK

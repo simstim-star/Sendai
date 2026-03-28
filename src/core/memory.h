@@ -23,3 +23,6 @@ M_Arena M_ArenaInit(size_t ReserveSize);
 void *M_ArenaAlloc(M_Arena *Arena, size_t Size);
 void M_ArenaReset(M_Arena *Arena);
 void M_ArenaRelease(M_Arena *Arena);
+
+
+D3D12_GPU_VIRTUAL_ADDRESS M_GpuAddress(ID3D12Resource *Resource, UINT64 Offset);

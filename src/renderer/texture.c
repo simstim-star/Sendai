@@ -190,23 +190,23 @@ void
 R_GenerateMips(R_Model *Model, M_Arena *UploadArena)
 {
 	for (size_t i = 0; i < Model->ImagesCount; ++i) {
-		R_Texture *Tex = &Model->Images[i];
+		R_Texture *Texture = &Model->Images[i];
 
-		if (Tex->MipPixels[0] == NULL || Tex->MipLevels <= 1) {
+		if (Texture->MipPixels[0] == NULL || Texture->MipLevels <= 1) {
 			continue;
 		}
 
-		INT CurrentWidth = Tex->Width;
-		INT CurrentHeight = Tex->Height;
+		INT CurrentWidth = Texture->Width;
+		INT CurrentHeight = Texture->Height;
 
-		for (size_t MipLevel = 1; MipLevel < Tex->MipLevels; MipLevel++) {
+		for (size_t MipLevel = 1; MipLevel < Texture->MipLevels; MipLevel++) {
 			INT NextWidth = CurrentWidth > 1 ? CurrentWidth / 2 : 1;
 			INT NextHeight = CurrentHeight > 1 ? CurrentHeight / 2 : 1;
 
-			Tex->MipPixels[MipLevel] = M_ArenaAlloc(UploadArena, NextWidth * NextHeight * 4);
+			Texture->MipPixels[MipLevel] = M_ArenaAlloc(UploadArena, NextWidth * NextHeight * 4);
 
-			stbir_resize_uint8_linear((unsigned char *)Tex->MipPixels[MipLevel - 1], CurrentWidth, CurrentHeight, 0,
-									  (unsigned char *)Tex->MipPixels[MipLevel], NextWidth, NextHeight, 0, STBIR_RGBA);
+			stbir_resize_uint8_linear((unsigned char *)Texture->MipPixels[MipLevel - 1], CurrentWidth, CurrentHeight, 0,
+									  (unsigned char *)Texture->MipPixels[MipLevel], NextWidth, NextHeight, 0, STBIR_RGBA);
 
 			CurrentWidth = NextWidth;
 			CurrentHeight = NextHeight;

@@ -63,3 +63,6 @@ M_ArenaRelease(M_Arena *Arena)
 	Arena->SizeCommitted = 0;
 	Arena->SizeReserved = 0;
 }
+
+D3D12_GPU_VIRTUAL_ADDRESS
+M_GpuAddress(ID3D12Resource *Resource, UINT64 Offset) { return ID3D12Resource_GetGPUVirtualAddress(Resource) + Offset; }
