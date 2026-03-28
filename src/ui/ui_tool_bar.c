@@ -1,7 +1,7 @@
 #include "../core/pch.h"
 
-#include "ui_bottom_panel.h"
 #include "ui.h"
+#include "ui_bottom_panel.h"
 
 #include "../core/camera.h"
 

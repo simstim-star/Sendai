@@ -35,7 +35,6 @@ typedef struct MeshLookup {
 	Forward declaration of private functions
 *****************************************************/
 
-
 static cgltf_data *GetData(PCWSTR Path, M_Arena *UploadArena);
 
 static void SetModelName(PCWSTR Path, R_Model *Model, M_Arena *Arena);
@@ -367,7 +366,7 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 
 	memcpy(Renderer->UploadBufferCpuAddress + Renderer->CurrentUploadBufferOffset, Vertices, VertexBufferSize);
 	D3D12_VERTEX_BUFFER_VIEW VertexBufferView = {
-	  .BufferLocation = M_GpuAddress(Renderer->VertexBufferDefault, + Renderer->CurrentVertexBufferOffset),
+	  .BufferLocation = M_GpuAddress(Renderer->VertexBufferDefault, Renderer->CurrentVertexBufferOffset),
 	  .SizeInBytes = VertexBufferSize,
 	  .StrideInBytes = sizeof(R_Vertex),
 	};
@@ -466,9 +465,9 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_
 	Texture->MipLevels = R_CalculateMipLevels(Texture->Width, Texture->Height);
 	Texture->MipPixels[0] = M_ArenaAlloc(UploadArena, Texture->Size);
 	memcpy(Texture->MipPixels[0], StbiData, Texture->Size);
-	
+
 	stbi_image_free(StbiData);
-	
+
 	return TRUE;
 }
 

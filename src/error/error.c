@@ -1,5 +1,5 @@
-#include "../core/pch.h"
 #include "error.h"
+#include "../core/pch.h"
 
 void
 ExitIfFailed(const HRESULT hr)
@@ -12,6 +12,11 @@ ExitIfFailed(const HRESULT hr)
 	if (snprintf(s_str, 64, "ERROR: HRESULT 0x%08X\n", (UINT)hr) > 0) {
 		OutputDebugString(s_str);
 	}
+
+	if (IsDebuggerPresent()) {
+		__debugbreak();
+	}
+
 	exit(EXIT_FAILURE);
 }
 
@@ -19,5 +24,10 @@ void
 ExitWithMessage(const char *Message)
 {
 	fprintf(stderr, "FATAL ERROR: %s\n", Message);
+
+	if (IsDebuggerPresent()) {
+		__debugbreak();
+	}
+
 	exit(EXIT_FAILURE);
 }

@@ -3,8 +3,8 @@
  * https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12MeshShaders/src/DynamicLOD/StepTimer.h
  */
 
-#include "pch.h"
 #include "timer.h"
+#include "pch.h"
 
 void
 S_TimerInit(S_StepTimer *StepTimer)

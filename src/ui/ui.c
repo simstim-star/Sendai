@@ -8,8 +8,8 @@
 #include "../renderer/renderer.h"
 #include "../renderer/texture.h"
 #include "../win32/file_dialog.h"
-#include "../win32/win_path.h"
 #include "../win32/str_helper.h"
+#include "../win32/win_path.h"
 
 struct nk_image UI_TEXTURES[UI_EUT_NUM_USER_TEXTURES];
 
@@ -26,7 +26,8 @@ static void LoadCustomTextures(R_Core *Renderer);
 void
 UI_Init(S_UI *const UI, R_Core *Renderer)
 {
-	UI->Renderer.Context = nk_d3d12_init(Renderer->Device, Renderer->Width, Renderer->Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, UI_EUT_NUM_USER_TEXTURES);
+	UI->Renderer.Context =
+		nk_d3d12_init(Renderer->Device, Renderer->Width, Renderer->Height, MAX_VERTEX_BUFFER, MAX_INDEX_BUFFER, UI_EUT_NUM_USER_TEXTURES);
 	UI->Renderer.Width = Renderer->Width;
 	UI->Renderer.Height = Renderer->Height;
 
@@ -62,8 +63,8 @@ UI_LogWindow(UI_Renderer *const UI)
 		nk_layout_row_dynamic(Context, WindowW * 2, 1);
 		const nk_flags LogFlags = NK_EDIT_MULTILINE | NK_EDIT_READ_ONLY | NK_EDIT_ALWAYS_INSERT_MODE | NK_EDIT_GOTO_END_ON_ACTIVATE;
 
-		int RequiredBytes =
-			WideCharToMultiByte(CP_UTF8, 0, SENDAI_LOG.Buffer, SENDAI_LOG.Len, SENDAI_LOG.UTF8Buffer, sizeof(SENDAI_LOG.UTF8Buffer) - 1, NULL, NULL);
+		int RequiredBytes = WideCharToMultiByte(CP_UTF8, 0, SENDAI_LOG.Buffer, SENDAI_LOG.Len, SENDAI_LOG.UTF8Buffer,
+												sizeof(SENDAI_LOG.UTF8Buffer) - 1, NULL, NULL);
 
 		if (RequiredBytes >= 0) {
 			SENDAI_LOG.UTF8Buffer[RequiredBytes] = '\0';
@@ -139,7 +140,7 @@ LoadCustomTextures(R_Core *Renderer)
 	WCHAR Path[512];
 	Win32FullPath(L"/assets/images/wireframe.png", Path, _countof(Path));
 	R_CreateUITexture(Path, Renderer, UI_EUT_WIREFRAME);
-	
+
 	Win32FullPath(L"/assets/images/camera.png", Path, _countof(Path));
 	R_CreateUITexture(Path, Renderer, UI_EUT_CAMERA);
 

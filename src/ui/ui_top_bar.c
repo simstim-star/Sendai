@@ -51,7 +51,10 @@ InfoPopup(UI_Renderer *UI, UI_TopBarState *State)
 		DXGI_ADAPTER_DESC1 Desc = {0};
 		IDXGIAdapter3_GetDesc1(State->Adapter, &Desc);
 
-		const char *Vendor = (Desc.VendorId == 0x10DE) ? "NVIDIA" : (Desc.VendorId == 0x1002) ? "AMD" : (Desc.VendorId == 0x8086) ? "Intel" : "Unknown";
+		const char *Vendor = (Desc.VendorId == 0x10DE)	 ? "NVIDIA"
+							 : (Desc.VendorId == 0x1002) ? "AMD"
+							 : (Desc.VendorId == 0x8086) ? "Intel"
+														 : "Unknown";
 
 		nk_labelf(UI->Context, NK_TEXT_LEFT, "  GPU: %ls (%s)", Desc.Description, Vendor);
 		nk_labelf(UI->Context, NK_TEXT_LEFT, "  Device ID: 0x%X", Desc.DeviceId);

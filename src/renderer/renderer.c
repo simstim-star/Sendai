@@ -314,7 +314,8 @@ RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConst
 
 	R_SceneData SceneData = PreprocessSceneData(Scene);
 	memcpy(Renderer->SceneDataUploadBufferCpuAddress + Renderer->SceneDataOffset, &SceneData, sizeof(R_SceneData));
-	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2, M_GpuAddress(Renderer->SceneDataUploadBuffer, Renderer->SceneDataOffset));
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2,
+																M_GpuAddress(Renderer->SceneDataUploadBuffer, Renderer->SceneDataOffset));
 	Renderer->SceneDataOffset += CB_ALIGN(R_SceneData);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE TexturesHeapStart;
@@ -346,7 +347,7 @@ RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConst
 			Renderer->MeshDataOffset += CB_ALIGN(R_MeshConstants);
 
 			if (Node->Mesh != NULL) {
-				R_Mesh *Mesh = Node->Mesh; 
+				R_Mesh *Mesh = Node->Mesh;
 				for (INT PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
 					R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
 					ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES,
@@ -356,7 +357,6 @@ RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConst
 					ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);
 				}
 			}
-
 		}
 	}
 }
