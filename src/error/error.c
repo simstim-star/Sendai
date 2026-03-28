@@ -1,5 +1,6 @@
-#include "error.h"
 #include "../core/pch.h"
+
+#include "error.h"
 
 void
 ExitIfFailed(const HRESULT hr)

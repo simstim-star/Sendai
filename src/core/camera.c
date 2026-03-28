@@ -1,5 +1,6 @@
-#include "camera.h"
 #include "pch.h"
+
+#include "camera.h"
 
 /*****************************************************************
  Private functions

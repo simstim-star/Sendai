@@ -1,6 +1,7 @@
 #include "../core/pch.h"
-#include <strsafe.h>
+
 #include "win_path.h"
+#include <strsafe.h>
 
 void
 Win32CurrPath(_Out_writes_(PathSize) PWSTR const Path, UINT PathSize)
