@@ -62,6 +62,7 @@ ALL_OBJS = \
     $(OBJ_DIR)\core\engine.obj \
     $(OBJ_DIR)\core\grid.obj \
     $(OBJ_DIR)\core\log.obj \
+    $(OBJ_DIR)\assets\dds_loader.obj \
     $(OBJ_DIR)\assets\gltf.obj \
     $(OBJ_DIR)\core\memory.obj
 

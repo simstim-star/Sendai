@@ -13,6 +13,8 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "../../deps/stb_image_resize2.h"
 
+#include "../assets/dds_loader.h"
+
 static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
 
 static const R_Texture WhiteTexture = {.Name = "fallback_white", .Width = 1, .Height = 1, .MipLevels = 1, .MipPixels[0] = WHITE_PIXEL};
@@ -126,8 +128,8 @@ R_CommandCreateTextureGPU(R_Core *const Renderer, const R_Texture *const SourceT
 	for (uint32_t MipLevel = 0; MipLevel < SourceTexture->MipLevels; MipLevel++) {
 		UINT8 *pDestination = pUploadBufferBase + Layouts[MipLevel].Offset;
 		UINT8 *pSource = (UINT8 *)SourceTexture->MipPixels[MipLevel];
-		for (UINT y = 0; y < NumRows[MipLevel]; y++) {
-			memcpy(pDestination + (y * Layouts[MipLevel].Footprint.RowPitch), pSource + (y * RowSizeInBytes[MipLevel]),
+		for (UINT Row = 0; Row < NumRows[MipLevel]; Row++) {
+			memcpy(pDestination + (Row * Layouts[MipLevel].Footprint.RowPitch), pSource + (Row * RowSizeInBytes[MipLevel]),
 				   RowSizeInBytes[MipLevel]);
 		}
 		D3D12_TEXTURE_COPY_LOCATION DestinationLocation = {
@@ -212,4 +214,94 @@ R_GenerateMips(R_Model *Model, M_Arena *UploadArena)
 			CurrentHeight = NextHeight;
 		}
 	}
+}
+
+void
+R_UploadDDSResource(R_Core *const Renderer, ID3D12Resource *Texture, D3D12_SUBRESOURCE_DATA *Subresources, UINT MipLevels)
+{
+	D3D12_RESOURCE_DESC TexDesc;
+	ID3D12Resource_GetDesc(Texture, &TexDesc);
+
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT Layouts[D3D12_REQ_MIP_LEVELS];
+	UINT NumRows[D3D12_REQ_MIP_LEVELS];
+	UINT64 RowSizeInBytes[D3D12_REQ_MIP_LEVELS];
+	UINT64 TotalUploadSize = 0;
+
+	ID3D12Device_GetCopyableFootprints(Renderer->Device, &TexDesc, 0, MipLevels, 0, Layouts, NumRows, RowSizeInBytes, &TotalUploadSize);
+
+	UINT64 Offset = R_SuballocateTextureUpload(Renderer, TotalUploadSize);
+	UINT8 *pUploadBufferBase = Renderer->TextureUploadBuffer.BaseMappedPtr + Offset;
+
+	for (UINT MipLevel = 0; MipLevel < MipLevels; MipLevel++) {
+		UINT8 *pDestination = pUploadBufferBase + Layouts[MipLevel].Offset;
+		const UINT8 *pSource = (const UINT8 *)Subresources[MipLevel].pData;
+
+		for (UINT Row = 0; Row < NumRows[MipLevel]; Row++) {
+			memcpy(pDestination + (Row * Layouts[MipLevel].Footprint.RowPitch), pSource + (Row * Subresources[MipLevel].RowPitch), RowSizeInBytes[MipLevel]);
+		}
+
+		D3D12_TEXTURE_COPY_LOCATION DestLoc = {.pResource = Texture, .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = MipLevel};
+		D3D12_TEXTURE_COPY_LOCATION SrcLoc = {
+		  .pResource = Renderer->TextureUploadBuffer.Buffer, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = Layouts[MipLevel]};
+		SrcLoc.PlacedFootprint.Offset += Offset;
+
+		ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->CommandList, &DestLoc, 0, 0, 0, &SrcLoc, NULL);
+	}
+
+	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+									  .Transition = {
+										.pResource = Texture,
+										.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+										.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+										.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+									  }};
+	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &Barrier);
+}
+
+GPUTexture
+R_UploadTextureFromDDSFile(R_Core *const Renderer, const PWSTR FileName, const PSTR NameKey)
+{
+	ptrdiff_t Index = shgeti(Renderer->Textures, NameKey);
+	if (Index != -1) {
+		return Renderer->Textures[Index].Texture;
+	}
+
+	ID3D12Resource *Texture = NULL;
+	UINT8 *DdsData = NULL;
+	D3D12_SUBRESOURCE_DATA *Subresources = NULL;
+	arrsetlen(Subresources, D3D12_REQ_MIP_LEVELS);
+
+	HRESULT hr = LoadDDSTextureFromFile(Renderer->Device, FileName, &Texture, &DdsData, Subresources, 0, NULL, NULL);
+	ExitIfFailed(hr);
+
+	D3D12_RESOURCE_DESC Desc;
+	ID3D12Resource_GetDesc(Texture, &Desc);
+
+	R_UploadDDSResource(Renderer, Texture, Subresources, Desc.MipLevels);
+
+	uint32_t SlotIndex = Renderer->TexturesCount++;
+	GPUTexture NewTex = {
+	  .GpuTexture = Texture,
+	  .HeapIndex = SlotIndex,
+	};
+
+	D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle;
+	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &CpuHandle);
+	CpuHandle.ptr += (SIZE_T)SlotIndex * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC SrvDesc = {
+	  .Format = Desc.Format,
+	  .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+	  .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+	  .Texture2D.MipLevels = Desc.MipLevels,
+	};
+	ID3D12Device_CreateShaderResourceView(Renderer->Device, Texture, &SrvDesc, CpuHandle);
+
+	TextureLookup Lookup = {.key = NameKey, .Texture = NewTex};
+	shputs(Renderer->Textures, Lookup);
+
+	//arrfree(Subresources);
+	//free(DdsData);
+
+	return NewTex;
 }

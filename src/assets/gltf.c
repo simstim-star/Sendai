@@ -21,15 +21,21 @@
 #include "../renderer/texture.h"
 #include "../win32/str_helper.h"
 #include "../win32/win_path.h"
+#include "dds_loader.h"
 
 /****************************************************
-	Helper structs
+	Helper structs and enums
 *****************************************************/
 
 typedef struct MeshLookup {
 	cgltf_mesh *key;
 	R_Mesh *value;
 } MeshLookup;
+
+typedef enum E_TextureFormat {
+	ETF_DDS,
+	ETF_PNG,
+} E_TextureFormat;
 
 /****************************************************
 	Forward declaration of private functions
@@ -41,7 +47,7 @@ static void SetModelName(PCWSTR Path, R_Model *Model, M_Arena *Arena);
 
 static void LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneArena, M_Arena *UploadArena);
 
-static void PreloadImages(R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena *UploadArena);
+static void PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena *UploadArena);
 
 static BOOL ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_Arena *UploadArena, _Out_ R_Texture *Texture);
 
@@ -78,6 +84,8 @@ static XMFLOAT4 *ComputeTangents(cgltf_accessor *PositionAccessor,
 								 cgltf_accessor *IndicesAccessor,
 								 M_Arena *Arena);
 
+static VOID GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Images, int *Index, E_TextureFormat *Format);
+
 /* The below functions are to inject into gltf loader to use my arena */
 
 static void *
@@ -110,7 +118,7 @@ SendaiGLTF_LoadModel(R_Core *Renderer, PCWSTR Path, S_Scene *Scene)
 	SetModelName(Path, Model, &Scene->SceneArena);
 
 	if (Data->images_count > 0) {
-		PreloadImages(Model, Data, Path, &Scene->UploadArena);
+		PreloadImages(Renderer, Model, Data, Path, &Scene->UploadArena);
 	}
 
 	R_GenerateMips(Model, &Scene->UploadArena);
@@ -393,21 +401,41 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 }
 
 void
-PreloadImages(R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena *UploadArena)
+PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena *UploadArena)
 {
 	Model->Images = M_ArenaAlloc(UploadArena, Data->images_count * sizeof(R_Texture));
 	Model->ImagesCount = Data->images_count;
 
-	for (int i = 0; i < Data->images_count; ++i) {
-		cgltf_image *BaseImage = &Data->images[i];
-		size_t Size = 0;
-		int Channels = 0;
-		WCHAR BasePath[MAX_PATH];
-		wcscpy_s(BasePath, MAX_PATH, Path);
-		Win32RemoveAllAfterLastSlash(BasePath);
+	for (INT i = 0; i < Data->textures_count; ++i) {
+		INT ImageIndex;
+		E_TextureFormat Format;
+		GetIndexAndFormatFromTexture(&Data->textures[i], Data->images, &ImageIndex, &Format);
+		cgltf_image *BaseImage = &Data->images[ImageIndex];
+		switch (Format) {
+		case ETF_PNG: {
+			WCHAR BasePath[MAX_PATH];
+			wcscpy_s(BasePath, MAX_PATH, Path);
+			Win32RemoveAllAfterLastSlash(BasePath);
 
-		if (ExtractImageData(BasePath, BaseImage, UploadArena, &Model->Images[i])) {
-			Model->Images[i].Name = CreateTextureName(UploadArena, BaseImage, Path, i);
+			if (ExtractImageData(BasePath, BaseImage, UploadArena, &Model->Images[i])) {
+				Model->Images[i].Name = CreateTextureName(UploadArena, BaseImage, Path, i);
+			}
+			break;
+		}
+		case ETF_DDS: {
+			WCHAR BasePath[MAX_PATH];
+
+			wcscpy_s(BasePath, MAX_PATH, Path);
+			Win32RemoveAllAfterLastSlash(BasePath);
+			
+			CHAR FullPath[MAX_PATH];
+			Win32AppendFileNameToPath(BasePath, BaseImage->uri, FullPath);
+			WCHAR FullPathW[MAX_PATH];
+			UTF8_TO_W(FullPath, FullPathW, MAX_PATH);
+			
+			R_UploadTextureFromDDSFile(Renderer, FullPathW, BaseImage->uri);
+			break;
+		}
 		}
 	}
 }
@@ -629,7 +657,8 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 			CB->RoughnessFactor = MetallicRoughnessData->roughness_factor;
 
 			if (MetallicRoughnessData->base_color_texture.texture) {
-				UINT AlbedoIndex = MetallicRoughnessData->base_color_texture.texture->image - ImagesData;
+				INT AlbedoIndex = 0;
+				GetIndexAndFormatFromTexture(MetallicRoughnessData->base_color_texture.texture, ImagesData, &AlbedoIndex, NULL);
 				CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, &Images[AlbedoIndex]);
 
 				if (MetallicRoughnessData->base_color_texture.has_transform) {
@@ -650,24 +679,28 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 			}
 
 			if (MetallicRoughnessData->metallic_roughness_texture.texture) {
-				UINT MetallicIndex = MetallicRoughnessData->metallic_roughness_texture.texture->image - ImagesData;
+				INT MetallicIndex = 0;
+				GetIndexAndFormatFromTexture(MetallicRoughnessData->metallic_roughness_texture.texture, ImagesData, &MetallicIndex, NULL);
 				CB->MetallicTextureIndex = R_GetTextureIndex(Renderer, &Images[MetallicIndex]);
 			}
 		}
 		cgltf_texture_view *NormalTextureView = &Material->normal_texture;
 		if (NormalTextureView->texture) {
-			UINT NormalIndex = NormalTextureView->texture->image - ImagesData;
+			INT NormalIndex = 0;
+			GetIndexAndFormatFromTexture(NormalTextureView->texture, ImagesData, &NormalIndex, NULL);
 			CB->NormalTextureIndex = R_GetTextureIndex(Renderer, &Images[NormalIndex]);
 		}
 
 		if (Material->occlusion_texture.texture) {
-			UINT OcclusionIndex = Material->occlusion_texture.texture->image - ImagesData;
+			INT OcclusionIndex = 0;
+			GetIndexAndFormatFromTexture(Material->occlusion_texture.texture, ImagesData, &OcclusionIndex, NULL);
 			CB->OcclusionTextureIndex = R_GetTextureIndex(Renderer, &Images[OcclusionIndex]);
 		}
 
 		memcpy(&CB->EmissiveFactor, Material->emissive_factor, sizeof(cgltf_float) * 3);
 		if (Material->emissive_texture.texture) {
-			UINT EmissiveIndex = Material->emissive_texture.texture->image - ImagesData;
+			INT EmissiveIndex = 0;
+			GetIndexAndFormatFromTexture(Material->emissive_texture.texture, ImagesData, &EmissiveIndex, NULL);
 			CB->EmissiveTextureIndex = R_GetTextureIndex(Renderer, &Images[EmissiveIndex]);
 		}
 	}
@@ -751,4 +784,36 @@ ComputeTangents(cgltf_accessor *PositionAccessor,
 	}
 
 	return FinalTangents;
+}
+
+VOID
+GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Image, int *OutIndex, E_TextureFormat *OutFormat)
+{
+	if (!Texture || !Image) {
+		return -1;
+	}
+
+	for (cgltf_size i = 0; i < Texture->extensions_count; ++i) {
+		if (strcmp(Texture->extensions[i].name, "MSFT_texture_dds") == 0) {
+			// MSFT_texture_dds data contains the index of the DDS image
+			// Structure is usually {"source": <image_index>}
+			const PSTR pSource = strstr(Texture->extensions[i].vertex_data, "\"source\":");
+			if (pSource) {
+				if (OutIndex) {
+					*OutIndex = atoi(pSource + 9);
+				}
+				if (OutFormat) {
+					*OutFormat = ETF_DDS;
+				}
+				return;
+			}
+		}
+	}
+
+	if (OutIndex) {
+		*OutIndex = (INT)(Texture->image - Image);
+	}
+	if (OutFormat) {
+		*OutFormat = ETF_PNG;
+	}
 }
