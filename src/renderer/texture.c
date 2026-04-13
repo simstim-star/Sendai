@@ -47,6 +47,7 @@ R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
 	shputs(Renderer->Textures, Lookup);
 
 	stbi_image_free(Pixels);
+	R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
 }
 
 GPUTexture
@@ -78,7 +79,7 @@ R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source)
 
 	TextureLookup Lookup = {.key = Source->Name, .Texture = NewTex};
 	shputs(Renderer->Textures, Lookup);
-
+	R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
 	return NewTex;
 }
 
@@ -92,6 +93,7 @@ R_CreateCustomTexture(PCWSTR Path, R_Core *Renderer)
 	R_Texture Source = (R_Texture){.Height = H, .Width = W, .Name = PathUTF8, .MipLevels = 1, .MipPixels[0] = Pixels};
 	R_UploadTexture(Renderer, &Source);
 	stbi_image_free(Pixels);
+	R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
 }
 
 ID3D12Resource *
@@ -138,7 +140,7 @@ R_CommandCreateTextureGPU(R_Core *const Renderer, const R_Texture *const SourceT
 													  .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
 													  .PlacedFootprint = Layouts[MipLevel]};
 		SourceLocation.PlacedFootprint.Offset += Offset;
-		ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->CommandList, &DestinationLocation, 0, 0, 0, &SourceLocation, NULL);
+		ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->UploadCommandList, &DestinationLocation, 0, 0, 0, &SourceLocation, NULL);
 	}
 
 	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
@@ -148,7 +150,7 @@ R_CommandCreateTextureGPU(R_Core *const Renderer, const R_Texture *const SourceT
 										.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
 										.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 									  }};
-	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &Barrier);
+	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->UploadCommandList, 1, &Barrier);
 
 	return Texture;
 }
@@ -157,9 +159,10 @@ UINT64
 R_SuballocateTextureUpload(R_Core *const Renderer, UINT64 Size)
 {
 	UINT64 AlignedOffset = ROUND_UP_POWER_OF_2(Renderer->TextureUploadBuffer.CurrentOffset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
-
+	
 	if (AlignedOffset + Size > Renderer->TextureUploadBuffer.Size) {
-		R_ExecuteCommands(Renderer);
+		assert(Size <= Renderer->TextureUploadBuffer.Size);
+		R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
 		Renderer->TextureUploadBuffer.CurrentOffset = Size;
 		return 0;
 	}
@@ -245,7 +248,7 @@ R_UploadDDSResource(R_Core *const Renderer, ID3D12Resource *Texture, D3D12_SUBRE
 		  .pResource = Renderer->TextureUploadBuffer.Buffer, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = Layouts[MipLevel]};
 		SrcLoc.PlacedFootprint.Offset += Offset;
 
-		ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->CommandList, &DestLoc, 0, 0, 0, &SrcLoc, NULL);
+		ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->UploadCommandList, &DestLoc, 0, 0, 0, &SrcLoc, NULL);
 	}
 
 	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
@@ -255,7 +258,7 @@ R_UploadDDSResource(R_Core *const Renderer, ID3D12Resource *Texture, D3D12_SUBRE
 										.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
 										.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 									  }};
-	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &Barrier);
+	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->UploadCommandList, 1, &Barrier);
 }
 
 GPUTexture
@@ -271,7 +274,9 @@ R_UploadTextureFromDDSFile(R_Core *const Renderer, const PWSTR FileName, const P
 	D3D12_SUBRESOURCE_DATA *Subresources = NULL;
 	arrsetlen(Subresources, D3D12_REQ_MIP_LEVELS);
 
-	HRESULT hr = LoadDDSTextureFromFile(Renderer->Device, FileName, &Texture, &DdsData, Subresources, 0, NULL, NULL);
+
+	const int POTATO_COMPUTER = 1024;
+	HRESULT hr = LoadDDSTextureFromFile(Renderer->Device, FileName, &Texture, &DdsData, Subresources, POTATO_COMPUTER, NULL, NULL);
 	ExitIfFailed(hr);
 
 	D3D12_RESOURCE_DESC Desc;
@@ -300,8 +305,9 @@ R_UploadTextureFromDDSFile(R_Core *const Renderer, const PWSTR FileName, const P
 	TextureLookup Lookup = {.key = NameKey, .Texture = NewTex};
 	shputs(Renderer->Textures, Lookup);
 
-	//arrfree(Subresources);
-	//free(DdsData);
+	R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
+	arrfree(Subresources);
+	free(DdsData);
 
 	return NewTex;
 }

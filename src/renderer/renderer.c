@@ -95,6 +95,23 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 											 &Renderer->CommandAllocator);
 	ExitIfFailed(hr);
 
+	hr = ID3D12Device_CreateCommandList(Renderer->Device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, Renderer->CommandAllocator,
+										Renderer->PipelineState[Renderer->State], &IID_ID3D12GraphicsCommandList1, &Renderer->CommandList);
+	ExitIfFailed(hr);
+
+	hr = ID3D12Device_CreateCommandAllocator(Renderer->Device, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator,
+											 &Renderer->UploadCommandAllocator);
+	ExitIfFailed(hr);
+	hr = ID3D12Device_CreateCommandList(Renderer->Device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, Renderer->UploadCommandAllocator,
+										Renderer->PipelineState[Renderer->State], &IID_ID3D12GraphicsCommandList1, &Renderer->UploadCommandList);
+	ExitIfFailed(hr);
+
+	Renderer->FenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	if (Renderer->FenceEvent == NULL) {
+		hr = HRESULT_FROM_WIN32(GetLastError());
+		ExitIfFailed(hr);
+	}
+
 	D3D12_DESCRIPTOR_HEAP_DESC SrvHeapDesc = {
 	  .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 	  .NumDescriptors = PBR_N_TEXTURES_DESCRIPTORS,
@@ -103,16 +120,6 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	};
 	hr = ID3D12Device_CreateDescriptorHeap(Renderer->Device, &SrvHeapDesc, &IID_ID3D12DescriptorHeap, &Renderer->TexturesHeap);
 	ExitIfFailed(hr);
-
-	hr = ID3D12Device_CreateCommandList(Renderer->Device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, Renderer->CommandAllocator,
-										Renderer->PipelineState[Renderer->State], &IID_ID3D12GraphicsCommandList1, &Renderer->CommandList);
-	ExitIfFailed(hr);
-
-	Renderer->FenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	if (Renderer->FenceEvent == NULL) {
-		hr = HRESULT_FROM_WIN32(GetLastError());
-		ExitIfFailed(hr);
-	}
 
 	D3D12_DESCRIPTOR_HEAP_DESC RtvDescHeapDesc = {
 	  .Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
@@ -188,7 +195,7 @@ R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const
 	ResourceBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &ResourceBarrier);
 
-	R_ExecuteCommands(Renderer);
+	R_ExecuteCommands(Renderer, Renderer->CommandList, Renderer->CommandAllocator);
 
 	HRESULT hr = IDXGISwapChain2_Present(Renderer->SwapChain, 1, 0);
 	ExitIfFailed(hr);
@@ -196,14 +203,15 @@ R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const
 }
 
 void
-R_ExecuteCommands(R_Core *const Renderer)
+R_ExecuteCommands(R_Core *const Renderer, ID3D12GraphicsCommandList *CommandList, ID3D12CommandAllocator *CommandAllocator)
 {
-	ID3D12GraphicsCommandList_Close(Renderer->CommandList);
-	ID3D12CommandList *CmdLists[] = {(ID3D12CommandList *)Renderer->CommandList};
+	HRESULT hr = ID3D12GraphicsCommandList_Close(CommandList);
+	ExitIfFailed(hr);
+	ID3D12CommandList *CmdLists[] = {(ID3D12CommandList *)CommandList};
 	ID3D12CommandQueue_ExecuteCommandLists(Renderer->CommandQueue, 1, CmdLists);
 	SignalAndWait(Renderer);
-	ID3D12CommandAllocator_Reset(Renderer->CommandAllocator);
-	ID3D12GraphicsCommandList_Reset(Renderer->CommandList, Renderer->CommandAllocator, Renderer->PipelineState[Renderer->State]);
+	ID3D12CommandAllocator_Reset(CommandAllocator);
+	ID3D12GraphicsCommandList_Reset(CommandList, CommandAllocator, Renderer->PipelineState[Renderer->State]);
 }
 
 void
@@ -401,7 +409,7 @@ void
 CreateSceneResources(R_Core *const Renderer)
 {
 	HRESULT hr;
-	D3D12_RESOURCE_DESC BufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(MEGABYTES(128), D3D12_RESOURCE_FLAG_NONE, 0);
+	D3D12_RESOURCE_DESC BufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(MEGABYTES(256), D3D12_RESOURCE_FLAG_NONE, 0);
 	D3D12_HEAP_PROPERTIES UploadHeapProps = {.Type = D3D12_HEAP_TYPE_UPLOAD};
 	D3D12_HEAP_PROPERTIES DefaultHeapProps = {.Type = D3D12_HEAP_TYPE_DEFAULT};
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc,
@@ -414,7 +422,7 @@ CreateSceneResources(R_Core *const Renderer)
 											  D3D12_RESOURCE_STATE_COMMON, NULL, &IID_ID3D12Resource, &Renderer->IndexBufferDefault);
 	ExitIfFailed(hr);
 
-	BufferDesc.Width = MEGABYTES(1);
+	BufferDesc.Width = MEGABYTES(8);
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc,
 											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Renderer->MeshDataUploadBuffer);
 	ExitIfFailed(hr);

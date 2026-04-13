@@ -58,6 +58,8 @@ typedef struct R_Core {
 	ID3D12CommandQueue *CommandQueue;
 	ID3D12CommandAllocator *CommandAllocator;
 	ID3D12GraphicsCommandList *CommandList;
+	ID3D12CommandAllocator *UploadCommandAllocator;
+	ID3D12GraphicsCommandList *UploadCommandList;
 
 	ERenderState State;
 	BOOL bDrawGrid;
@@ -103,5 +105,5 @@ void R_Init(R_Core *const Renderer, HWND hWnd);
 void R_Destroy(R_Core *Renderer);
 void R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const Camera);
 void Draw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
-void R_ExecuteCommands(R_Core *const Renderer);
+void R_ExecuteCommands(R_Core *const Renderer, ID3D12GraphicsCommandList *CommandList, ID3D12CommandAllocator *CommandAllocator);
 void R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height);

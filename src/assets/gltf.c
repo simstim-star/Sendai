@@ -418,7 +418,7 @@ PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M
 			Win32RemoveAllAfterLastSlash(BasePath);
 
 			if (ExtractImageData(BasePath, BaseImage, UploadArena, &Model->Images[i])) {
-				Model->Images[i].Name = CreateTextureName(UploadArena, BaseImage, Path, i);
+				Model->Images[ImageIndex].Name = CreateTextureName(UploadArena, BaseImage, Path, i);
 			}
 			break;
 		}
@@ -434,6 +434,7 @@ PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M
 			UTF8_TO_W(FullPath, FullPathW, MAX_PATH);
 			
 			R_UploadTextureFromDDSFile(Renderer, FullPathW, BaseImage->uri);
+			Model->Images[ImageIndex].Name = BaseImage->uri;
 			break;
 		}
 		}
@@ -682,6 +683,20 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 				INT MetallicIndex = 0;
 				GetIndexAndFormatFromTexture(MetallicRoughnessData->metallic_roughness_texture.texture, ImagesData, &MetallicIndex, NULL);
 				CB->MetallicTextureIndex = R_GetTextureIndex(Renderer, &Images[MetallicIndex]);
+			}
+		} else if (Material->has_pbr_specular_glossiness) {
+			cgltf_pbr_specular_glossiness *SpecularGlossiness = &Material->pbr_specular_glossiness;
+
+			if (SpecularGlossiness->diffuse_texture.texture) {
+				INT AlbedoIndex = 0;
+				GetIndexAndFormatFromTexture(SpecularGlossiness->diffuse_texture.texture, ImagesData, &AlbedoIndex, NULL);
+				CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, &Images[AlbedoIndex]);
+			}
+
+			if (SpecularGlossiness->specular_glossiness_texture.texture) {
+				INT SpecIndex = 0;
+				GetIndexAndFormatFromTexture(SpecularGlossiness->specular_glossiness_texture.texture, ImagesData, &SpecIndex, NULL);
+				CB->MetallicTextureIndex = R_GetTextureIndex(Renderer, &Images[SpecIndex]);
 			}
 		}
 		cgltf_texture_view *NormalTextureView = &Material->normal_texture;
