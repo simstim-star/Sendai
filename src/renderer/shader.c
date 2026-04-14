@@ -113,7 +113,7 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	ExitIfFailed(hr);
 
 	WCHAR GLTFShadersPath[512];
-	Win32FullPath(L"/shaders/sendai/pbr.hlsl", GLTFShadersPath, _countof(GLTFShadersPath));
+	Win32FullPath(L"/shaders/sendai/bistro.hlsl", GLTFShadersPath, _countof(GLTFShadersPath));
 	ID3DBlob *VS = NULL;
 	hr = R_CompileShader(GLTFShadersPath, &VS, EST_VERTEX_SHADER);
 	ExitIfFailed(hr);

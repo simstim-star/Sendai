@@ -12,9 +12,8 @@ typedef struct R_Vertex {
 
 typedef struct R_PBRConstantBuffer {
 	XMFLOAT4 BaseColorFactor;
-	FLOAT MetallicFactor;
-	FLOAT RoughnessFactor;
-	FLOAT Padding0[2];
+	XMFLOAT3 SpecularFactor;
+	FLOAT GlossinessFactor;
 
 	XMFLOAT3 EmissiveFactor;
 	FLOAT Padding1;
@@ -25,9 +24,10 @@ typedef struct R_PBRConstantBuffer {
 
 	UINT32 AlbedoTextureIndex;
 	UINT32 NormalTextureIndex;
-	UINT32 MetallicTextureIndex;
+	UINT32 SpecularGlossTextureIndex;
 	UINT32 OcclusionTextureIndex;
 	UINT32 EmissiveTextureIndex;
+	FLOAT AlphaCutoff;
 } R_PBRConstantBuffer;
 
 #define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 4

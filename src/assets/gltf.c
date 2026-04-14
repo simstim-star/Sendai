@@ -427,12 +427,12 @@ PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M
 
 			wcscpy_s(BasePath, MAX_PATH, Path);
 			Win32RemoveAllAfterLastSlash(BasePath);
-			
+
 			CHAR FullPath[MAX_PATH];
 			Win32AppendFileNameToPath(BasePath, BaseImage->uri, FullPath);
 			WCHAR FullPathW[MAX_PATH];
 			UTF8_TO_W(FullPath, FullPathW, MAX_PATH);
-			
+
 			R_UploadTextureFromDDSFile(Renderer, FullPathW, BaseImage->uri);
 			Model->Images[ImageIndex].Name = BaseImage->uri;
 			break;
@@ -646,78 +646,89 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 {
 	CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, NULL);
 	CB->NormalTextureIndex = R_GetTextureIndex(Renderer, NULL);
-	CB->MetallicTextureIndex = R_GetTextureIndex(Renderer, NULL);
+	CB->SpecularGlossTextureIndex = R_GetTextureIndex(Renderer, NULL);
 	CB->OcclusionTextureIndex = R_GetTextureIndex(Renderer, NULL);
 	CB->EmissiveTextureIndex = R_GetTextureIndex(Renderer, NULL);
 
-	if (Material) {
-		if (Material->has_pbr_metallic_roughness) {
-			cgltf_pbr_metallic_roughness *MetallicRoughnessData = &Material->pbr_metallic_roughness;
-			memcpy(&CB->BaseColorFactor, MetallicRoughnessData->base_color_factor, sizeof(float) * 4);
-			CB->MetallicFactor = MetallicRoughnessData->metallic_factor;
-			CB->RoughnessFactor = MetallicRoughnessData->roughness_factor;
+	CB->BaseColorFactor = (XMFLOAT4){1.0f, 1.0f, 1.0f, 1.0f};
+	CB->SpecularFactor = (XMFLOAT3){1.0f, 1.0f, 1.0f};
+	CB->GlossinessFactor = 1.0f;
+	CB->AlphaCutoff = 0.5f;
+	CB->UVScale = (XMFLOAT2){1.0f, 1.0f};
+	CB->UVOffset = (XMFLOAT2){0.0f, 0.0f};
+	CB->UVRotation = 0.0f;
 
-			if (MetallicRoughnessData->base_color_texture.texture) {
-				INT AlbedoIndex = 0;
-				GetIndexAndFormatFromTexture(MetallicRoughnessData->base_color_texture.texture, ImagesData, &AlbedoIndex, NULL);
-				CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, &Images[AlbedoIndex]);
+	if (!Material) {
+		return;
+	}
 
-				if (MetallicRoughnessData->base_color_texture.has_transform) {
-					cgltf_texture_transform *Transform = &MetallicRoughnessData->base_color_texture.transform;
-					INT uvIndex = MetallicRoughnessData->base_color_texture.texcoord;
-					CB->UVScale.x = Transform->scale[0];
-					CB->UVScale.y = Transform->scale[1];
-					CB->UVOffset.x = Transform->offset[0];
-					CB->UVOffset.y = Transform->offset[1];
-					CB->UVRotation = Transform->rotation;
-				} else {
-					CB->UVScale.x = 1.0f;
-					CB->UVScale.y = 1.0f;
-					CB->UVOffset.x = 0.0f;
-					CB->UVOffset.y = 0.0f;
-					CB->UVRotation = 0.0f;
-				}
-			}
+	if (Material->alpha_mode == cgltf_alpha_mode_mask) {
+		CB->AlphaCutoff = Material->alpha_cutoff;
+	} else if (Material->alpha_mode == cgltf_alpha_mode_opaque) {
+		CB->AlphaCutoff = 0.0f;
+	}
 
-			if (MetallicRoughnessData->metallic_roughness_texture.texture) {
-				INT MetallicIndex = 0;
-				GetIndexAndFormatFromTexture(MetallicRoughnessData->metallic_roughness_texture.texture, ImagesData, &MetallicIndex, NULL);
-				CB->MetallicTextureIndex = R_GetTextureIndex(Renderer, &Images[MetallicIndex]);
-			}
-		} else if (Material->has_pbr_specular_glossiness) {
-			cgltf_pbr_specular_glossiness *SpecularGlossiness = &Material->pbr_specular_glossiness;
+	if (Material->has_transmission) {
+		float transmission = Material->transmission.transmission_factor;
+		CB->BaseColorFactor.w *= (1.0f - transmission);
+	}
 
-			if (SpecularGlossiness->diffuse_texture.texture) {
-				INT AlbedoIndex = 0;
-				GetIndexAndFormatFromTexture(SpecularGlossiness->diffuse_texture.texture, ImagesData, &AlbedoIndex, NULL);
-				CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, &Images[AlbedoIndex]);
-			}
+	if (Material->has_pbr_specular_glossiness) {
+		cgltf_pbr_specular_glossiness *SG = &Material->pbr_specular_glossiness;
 
-			if (SpecularGlossiness->specular_glossiness_texture.texture) {
-				INT SpecIndex = 0;
-				GetIndexAndFormatFromTexture(SpecularGlossiness->specular_glossiness_texture.texture, ImagesData, &SpecIndex, NULL);
-				CB->MetallicTextureIndex = R_GetTextureIndex(Renderer, &Images[SpecIndex]);
+		memcpy(&CB->BaseColorFactor, SG->diffuse_factor, sizeof(float) * 4);
+		memcpy(&CB->SpecularFactor, SG->specular_factor, sizeof(float) * 3);
+		CB->GlossinessFactor = SG->glossiness_factor;
+
+		if (SG->diffuse_texture.texture) {
+			INT Index = 0;
+			GetIndexAndFormatFromTexture(SG->diffuse_texture.texture, ImagesData, &Index, NULL);
+			CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
+
+			if (SG->diffuse_texture.has_transform) {
+				cgltf_texture_transform *T = &SG->diffuse_texture.transform;
+				CB->UVScale = (XMFLOAT2){T->scale[0], T->scale[1]};
+				CB->UVOffset = (XMFLOAT2){T->offset[0], T->offset[1]};
+				CB->UVRotation = T->rotation;
 			}
 		}
-		cgltf_texture_view *NormalTextureView = &Material->normal_texture;
-		if (NormalTextureView->texture) {
-			INT NormalIndex = 0;
-			GetIndexAndFormatFromTexture(NormalTextureView->texture, ImagesData, &NormalIndex, NULL);
-			CB->NormalTextureIndex = R_GetTextureIndex(Renderer, &Images[NormalIndex]);
-		}
 
-		if (Material->occlusion_texture.texture) {
-			INT OcclusionIndex = 0;
-			GetIndexAndFormatFromTexture(Material->occlusion_texture.texture, ImagesData, &OcclusionIndex, NULL);
-			CB->OcclusionTextureIndex = R_GetTextureIndex(Renderer, &Images[OcclusionIndex]);
+		if (SG->specular_glossiness_texture.texture) {
+			INT SpecIndex = 0;
+			GetIndexAndFormatFromTexture(SG->specular_glossiness_texture.texture, ImagesData, &SpecIndex, NULL);
+			CB->SpecularGlossTextureIndex = R_GetTextureIndex(Renderer, &Images[SpecIndex]);
 		}
+	} else if (Material->has_pbr_metallic_roughness) {
+		cgltf_pbr_metallic_roughness *MR = &Material->pbr_metallic_roughness;
 
-		memcpy(&CB->EmissiveFactor, Material->emissive_factor, sizeof(cgltf_float) * 3);
-		if (Material->emissive_texture.texture) {
-			INT EmissiveIndex = 0;
-			GetIndexAndFormatFromTexture(Material->emissive_texture.texture, ImagesData, &EmissiveIndex, NULL);
-			CB->EmissiveTextureIndex = R_GetTextureIndex(Renderer, &Images[EmissiveIndex]);
+		memcpy(&CB->BaseColorFactor, MR->base_color_factor, sizeof(float) * 4);
+		CB->SpecularFactor = (XMFLOAT3){0.04f, 0.04f, 0.04f};
+		CB->GlossinessFactor = 1.0f - MR->roughness_factor;
+
+		if (MR->base_color_texture.texture) {
+			INT Index = 0;
+			GetIndexAndFormatFromTexture(MR->base_color_texture.texture, ImagesData, &Index, NULL);
+			CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
 		}
+	}
+
+	if (Material->normal_texture.texture) {
+		INT Index = 0;
+		GetIndexAndFormatFromTexture(Material->normal_texture.texture, ImagesData, &Index, NULL);
+		CB->NormalTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
+	}
+
+	if (Material->occlusion_texture.texture) {
+		INT Index = 0;
+		GetIndexAndFormatFromTexture(Material->occlusion_texture.texture, ImagesData, &Index, NULL);
+		CB->OcclusionTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
+	}
+
+	memcpy(&CB->EmissiveFactor, Material->emissive_factor, sizeof(float) * 3);
+	if (Material->emissive_texture.texture) {
+		INT Index = 0;
+		GetIndexAndFormatFromTexture(Material->emissive_texture.texture, ImagesData, &Index, NULL);
+		CB->EmissiveTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
 	}
 }
 
