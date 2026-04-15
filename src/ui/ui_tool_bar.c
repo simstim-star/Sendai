@@ -1,9 +1,9 @@
-#include "../core/pch.h"
+#include "core/pch.h"
 
 #include "ui.h"
 #include "ui_bottom_panel.h"
 
-#include "../core/camera.h"
+#include "core/camera.h"
 
 static const float HEIGHT_PERCENTAGE = 0.05f;
 static const float BUTTON_SIZE = 50.0f;

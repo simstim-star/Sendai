@@ -1,4 +1,4 @@
-#include "../core/pch.h"
+#include "core/pch.h"
 
 #include "file_dialog.h"
 #include <shobjidl.h>

@@ -1,19 +1,19 @@
-#include "../core/pch.h"
+#include "core/pch.h"
 
-#include "../error/error.h"
-#include "../ui/ui.h"
-#include "../win32/str_helper.h"
+#include "error/error.h"
+#include "ui/ui.h"
+#include "win32/str_helper.h"
 #include "renderer.h"
 #include "texture.h"
 
 #define STB_DS_IMPLEMENTATION
-#include "../../deps/stb_ds.h"
-#include "../../deps/stb_image.h"
+#include "stb_ds.h"
+#include "stb_image.h"
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include "../../deps/stb_image_resize2.h"
+#include "stb_image_resize2.h"
 
-#include "../assets/dds_loader.h"
+#include "assets/dds_loader.h"
 
 static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
 

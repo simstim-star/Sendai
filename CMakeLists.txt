@@ -44,6 +44,8 @@ target_compile_options(${PROJECT_NAME} PRIVATE /W4)
 target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
 set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
 
+target_include_directories(${PROJECT_NAME} PRIVATE "./src" "./deps")
+
 find_package(XMathC REQUIRED PATHS "C:/xmathc")
 target_link_libraries(${PROJECT_NAME} PUBLIC d3d12.lib dxguid.lib dxgi.lib D3DCompiler.lib XMathC)
 target_link_options(${PROJECT_NAME} PRIVATE /INCREMENTAL:NO)

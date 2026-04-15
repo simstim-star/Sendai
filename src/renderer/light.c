@@ -1,13 +1,13 @@
-#include "../core/pch.h"
+#include "core/pch.h"
 
 #include "billboard.h"
 #include "light.h"
 
-#include "../core/camera.h"
-#include "../core/engine.h"
-#include "../core/memory.h"
-#include "../core/scene.h"
-#include "../shaders/sendai/shader_defs.h"
+#include "core/camera.h"
+#include "core/engine.h"
+#include "core/memory.h"
+#include "core/scene.h"
+#include "shaders/sendai/shader_defs.h"
 
 static void RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint);
 

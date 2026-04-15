@@ -1,13 +1,13 @@
 #include "pch.h"
 
-#include "../assets/gltf.h"
-#include "../renderer/light.h"
-#include "../renderer/renderer.h"
-#include "../renderer/shader.h"
-#include "../renderer/texture.h"
-#include "../ui/ui.h"
-#include "../win32/file_dialog.h"
-#include "../win32/win_path.h"
+#include "assets/gltf.h"
+#include "renderer/light.h"
+#include "renderer/renderer.h"
+#include "renderer/shader.h"
+#include "renderer/texture.h"
+#include "ui/ui.h"
+#include "win32/file_dialog.h"
+#include "win32/win_path.h"
 #include "engine.h"
 
 /****************************************************

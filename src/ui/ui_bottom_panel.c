@@ -1,12 +1,12 @@
-#include "../core/pch.h"
+#include "core/pch.h"
 
 #include "ui_bottom_panel.h"
 #include "ui.h"
 
-#include "../core/log.h"
-#include "../core/scene.h"
-#include "../renderer/render_types.h"
-#include "../shaders/sendai/shader_defs.h"
+#include "core/log.h"
+#include "core/scene.h"
+#include "renderer/render_types.h"
+#include "shaders/sendai/shader_defs.h"
 
 static const float HANDLE_HEIGHT = 10.0f;
 static const float INFO_BAR_HEIGHT = 22.0f;

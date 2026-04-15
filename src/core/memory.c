@@ -1,6 +1,6 @@
 #include "pch.h"
 
-#include "../error/error.h"
+#include "error/error.h"
 #include "memory.h"
 
 M_Arena

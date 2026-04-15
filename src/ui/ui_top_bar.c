@@ -1,4 +1,4 @@
-#include "../core/pch.h"
+#include "core/pch.h"
 
 #include "ui.h"
 #include "ui_top_bar.h"

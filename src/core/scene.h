@@ -1,7 +1,7 @@
 #pragma once
 
 #include "memory.h"
-#include "../renderer/render_types.h"
+#include "renderer/render_types.h"
 
 typedef struct R_Model R_Model;
 typedef struct ID3D12RootSignature ID3D12RootSignature;

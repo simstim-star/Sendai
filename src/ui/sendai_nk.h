@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../deps/nuklear.h"
-#include "../shaders/nuklear/nuklear_d3d12.h"
+#include "nuklear.h"
+#include "shaders/nuklear/nuklear_d3d12.h"
 
 #define MAX_VERTEX_BUFFER (512 * 1024)
 #define MAX_INDEX_BUFFER (128 * 1024)

@@ -1,15 +1,15 @@
 #pragma once
 
-#include "../core/pch.h"
+#include "core/pch.h"
 
-#include "../core/log.h"
-#include "../dx_helpers/desc_helpers.h"
-#include "../error/error.h"
-#include "../win32/win_path.h"
+#include "core/log.h"
+#include "dx_helpers/desc_helpers.h"
+#include "error/error.h"
+#include "win32/win_path.h"
 #include "render_types.h"
 #include "renderer.h"
 #include "shader.h"
-#include "../shaders/sendai/shader_defs.h"
+#include "shaders/sendai/shader_defs.h"
 
 HRESULT
 R_CompileShader(PCWSTR FilePath, ID3DBlob **Blob, EShaderType ShaderType)

@@ -1,26 +1,25 @@
-﻿#include "../core/pch.h"
+﻿#include "core/pch.h"
 
 #include "gltf.h"
 
 #define CGLTF_IMPLEMENTATION
-#include "../../deps/cgltf.h"
+#include "cgltf.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_WINDOWS_UTF8
-#include "../../deps/stb_image.h"
+#include "stb_image.h"
+#include "stb_ds.h"
 
-#include "../../deps/stb_ds.h"
+#include "b64.h"
 
-#include "../../deps/b64.h"
-
-#include "../core/log.h"
-#include "../core/memory.h"
-#include "../core/scene.h"
-#include "../renderer/render_types.h"
-#include "../renderer/renderer.h"
-#include "../renderer/texture.h"
-#include "../win32/str_helper.h"
-#include "../win32/win_path.h"
+#include "core/log.h"
+#include "core/memory.h"
+#include "core/scene.h"
+#include "renderer/render_types.h"
+#include "renderer/renderer.h"
+#include "renderer/texture.h"
+#include "win32/str_helper.h"
+#include "win32/win_path.h"
 #include "dds_loader.h"
 
 /****************************************************

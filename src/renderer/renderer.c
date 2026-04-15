@@ -1,21 +1,21 @@
-#include "../core/pch.h"
+#include "core/pch.h"
 
-#include "light.h"
-#include "render_types.h"
 #include "renderer.h"
+#include "render_types.h"
+#include "light.h"
 #include "shader.h"
 #include "texture.h"
 
-#include "../core/camera.h"
-#include "../core/grid.h"
-#include "../core/memory.h"
-#include "../dx_helpers/desc_helpers.h"
-#include "../error/error.h"
-#include "../shaders/sendai/shader_defs.h"
-#include "../ui/ui.h"
-#include "../win32/win_path.h"
+#include "core/camera.h"
+#include "core/grid.h"
+#include "core/memory.h"
+#include "dx_helpers/desc_helpers.h"
+#include "error/error.h"
+#include "shaders/sendai/shader_defs.h"
+#include "ui/ui.h"
+#include "win32/win_path.h"
 
-#include "../../deps/stb_ds.h"
+#include "stb_ds.h"
 #include "billboard.h"
 
 static const FLOAT CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};

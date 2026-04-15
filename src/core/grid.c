@@ -1,7 +1,7 @@
 #include "pch.h"
 
-#include "../renderer/render_types.h"
-#include "../renderer/renderer.h"
+#include "renderer/render_types.h"
+#include "renderer/renderer.h"
 #include "grid.h"
 
 #include <DirectXMathC.h>

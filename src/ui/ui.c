@@ -1,15 +1,15 @@
-#include "../core/pch.h"
+#include "core/pch.h"
 
 #include "ui.h"
 
-#include "../core/engine.h"
-#include "../core/log.h"
-#include "../dx_helpers/desc_helpers.h"
-#include "../renderer/renderer.h"
-#include "../renderer/texture.h"
-#include "../win32/file_dialog.h"
-#include "../win32/str_helper.h"
-#include "../win32/win_path.h"
+#include "core/engine.h"
+#include "core/log.h"
+#include "dx_helpers/desc_helpers.h"
+#include "renderer/renderer.h"
+#include "renderer/texture.h"
+#include "win32/file_dialog.h"
+#include "win32/str_helper.h"
+#include "win32/win_path.h"
 
 struct nk_image UI_TEXTURES[UI_EUT_NUM_USER_TEXTURES];
 

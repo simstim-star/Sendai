@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../assets/gltf.h"
-#include "../core/scene.h"
+#include "assets/gltf.h"
+#include "core/scene.h"
 #include "render_types.h"
 
 #define FRAME_COUNT 2

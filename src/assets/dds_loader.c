@@ -1,6 +1,6 @@
 /* This is a C port of https://github.com/microsoft/DirectXTex/blob/main/DDSTextureLoader/DDSTextureLoader12.cpp */
 
-#include "../core/pch.h"
+#include "core/pch.h"
 
 //--------------------------------------------------------------------------------------
 // File: DDSTextureLoader12.cpp
