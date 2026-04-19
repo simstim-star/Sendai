@@ -48,6 +48,7 @@ ALL_OBJS = \
     $(OBJ_DIR)\win32\win_main.obj \
     $(OBJ_DIR)\win32\win_path.obj \
     $(OBJ_DIR)\win32\file_dialog.obj \
+    $(OBJ_DIR)\renderer\cubemap.obj \
     $(OBJ_DIR)\renderer\renderer.obj \
     $(OBJ_DIR)\renderer\light.obj \
     $(OBJ_DIR)\renderer\texture.obj \

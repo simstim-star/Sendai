@@ -33,6 +33,7 @@ UI_Init(S_UI *const UI, R_Core *Renderer)
 
 	UI->Action[UI_ACTION_NONE] = S_DoNothing;
 	UI->Action[UI_ACTION_FILE_OPEN] = S_FileOpen;
+	UI->Action[UI_ACTION_CUBEMAP_OPEN] = S_CubemapOpen;
 	UI->Action[UI_ACTION_WIREFRAME_BUTTON_CLICKED] = S_WireframeMode;
 	UI->Action[UI_ACTION_GRID_BUTTON_CLICKED] = S_GridMode;
 

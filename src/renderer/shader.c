@@ -346,6 +346,186 @@ R_CreateGridPipelineState(R_Core *Renderer)
 	ExitIfFailed(hr);
 }
 
+void
+R_CreateCubemapPipelineState(R_Core *Renderer)
+{
+	D3D12_ROOT_PARAMETER RootParameters[2] = {0};
+
+	RootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	RootParameters[0].Descriptor.ShaderRegister = 0;
+	RootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	D3D12_DESCRIPTOR_RANGE SrvRange = {
+	  .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+	  .NumDescriptors = 1,
+	  .BaseShaderRegister = 0,
+	  .RegisterSpace = 0,
+	  .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+	};
+
+	RootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	RootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
+	RootParameters[1].DescriptorTable.pDescriptorRanges = &SrvRange;
+	RootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+	D3D12_STATIC_SAMPLER_DESC Sampler = {
+	  .Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+	  .AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+	  .AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+	  .AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+	  .ShaderRegister = 0,
+	  .ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
+	};
+
+	D3D12_ROOT_SIGNATURE_DESC RootSignatureDesc = {
+	  .NumParameters = _countof(RootParameters),
+	  .pParameters = RootParameters,
+	  .NumStaticSamplers = 1,
+	  .pStaticSamplers = &Sampler,
+	  .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
+	};
+
+	ID3DBlob *Signature = NULL;
+	ID3DBlob *Error = NULL;
+	HRESULT hr = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &Error);
+	if (FAILED(hr)) {
+		if (Error) {
+			S_LogAppend((PWSTR)ID3D10Blob_GetBufferPointer(Error));
+		}
+		ExitIfFailed(hr);
+	}
+
+	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature),
+										  &IID_ID3D12RootSignature, &Renderer->RootSignCubemap);
+	ExitIfFailed(hr);
+
+	WCHAR ShaderPath[MAX_PATH];
+	Win32FullPath(L"/shaders/sendai/equirect_to_cube.hlsl", ShaderPath, _countof(ShaderPath));
+
+	ID3DBlob *VS = NULL;
+	hr = R_CompileShader(ShaderPath, &VS, EST_VERTEX_SHADER);
+	ExitIfFailed(hr);
+
+	ID3DBlob *PS = NULL;
+	hr = R_CompileShader(ShaderPath, &PS, EST_PIXEL_SHADER);
+	ExitIfFailed(hr);
+
+	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
+	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
+	  .pRootSignature = Renderer->RootSignCubemap,
+	  .InputLayout = {InputElementDescs, _countof(InputElementDescs)},
+	  .VS = {(PVOID)ID3D10Blob_GetBufferPointer(VS), ID3D10Blob_GetBufferSize(VS)},
+	  .PS = {(PVOID)ID3D10Blob_GetBufferPointer(PS), ID3D10Blob_GetBufferSize(PS)},
+	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
+	  .BlendState = CD3DX12_DEFAULT_BLEND_DESC(),
+	  .DepthStencilState = {.DepthEnable = FALSE, .StencilEnable = FALSE},
+	  .SampleMask = UINT_MAX,
+	  .PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+	  .NumRenderTargets = 1,
+	  .RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT,
+	  .SampleDesc = {1, 0},
+	};
+
+	PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState,
+												  &Renderer->PipelineState[ERS_CUBEMAP]);
+	ExitIfFailed(hr);
+}
+
+void
+R_CreateSkyboxPipelineState(R_Core *Renderer)
+{
+	D3D12_ROOT_PARAMETER RootParameters[2] = {0};
+
+	RootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	RootParameters[0].Descriptor.ShaderRegister = 0;
+	RootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+	D3D12_DESCRIPTOR_RANGE SrvRange = {
+	  .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+	  .NumDescriptors = 1,
+	  .BaseShaderRegister = 0,
+	  .RegisterSpace = 0,
+	  .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+	};
+
+	RootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	RootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
+	RootParameters[1].DescriptorTable.pDescriptorRanges = &SrvRange;
+	RootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+	D3D12_STATIC_SAMPLER_DESC Sampler = {
+	  .Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+	  .AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+	  .AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+	  .AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+	  .ShaderRegister = 0,
+	  .ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
+	};
+
+	D3D12_ROOT_SIGNATURE_DESC RootSignatureDesc = {
+	  .NumParameters = _countof(RootParameters),
+	  .pParameters = RootParameters,
+	  .NumStaticSamplers = 1,
+	  .pStaticSamplers = &Sampler,
+	  .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
+	};
+
+	ID3DBlob *Signature = NULL;
+	ID3DBlob *Error = NULL;
+	HRESULT hr = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &Error);
+	if (FAILED(hr)) {
+		if (Error) {
+			S_LogAppend((PWSTR)ID3D10Blob_GetBufferPointer(Error));
+		}
+		ExitIfFailed(hr);
+	}
+
+	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature),
+										  &IID_ID3D12RootSignature, &Renderer->RootSignSkybox);
+	ExitIfFailed(hr);
+
+	WCHAR ShaderPath[MAX_PATH];
+	Win32FullPath(L"/shaders/sendai/skybox.hlsl", ShaderPath, _countof(ShaderPath));
+
+	ID3DBlob *VS = NULL;
+	hr = R_CompileShader(ShaderPath, &VS, EST_VERTEX_SHADER);
+	ExitIfFailed(hr);
+
+	ID3DBlob *PS = NULL;
+	hr = R_CompileShader(ShaderPath, &PS, EST_PIXEL_SHADER);
+	ExitIfFailed(hr);
+
+	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
+	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
+	  .pRootSignature = Renderer->RootSignSkybox,
+	  .InputLayout = {InputElementDescs, _countof(InputElementDescs)},
+	  .VS = {(PVOID)ID3D10Blob_GetBufferPointer(VS), ID3D10Blob_GetBufferSize(VS)},
+	  .PS = {(PVOID)ID3D10Blob_GetBufferPointer(PS), ID3D10Blob_GetBufferSize(PS)},
+	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
+	  .BlendState = CD3DX12_DEFAULT_BLEND_DESC(),
+	  .DepthStencilState = CD3DX12_DEFAULT_DEPTH_STENCIL_DESC(),
+	  .DSVFormat = DXGI_FORMAT_D32_FLOAT,
+	  .SampleMask = UINT_MAX,
+	  .PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+	  .NumRenderTargets = 1,
+	  .RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM,
+	  .SampleDesc = {1, 0},
+	};
+
+	PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	PSODesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	PSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_SKYBOX]);
+	ExitIfFailed(hr);
+}
+
 XMMATRIX
 R_NormalMatrix(XMFLOAT4X4 *Model)
 {

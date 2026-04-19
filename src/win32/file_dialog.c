@@ -3,10 +3,11 @@
 #include "file_dialog.h"
 #include <shobjidl.h>
 
-static const COMDLG_FILTERSPEC ModelsFilter[] = {{L"glTF Models", L"*.gltf;*.glb"}, {L"All Files", L"*.*"}};
+const COMDLG_FILTERSPEC GLTFModelsFilter[] = {{L"glTF Models", L"*.gltf;*.glb"}, {L"All Files", L"*.*"}};
+const COMDLG_FILTERSPEC HDRModelsFilter[] = {{L"HDR Files", L"*.hdr"}, {L"All Files", L"*.*"}};
 
 PWSTR
-Win32SelectGLTFPath(void)
+Win32ShowFileDialog(COMDLG_FILTERSPEC *ModelsFilter, UINT ModelsFilterSize)
 {
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 	if (FAILED(hr)) {
@@ -20,7 +21,7 @@ Win32SelectGLTFPath(void)
 		return NULL;
 	}
 
-	IFileDialog_SetFileTypes(FileOpenDialog, ARRAYSIZE(ModelsFilter), ModelsFilter);
+	IFileDialog_SetFileTypes(FileOpenDialog, ModelsFilterSize, ModelsFilter);
 
 	hr = IFileDialog_Show(FileOpenDialog, NULL);
 	if (FAILED(hr)) {

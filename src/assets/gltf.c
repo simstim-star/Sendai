@@ -31,10 +31,10 @@ typedef struct MeshLookup {
 	R_Mesh *value;
 } MeshLookup;
 
-typedef enum E_TextureFormat {
+typedef enum ETextureFormat {
 	ETF_DDS,
 	ETF_PNG,
-} E_TextureFormat;
+} ETextureFormat;
 
 /****************************************************
 	Forward declaration of private functions
@@ -83,7 +83,7 @@ static XMFLOAT4 *ComputeTangents(cgltf_accessor *PositionAccessor,
 								 cgltf_accessor *IndicesAccessor,
 								 M_Arena *Arena);
 
-static VOID GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Images, int *Index, E_TextureFormat *Format);
+static VOID GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Images, int *Index, ETextureFormat *Format);
 
 /* The below functions are to inject into gltf loader to use my arena */
 
@@ -407,7 +407,7 @@ PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M
 
 	for (INT i = 0; i < Data->textures_count; ++i) {
 		INT ImageIndex;
-		E_TextureFormat Format;
+		ETextureFormat Format;
 		GetIndexAndFormatFromTexture(&Data->textures[i], Data->images, &ImageIndex, &Format);
 		cgltf_image *BaseImage = &Data->images[ImageIndex];
 		switch (Format) {
@@ -418,6 +418,7 @@ PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M
 
 			if (ExtractImageData(BasePath, BaseImage, UploadArena, &Model->Images[i])) {
 				Model->Images[ImageIndex].Name = CreateTextureName(UploadArena, BaseImage, Path, i);
+				Model->Images[ImageIndex].Format = DXGI_FORMAT_R8G8B8A8_UNORM; 
 			}
 			break;
 		}
@@ -434,6 +435,7 @@ PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M
 
 			R_UploadTextureFromDDSFile(Renderer, FullPathW, BaseImage->uri);
 			Model->Images[ImageIndex].Name = BaseImage->uri;
+			Model->Images[ImageIndex].Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 			break;
 		}
 		}
@@ -812,7 +814,7 @@ ComputeTangents(cgltf_accessor *PositionAccessor,
 }
 
 VOID
-GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Image, int *OutIndex, E_TextureFormat *OutFormat)
+GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Image, int *OutIndex, ETextureFormat *OutFormat)
 {
 	if (!Texture || !Image) {
 		return -1;

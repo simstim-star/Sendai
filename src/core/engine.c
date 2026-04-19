@@ -84,7 +84,7 @@ S_DoNothing(Sendai *const Engine)
 void
 S_FileOpen(Sendai *const Engine)
 {
-	PWSTR FilePath = Win32SelectGLTFPath();
+	PWSTR FilePath = Win32ShowFileDialog(GLTFModelsFilter, ARRAYSIZE(GLTFModelsFilter));
 	if (FilePath == NULL) {
 		return;
 	}
@@ -99,6 +99,24 @@ S_FileOpen(Sendai *const Engine)
 	UINT ModelIdx = Scene->ModelsCount - 1;
 	CoTaskMemFree(FilePath);
 	M_ArenaRelease(&Scene->UploadArena);
+}
+
+void
+S_CubemapOpen(Sendai *const Engine)
+{
+	PWSTR FilePath = Win32ShowFileDialog(HDRModelsFilter, ARRAYSIZE(HDRModelsFilter));
+	if (FilePath == NULL) {
+		return;
+	}
+	GPUTexture HDRTexture = R_CreateHDRTexture(FilePath, &Engine->RendererCore);
+	D3D12_GPU_DESCRIPTOR_HANDLE HdrSrvHandle;
+	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Engine->RendererCore.TexturesHeap, &HdrSrvHandle);
+	HdrSrvHandle.ptr +=
+		(SIZE_T)HDRTexture.HeapIndex * Engine->RendererCore.DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
+	ID3D12DescriptorHeap *Heaps[] = {Engine->RendererCore.TexturesHeap};
+	ID3D12GraphicsCommandList_SetDescriptorHeaps(Engine->RendererCore.CommandList, _countof(Heaps), Heaps);
+	R_RenderCubemapOnRTVs(&Engine->RendererCore, HdrSrvHandle);
+
 }
 
 void

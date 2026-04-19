@@ -71,6 +71,8 @@ typedef struct R_Texture {
 
 	void *MipPixels[D3D12_REQ_MIP_LEVELS];
 	UINT MipLevels;
+
+	DXGI_FORMAT Format;
 } R_Texture;
 
 typedef struct R_Primitive {

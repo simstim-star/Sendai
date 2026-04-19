@@ -1,10 +1,10 @@
 #include "core/pch.h"
 
 #include "error/error.h"
-#include "ui/ui.h"
-#include "win32/str_helper.h"
 #include "renderer.h"
 #include "texture.h"
+#include "ui/ui.h"
+#include "win32/str_helper.h"
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
@@ -17,7 +17,8 @@
 
 static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
 
-static const R_Texture WhiteTexture = {.Name = "fallback_white", .Width = 1, .Height = 1, .MipLevels = 1, .MipPixels[0] = WHITE_PIXEL};
+static const R_Texture WhiteTexture = {
+  .Name = "fallback_white", .Width = 1, .Height = 1, .MipLevels = 1, .MipPixels[0] = WHITE_PIXEL, .Format = DXGI_FORMAT_R8G8B8A8_UNORM};
 
 void
 R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
@@ -33,6 +34,7 @@ R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
 	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
 	R_Texture Source = (R_Texture){
 	  .Height = H,
+	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
 	  .Width = W,
 	  .Name = PathUTF8,
 	  .MipLevels = 1,
@@ -69,7 +71,7 @@ R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source)
 	CpuDescHandle.ptr += (SIZE_T)SlotIndex * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC SrvDesc = {
-	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+	  .Format = Source->Format,
 	  .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
 	  .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
 	  .Texture2D.MipLevels = Source->MipLevels,
@@ -90,10 +92,26 @@ R_CreateCustomTexture(PCWSTR Path, R_Core *Renderer)
 	W_TO_UTF8(Path, PathUTF8, UTF8_SIZE(Path));
 	INT W, H;
 	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
-	R_Texture Source = (R_Texture){.Height = H, .Width = W, .Name = PathUTF8, .MipLevels = 1, .MipPixels[0] = Pixels};
+	R_Texture Source =
+		(R_Texture){.Height = H, .Width = W, .Name = PathUTF8, .MipLevels = 1, .MipPixels[0] = Pixels, .Format = DXGI_FORMAT_R8G8B8A8_UNORM};
 	R_UploadTexture(Renderer, &Source);
 	stbi_image_free(Pixels);
 	R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
+}
+
+GPUTexture
+R_CreateHDRTexture(PCWSTR Path, R_Core *Renderer)
+{
+	char PathUTF8[MAX_PATH * 4];
+	W_TO_UTF8(Path, PathUTF8, UTF8_SIZE(Path));
+	INT W, H, NumberOfComponents;
+	FLOAT *Pixels = stbi_loadf(PathUTF8, &W, &H, &NumberOfComponents, 4);
+	R_Texture Source =
+		(R_Texture){.Height = H, .Width = W, .Name = PathUTF8, .MipLevels = 1, .MipPixels[0] = Pixels, .Format = DXGI_FORMAT_R32G32B32A32_FLOAT};
+	GPUTexture HDRTexture = R_UploadTexture(Renderer, &Source);
+	stbi_image_free(Pixels);
+	R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
+	return HDRTexture;
 }
 
 ID3D12Resource *
@@ -105,7 +123,7 @@ R_CommandCreateTextureGPU(R_Core *const Renderer, const R_Texture *const SourceT
 	  .Height = SourceTexture->Height,
 	  .DepthOrArraySize = 1,
 	  .MipLevels = (UINT16)SourceTexture->MipLevels,
-	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+	  .Format = SourceTexture->Format,
 	  .SampleDesc = {1, 0},
 	  .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
 	  .Flags = D3D12_RESOURCE_FLAG_NONE,
@@ -159,7 +177,7 @@ UINT64
 R_SuballocateTextureUpload(R_Core *const Renderer, UINT64 Size)
 {
 	UINT64 AlignedOffset = ROUND_UP_POWER_OF_2(Renderer->TextureUploadBuffer.CurrentOffset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
-	
+
 	if (AlignedOffset + Size > Renderer->TextureUploadBuffer.Size) {
 		assert(Size <= Renderer->TextureUploadBuffer.Size);
 		R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
@@ -240,12 +258,15 @@ R_UploadDDSResource(R_Core *const Renderer, ID3D12Resource *Texture, D3D12_SUBRE
 		const UINT8 *pSource = (const UINT8 *)Subresources[MipLevel].pData;
 
 		for (UINT Row = 0; Row < NumRows[MipLevel]; Row++) {
-			memcpy(pDestination + (Row * Layouts[MipLevel].Footprint.RowPitch), pSource + (Row * Subresources[MipLevel].RowPitch), RowSizeInBytes[MipLevel]);
+			memcpy(pDestination + (Row * Layouts[MipLevel].Footprint.RowPitch), pSource + (Row * Subresources[MipLevel].RowPitch),
+				   RowSizeInBytes[MipLevel]);
 		}
 
-		D3D12_TEXTURE_COPY_LOCATION DestLoc = {.pResource = Texture, .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = MipLevel};
-		D3D12_TEXTURE_COPY_LOCATION SrcLoc = {
-		  .pResource = Renderer->TextureUploadBuffer.Buffer, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = Layouts[MipLevel]};
+		D3D12_TEXTURE_COPY_LOCATION DestLoc = {
+		  .pResource = Texture, .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = MipLevel};
+		D3D12_TEXTURE_COPY_LOCATION SrcLoc = {.pResource = Renderer->TextureUploadBuffer.Buffer,
+											  .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+											  .PlacedFootprint = Layouts[MipLevel]};
 		SrcLoc.PlacedFootprint.Offset += Offset;
 
 		ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->UploadCommandList, &DestLoc, 0, 0, 0, &SrcLoc, NULL);
@@ -273,7 +294,6 @@ R_UploadTextureFromDDSFile(R_Core *const Renderer, const PWSTR FileName, const P
 	UINT8 *DdsData = NULL;
 	D3D12_SUBRESOURCE_DATA *Subresources = NULL;
 	arrsetlen(Subresources, D3D12_REQ_MIP_LEVELS);
-
 
 	const int POTATO_COMPUTER = 1024;
 	HRESULT hr = LoadDDSTextureFromFile(Renderer->Device, FileName, &Texture, &DdsData, Subresources, POTATO_COMPUTER, NULL, NULL);

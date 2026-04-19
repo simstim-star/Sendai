@@ -27,3 +27,5 @@ VOID R_GenerateMips(R_Model *Model, M_Arena *UploadArena);
 
 VOID R_UploadDDSResource(R_Core *const Renderer, ID3D12Resource *Texture, D3D12_SUBRESOURCE_DATA *Subresources, UINT MipLevels);
 GPUTexture R_UploadTextureFromDDSFile(R_Core *const Renderer, const PWSTR FileName, const PSTR NameKey);
+
+GPUTexture R_CreateHDRTexture(PCWSTR Path, R_Core *Renderer);

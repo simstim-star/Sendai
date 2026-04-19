@@ -23,6 +23,9 @@ UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State)
 			State->ShowInfo = !State->ShowInfo;
 			Action = UI_ACTION_NONE;
 		}
+		if (nk_button_label_styled(UI->Context, &UI->Context->style.contextual_button, "Cubemap")) {
+			Action = UI_ACTION_CUBEMAP_OPEN;
+		}
 	}
 	nk_end(UI->Context);
 

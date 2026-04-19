@@ -26,5 +26,6 @@ INT S_Run(void);
 
 void S_DoNothing(Sendai *const Engine);
 void S_FileOpen(Sendai *const Engine);
+void S_CubemapOpen(Sendai *const Engine);
 void S_WireframeMode(Sendai *const Engine);
 void S_GridMode(Sendai *const Engine);

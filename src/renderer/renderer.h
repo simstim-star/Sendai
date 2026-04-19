@@ -3,6 +3,7 @@
 #include "assets/gltf.h"
 #include "core/scene.h"
 #include "render_types.h"
+#include "cubemap.h"
 
 #define FRAME_COUNT 2
 
@@ -10,12 +11,13 @@ typedef struct R_Camera R_Camera;
 typedef struct R_Primitive R_Primitive;
 typedef struct R_Texture R_Texture;
 typedef struct TextureLookup TextureLookup;
+typedef struct R_Cubemap R_Cubemap;
 
 typedef enum EReservedSrvIndex {
 	ERSI_BILLBOARD_LAMP = 0,
 } EReservedSrvIndex;
 
-typedef enum ERenderState { ERS_GLTF, ERS_WIREFRAME, ERS_BILLBOARD, ERS_GRID, ERS_N_RENDER_STATES } ERenderState;
+typedef enum ERenderState { ERS_GLTF, ERS_WIREFRAME, ERS_BILLBOARD, ERS_GRID, ERS_CUBEMAP, ERS_SKYBOX, ERS_N_RENDER_STATES } ERenderState;
 
 typedef struct R_UploadBuffer {
 	ID3D12Resource *Buffer;
@@ -51,6 +53,8 @@ typedef struct R_Core {
 	ID3D12RootSignature *RootSignPBR;
 	ID3D12RootSignature *RootSignBillboard;
 	ID3D12RootSignature *RootSignGrid;
+	ID3D12RootSignature *RootSignCubemap;
+	ID3D12RootSignature *RootSignSkybox;
 
 	ID3D12Resource *DepthStencil;
 	ID3D12DescriptorHeap *DepthStencilHeap;
@@ -99,6 +103,9 @@ typedef struct R_Core {
 	UINT64 CurrentUploadBufferOffset;
 	UINT64 CurrentVertexBufferOffset;
 	UINT64 CurrentIndexBufferOffset;
+
+
+	R_Cubemap Cubemap;
 } R_Core;
 
 void R_Init(R_Core *const Renderer, HWND hWnd);

@@ -18,7 +18,7 @@
 #include "stb_ds.h"
 #include "billboard.h"
 
-static const FLOAT CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
+static const FLOAT CUBEMAP_CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
 /****************************************************
 	Forward declaration of private functions
@@ -156,6 +156,7 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	CreateSceneResources(Renderer);
 	CreateDepthStencilBuffer(Renderer);
 	CreateShaders(Renderer);
+	
 	IDXGIFactory2_Release(Factory);
 }
 
@@ -179,7 +180,7 @@ R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const
 	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->DepthStencilHeap, &DepthStencilCPUHandle);
 	ID3D12GraphicsCommandList_OMSetRenderTargets(Renderer->CommandList, 1, &Renderer->RtvHandles[Renderer->RtvIndex], FALSE,
 												 &DepthStencilCPUHandle);
-	ID3D12GraphicsCommandList_ClearRenderTargetView(Renderer->CommandList, Renderer->RtvHandles[Renderer->RtvIndex], CLEAR_COLOR, 0, NULL);
+	ID3D12GraphicsCommandList_ClearRenderTargetView(Renderer->CommandList, Renderer->RtvHandles[Renderer->RtvIndex], CUBEMAP_CLEAR_COLOR, 0, NULL);
 	ID3D12GraphicsCommandList_ClearDepthStencilView(Renderer->CommandList, DepthStencilCPUHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, NULL);
 	ID3D12GraphicsCommandList_IASetPrimitiveTopology(Renderer->CommandList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	ID3D12DescriptorHeap *Heaps[] = {Renderer->TexturesHeap};
@@ -450,6 +451,8 @@ CreateSceneResources(R_Core *const Renderer)
 
 	CreateBaseEngineTextures(Renderer);
 	R_CreateGrid(Renderer, 100.f);
+
+	R_SetupCubemapResources(Renderer, &Renderer->Cubemap);
 }
 
 void
@@ -469,6 +472,8 @@ CreateShaders(R_Core *const Renderer)
 	R_CreatePBRPipelineState(Renderer);
 	R_CreateBillboardPipelineState(Renderer);
 	R_CreateGridPipelineState(Renderer);
+	R_CreateCubemapPipelineState(Renderer);
+	R_CreateSkyboxPipelineState(Renderer);
 }
 
 R_SceneData
@@ -494,6 +499,7 @@ Draw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const 
 		R_RenderGrid(Renderer, &MeshConstants);
 	}
 	R_RenderLightBillboards(Renderer, Scene->Data.Lights, Scene->ActiveLightMask, &MeshConstants);
+	R_DrawSkybox(Renderer, MeshConstants.MVP.View, MeshConstants.MVP.Proj);
 	UI_Draw(Renderer->CommandList);
 
 	Renderer->MeshDataOffset = StartMeshDataOffset;
