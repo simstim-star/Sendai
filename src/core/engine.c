@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "assets/gltf.h"
+#include "engine.h"
 #include "renderer/light.h"
 #include "renderer/renderer.h"
 #include "renderer/shader.h"
@@ -8,7 +9,6 @@
 #include "ui/ui.h"
 #include "win32/file_dialog.h"
 #include "win32/win_path.h"
-#include "engine.h"
 
 /****************************************************
 	Forward declaration of private functions
@@ -115,8 +115,11 @@ S_CubemapOpen(Sendai *const Engine)
 		(SIZE_T)HDRTexture.HeapIndex * Engine->RendererCore.DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
 	ID3D12DescriptorHeap *Heaps[] = {Engine->RendererCore.TexturesHeap};
 	ID3D12GraphicsCommandList_SetDescriptorHeaps(Engine->RendererCore.CommandList, _countof(Heaps), Heaps);
-	R_RenderCubemapOnRTVs(&Engine->RendererCore, HdrSrvHandle);
+	R_DrawToCubemapFaces(&Engine->RendererCore, &Engine->RendererCore.Cubemap, Engine->RendererCore.PipelineState[ERS_CUBEMAP],
+						 Engine->RendererCore.RootSignCubemap, HdrSrvHandle);
 
+	R_DrawToCubemapFaces(&Engine->RendererCore, &Engine->RendererCore.IrradianceMap, Engine->RendererCore.PipelineState[ERS_IRRADIANCE],
+						 Engine->RendererCore.RootSignIrradiance, Engine->RendererCore.Cubemap.GpuSrvHandle);
 }
 
 void
@@ -218,6 +221,7 @@ EngineUpdate(Sendai *const Engine)
 
 	S_Tick(&Engine->Timer);
 	R_CameraUpdate(&Engine->Camera, TicksToSeconds_FLOAT(Engine->Timer.ElapsedTicks));
+	Engine->Scene.Data.CameraPosition = Engine->Camera.Position;
 
 	Engine->UI.State.BottomBar.FPS = Engine->Timer.FramesPerSecond;
 	Engine->UI.State.BottomBar.FrameCounter = Engine->FrameCounter;

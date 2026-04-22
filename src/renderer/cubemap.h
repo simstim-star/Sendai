@@ -23,8 +23,12 @@ typedef struct R_Cubemap {
 
 	UINT RTVDescriptorSize;
 	D3D12_GPU_DESCRIPTOR_HANDLE GpuSrvHandle;
+
+	UINT Width;
+	UINT Height;
 } R_Cubemap;
 
-VOID R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap);
-VOID R_RenderCubemapOnRTVs(R_Core *Renderer, D3D12_GPU_DESCRIPTOR_HANDLE EquirectangularSRV);
+VOID R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, UINT Height);
+VOID R_DrawToCubemapFaces(
+	R_Core *Renderer, R_Cubemap *Target, ID3D12PipelineState *PSO, ID3D12RootSignature *RootSign, D3D12_GPU_DESCRIPTOR_HANDLE SourceSRV);
 VOID R_DrawSkybox(R_Core *Renderer, XMMATRIX View, XMMATRIX Proj);

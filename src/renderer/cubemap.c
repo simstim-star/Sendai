@@ -47,13 +47,16 @@ static const UINT16 CUBEMAP_INDICES[] = {
 };
 
 VOID
-R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap)
+R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, UINT Height)
 {
+	Cubemap->Width = Width;
+	Cubemap->Height = Height;
+
 	const DXGI_FORMAT TextureFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	D3D12_RESOURCE_DESC TextureDesc = {0};
 	TextureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-	TextureDesc.Width = 512;
-	TextureDesc.Height = 512;
+	TextureDesc.Width = Width;
+	TextureDesc.Height = Height;
 	TextureDesc.DepthOrArraySize = N_CUBE_FACES;
 	TextureDesc.MipLevels = 1;
 	TextureDesc.Format = TextureFormat;
@@ -111,9 +114,9 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap)
 
 	ID3D12Resource_Map(Cubemap->ConstantBufferUploadHeap, 0, NULL, (void **)&Cubemap->MappedCBVData);
 	D3D12_HEAP_PROPERTIES UploadHeap = {.Type = D3D12_HEAP_TYPE_UPLOAD};
-	D3D12_RESOURCE_DESC vbDesc = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(CUBEMAP_VERTICES), D3D12_RESOURCE_FLAG_NONE, 0);
-	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeap, D3D12_HEAP_FLAG_NONE, &vbDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
-											  NULL, &IID_ID3D12Resource, &Cubemap->VertexBuffer);
+	D3D12_RESOURCE_DESC VertexBufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(CUBEMAP_VERTICES), D3D12_RESOURCE_FLAG_NONE, 0);
+	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeap, D3D12_HEAP_FLAG_NONE, &VertexBufferDesc,
+											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Cubemap->VertexBuffer);
 	ExitIfFailed(hr);
 
 	UINT8 *pVertexData;
@@ -121,9 +124,9 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap)
 	memcpy(pVertexData, CUBEMAP_VERTICES, sizeof(CUBEMAP_VERTICES));
 	ID3D12Resource_Unmap(Cubemap->VertexBuffer, 0, NULL);
 
-	D3D12_RESOURCE_DESC ibDesc = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(CUBEMAP_INDICES), D3D12_RESOURCE_FLAG_NONE, 0);
-	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeap, D3D12_HEAP_FLAG_NONE, &ibDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
-											  NULL, &IID_ID3D12Resource, &Cubemap->IndexBuffer);
+	D3D12_RESOURCE_DESC IndexBufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(CUBEMAP_INDICES), D3D12_RESOURCE_FLAG_NONE, 0);
+	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeap, D3D12_HEAP_FLAG_NONE, &IndexBufferDesc,
+											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Cubemap->IndexBuffer);
 
 	UINT8 *pIndexData;
 	ID3D12Resource_Map(Cubemap->IndexBuffer, 0, NULL, (void **)&pIndexData);
@@ -154,58 +157,57 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap)
 }
 
 VOID
-R_RenderCubemapOnRTVs(R_Core *Renderer, D3D12_GPU_DESCRIPTOR_HANDLE EquirectangularSRV)
+R_DrawToCubemapFaces(
+	R_Core *Renderer, R_Cubemap *Target, ID3D12PipelineState *PSO, ID3D12RootSignature *RootSign, D3D12_GPU_DESCRIPTOR_HANDLE SourceSRV)
 {
-	D3D12_RESOURCE_BARRIER BarrierFromCopyToRT = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-												  .Transition = {
-													.pResource = Renderer->Cubemap.Resource,
-													.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-													.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
-													.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET,
-												  }};
-	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &BarrierFromCopyToRT);
+	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+									  .Transition = {
+										.pResource = Target->Resource,
+										.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+										.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+										.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET,
+									  }};
+	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &Barrier);
+
+	D3D12_VIEWPORT Viewport = {0.0f, 0.0f, (FLOAT)Target->Width, (FLOAT)Target->Height, 0.0f, 1.0f};
+	D3D12_RECT Scissor = {0, 0, (LONG)Target->Width, (LONG)Target->Height};
+	ID3D12GraphicsCommandList_RSSetViewports(Renderer->CommandList, 1, &Viewport);
+	ID3D12GraphicsCommandList_RSSetScissorRects(Renderer->CommandList, 1, &Scissor);
+	ID3D12GraphicsCommandList_IASetPrimitiveTopology(Renderer->CommandList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Target->CubeVBView);
+	ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Target->CubeIBView);
+	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, PSO);
+	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, RootSign);
+	ID3D12DescriptorHeap *Heaps[] = {Renderer->TexturesHeap};
+	ID3D12GraphicsCommandList_SetDescriptorHeaps(Renderer->CommandList, 1, Heaps);
+	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, SourceSRV);
 
 	struct {
 		XMMATRIX View;
 		XMMATRIX Proj;
-	} EquirectToCubeCB;
-	EquirectToCubeCB.Proj = XMMatrixPerspectiveFovLH(RIGHT_ANGLE_RAD, 1.0f, 0.1f, 10.0f);
-	UINT64 Alignment = CB_ALIGN(EquirectToCubeCB);
+	} CB;
+	CB.Proj = XMMatrixPerspectiveFovLH(RIGHT_ANGLE_RAD, 1.0f, 0.1f, 10.0f);
+	UINT64 Alignment = CB_ALIGN(sizeof(CB));
+	D3D12_GPU_VIRTUAL_ADDRESS CBGpuBase = ID3D12Resource_GetGPUVirtualAddress(Target->ConstantBufferUploadHeap);
 
-	D3D12_VIEWPORT Viewport = {0.0f, 0.0f, 512.0f, 512.0f, 0.0f, 1.0f};
-	D3D12_RECT Scissor = {0, 0, 512, 512};
-	ID3D12GraphicsCommandList_RSSetViewports(Renderer->CommandList, 1, &Viewport);
-	ID3D12GraphicsCommandList_RSSetScissorRects(Renderer->CommandList, 1, &Scissor);
-	ID3D12GraphicsCommandList_IASetPrimitiveTopology(Renderer->CommandList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Renderer->Cubemap.CubeVBView);
-	ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Renderer->Cubemap.CubeIBView);
-	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignCubemap);
-	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[ERS_CUBEMAP]);
-	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, EquirectangularSRV);
+	for (int Face = 0; Face < N_CUBE_FACES; Face++) {
+		D3D12_CPU_DESCRIPTOR_HANDLE RtvHandle;
+		ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Target->DescriptorHeap, &RtvHandle);
+		RtvHandle.ptr += (Face * Target->RTVDescriptorSize);
 
-	D3D12_GPU_VIRTUAL_ADDRESS CBUploadHeapGPUAddress = ID3D12Resource_GetGPUVirtualAddress(Renderer->Cubemap.ConstantBufferUploadHeap);
-	for (int i = 0; i < N_CUBE_FACES; i++) {
-		D3D12_CPU_DESCRIPTOR_HANDLE CurrentFaceHandle;
-		ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->Cubemap.DescriptorHeap, &CurrentFaceHandle);
-		CurrentFaceHandle.ptr += (i * Renderer->Cubemap.RTVDescriptorSize);
-		ID3D12GraphicsCommandList_OMSetRenderTargets(Renderer->CommandList, 1, &CurrentFaceHandle, FALSE, NULL);
-		ID3D12GraphicsCommandList_ClearRenderTargetView(Renderer->CommandList, CurrentFaceHandle, ((float[4]){0.0f, 0.0f, 0.0f, 1.0f}), 0, NULL);
+		ID3D12GraphicsCommandList_OMSetRenderTargets(Renderer->CommandList, 1, &RtvHandle, FALSE, NULL);
+		ID3D12GraphicsCommandList_ClearRenderTargetView(Renderer->CommandList, RtvHandle, CUBEMAP_CLEAR_COLOR, 0, NULL);
 
-		EquirectToCubeCB.View = CAPTURE_VIEWS[i];
-		memcpy(Renderer->Cubemap.MappedCBVData + (i * Alignment), &EquirectToCubeCB, sizeof(EquirectToCubeCB));
+		CB.View = CAPTURE_VIEWS[Face];
+		memcpy(Target->MappedCBVData + (Face * Alignment), &CB, sizeof(CB));
 
-		ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, CBUploadHeapGPUAddress + (i * Alignment));
+		ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, CBGpuBase + (Face * Alignment));
 		ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, 36, 1, 0, 0, 0);
 	}
 
-	D3D12_RESOURCE_BARRIER BarrierFromRTToPixelShaderResource = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-																 .Transition = {
-																   .pResource = Renderer->Cubemap.Resource,
-																   .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-																   .StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET,
-																   .StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-																 }};
-	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &BarrierFromRTToPixelShaderResource);
+	Barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	Barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &Barrier);
 }
 
 VOID

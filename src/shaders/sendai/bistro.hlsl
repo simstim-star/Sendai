@@ -1,6 +1,8 @@
 #include "shader_defs.h"
 
+#define IrradianceSpace space0
 #define TextureSpace space1
+
 static const float PI = 3.14159265359;
 
 float3 getNormalFromMap(float2 texCoords, float3 normal, float4 tangent, uint mapIndex);
@@ -18,9 +20,9 @@ cbuffer MeshData : register(b0)
 
 cbuffer PBRData : register(b1)
 {
-    float4 diffuseFactor;
-    float3 specularFactor;
-    float glossinessFactor;
+    float4 albedoFactor; 
+    float metallicFactor;
+    float roughnessFactor;
     float3 emissiveFactor;
     
     // KHR_texture_transform
@@ -28,9 +30,9 @@ cbuffer PBRData : register(b1)
     float2 uvScale;
     float uvRotation;
     
-    uint diffuseTextureIndex;
+    uint albedoTextureIndex;
     uint normalTextureIndex;
-    uint specGlossTextureIndex;
+    uint metalRoughTextureIndex;
     uint aoTextureIndex;
     uint emissiveTextureIndex;
     float alphaCutoff;
@@ -50,6 +52,7 @@ cbuffer SceneData : register(b2)
 
 Texture2D pbrTextures[PBR_N_TEXTURES_DESCRIPTORS] : register(t0, TextureSpace);
 SamplerState defaultSampler : register(s0);
+TextureCube irradianceMap : register(t0, IrradianceSpace);
 
 struct VSIn
 {
@@ -93,59 +96,68 @@ PSIn VSMain(VSIn v)
 
 float4 PSMain(PSIn input) : SV_TARGET
 {
-    float4 specGlossSample = pbrTextures[specGlossTextureIndex].Sample(defaultSampler, input.uv);
-    float4 diffuseSample = pbrTextures[diffuseTextureIndex].Sample(defaultSampler, input.uv);
     
-    if (diffuseSample.a < alphaCutoff)
-    {
+    float4 albedoSample = pbrTextures[albedoTextureIndex].Sample(defaultSampler, input.uv);
+    if (albedoSample.a < alphaCutoff)
         discard;
-    }
 
-    float3 diffuseColor = diffuseFactor.rgb * pow(diffuseSample.rgb, 2.2);
+    float4 mrSample = pbrTextures[metalRoughTextureIndex].Sample(defaultSampler, input.uv);
     
-    float4 sgSample = pbrTextures[specGlossTextureIndex].Sample(defaultSampler, input.uv);
-    float3 F0 = specularFactor * pow(specGlossSample.rgb, 2.2);
-    float glossiness = glossinessFactor * specGlossSample.a;
-    float roughness = 1.0 - glossiness;
+    float3 albedo = albedoFactor.rgb * pow(albedoSample.rgb, 2.2);
+    float metallic = metallicFactor * mrSample.b;
+    float roughness = roughnessFactor * mrSample.g;
+
+    float3 F0 = float3(0.04, 0.04, 0.04);
+    F0 = lerp(F0, albedo, metallic);
 
     float3 N = getNormalFromMap(input.uv, input.norm, input.tangent, normalTextureIndex);
     float3 V = normalize(camPos - input.fragPos);
+    float NdotV = max(dot(N, V), 0.0);
 
     float3 Lo = float3(0.0, 0.0, 0.0);
     for (int i = 0; i < PBR_MAX_LIGHT_NUMBER; ++i)
     {
         float3 L = normalize(lights[i].position - input.fragPos);
         float3 H = normalize(V + L);
+        float NdotL = max(dot(N, L), 0.0);
         
         float distance = length(lights[i].position - input.fragPos);
         float attenuation = 1.0 / (distance * distance);
         float3 radiance = lights[i].color * attenuation;
+
         float NDF = DistributionGGX(N, H, roughness);
         float G = GeometrySmith(N, V, L, roughness);
         float3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
             
         float3 numerator = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+        float denominator = 4.0 * NdotV * NdotL + 0.0001;
         float3 specular = numerator / denominator;
         
         float3 kS = F;
-        float3 kD = (float3(1.0, 1.0, 1.0) - kS) * (1.0 - max(max(F0.r, F0.g), F0.b));
+        float3 kD = (float3(1.0, 1.0, 1.0) - kS);
+        kD *= (1.0 - metallic); 
 
-        float NdotL = max(dot(N, L), 0.0);
-        Lo += (kD * diffuseColor / PI + specular) * radiance * NdotL;
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
     }
-    
-    float ao = pbrTextures[aoTextureIndex].Sample(defaultSampler, input.uv).r;
-    float3 emissive = emissiveFactor * pbrTextures[emissiveTextureIndex].Sample(defaultSampler, input.uv).rgb;
-    
-    float3 ambient = float3(0.03, 0.03, 0.03) * diffuseColor * ao;
-    float3 color = ambient + Lo + emissive;
 
+    float ao = pbrTextures[aoTextureIndex].Sample(defaultSampler, input.uv).r;
+    
+    float3 F_ambient = fresnelSchlick(NdotV, F0);
+    float3 kS_ambient = F_ambient;
+    float3 kD_ambient = (float3(1.0, 1.0, 1.0) - kS_ambient);
+    kD_ambient *= (1.0 - metallic);
+
+    float3 irradiance = irradianceMap.Sample(defaultSampler, N).rgb;
+    float3 diffuseAmbient = irradiance * albedo;
+    float3 ambient = (kD_ambient * diffuseAmbient) * ao;
+
+    float3 emissive = emissiveFactor * pbrTextures[emissiveTextureIndex].Sample(defaultSampler, input.uv).rgb;
+    float3 color = ambient + Lo + emissive;
+    
     color = color / (color + float3(1.0, 1.0, 1.0));
     color = pow(color, 1.0 / 2.2);
-    float finalAlpha = diffuseSample.a * diffuseFactor.a;
-    
-    return float4(color, finalAlpha);
+
+    return float4(color, albedoSample.a * albedoFactor.a);
 }
 
 float3 getNormalFromMap(float2 texCoords, float3 normal, float4 tangent, uint mapIndex)

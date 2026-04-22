@@ -30,7 +30,7 @@ R_CreateGrid(R_Core *const Renderer, const float HalfSide)
 }
 
 void
-R_RenderGrid(R_Core *const Renderer, R_MeshConstants *const MeshConstants)
+R_DrawGrid(R_Core *const Renderer, R_MeshConstants *const MeshConstants)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignGrid);
 	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[ERS_GRID]);

@@ -1,8 +1,8 @@
 #include "core/pch.h"
 
-#include "renderer.h"
-#include "render_types.h"
 #include "light.h"
+#include "render_types.h"
+#include "renderer.h"
 #include "shader.h"
 #include "texture.h"
 
@@ -15,8 +15,8 @@
 #include "ui/ui.h"
 #include "win32/win_path.h"
 
-#include "stb_ds.h"
 #include "billboard.h"
+#include "stb_ds.h"
 
 static const FLOAT CUBEMAP_CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
@@ -24,24 +24,24 @@ static const FLOAT CUBEMAP_CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	Forward declaration of private functions
 *****************************************************/
 
-static void SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers);
-static void CreateSceneResources(R_Core *const Renderer);
-void CreateBaseEngineTextures(R_Core *const Renderer);
-static void CreateDepthStencilBuffer(R_Core *const Renderer);
-static void CreateShaders(R_Core *const Renderer);
+static VOID SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers);
+static VOID CreateSceneResources(R_Core *const Renderer);
+static VOID CreateBaseEngineTextures(R_Core *const Renderer);
+static VOID CreateDepthStencilBuffer(R_Core *const Renderer);
+static VOID CreateShaders(R_Core *const Renderer);
 static R_SceneData PreprocessSceneData(const S_Scene *const Scene);
-static void CreateBaseEngineTextures(R_Core *const Renderer);
-static void Draw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
-static void GetAdapter(IDXGIFactory2 *Factory, R_Core *Renderer);
+static VOID CreateBaseEngineTextures(R_Core *const Renderer);
+static VOID DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
+static VOID GetAdapter(IDXGIFactory2 *Factory, R_Core *Renderer);
 
-static void SignalAndWait(R_Core *const Renderer);
-static void RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
+static VOID SignalAndWait(R_Core *const Renderer);
+static VOID DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
 
 /****************************************************
 Public functions
 *****************************************************/
 
-void
+VOID
 R_Init(R_Core *const Renderer, HWND hWnd)
 {
 	Renderer->hWnd = hWnd;
@@ -61,7 +61,7 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	INT bIsDebugFactory = 0;
 #if defined(_DEBUG)
 	ID3D12Debug1 *DebugController = NULL;
-	if (SUCCEEDED(D3D12GetDebugInterface(&IID_ID3D12Debug, (void **)&DebugController))) {
+	if (SUCCEEDED(D3D12GetDebugInterface(&IID_ID3D12Debug, (VOID **)&DebugController))) {
 		ID3D12Debug1_EnableDebugLayer(DebugController);
 		// ID3D12Debug1_SetEnableGPUBasedValidation(debug_controller, 1);
 		bIsDebugFactory |= DXGI_CREATE_FACTORY_DEBUG;
@@ -156,11 +156,11 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	CreateSceneResources(Renderer);
 	CreateDepthStencilBuffer(Renderer);
 	CreateShaders(Renderer);
-	
+
 	IDXGIFactory2_Release(Factory);
 }
 
-void
+VOID
 R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const Camera)
 {
 	ID3D12GraphicsCommandList_RSSetViewports(Renderer->CommandList, 1, &Renderer->Viewport);
@@ -180,13 +180,14 @@ R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const
 	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->DepthStencilHeap, &DepthStencilCPUHandle);
 	ID3D12GraphicsCommandList_OMSetRenderTargets(Renderer->CommandList, 1, &Renderer->RtvHandles[Renderer->RtvIndex], FALSE,
 												 &DepthStencilCPUHandle);
-	ID3D12GraphicsCommandList_ClearRenderTargetView(Renderer->CommandList, Renderer->RtvHandles[Renderer->RtvIndex], CUBEMAP_CLEAR_COLOR, 0, NULL);
+	ID3D12GraphicsCommandList_ClearRenderTargetView(Renderer->CommandList, Renderer->RtvHandles[Renderer->RtvIndex], CUBEMAP_CLEAR_COLOR, 0,
+													NULL);
 	ID3D12GraphicsCommandList_ClearDepthStencilView(Renderer->CommandList, DepthStencilCPUHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, NULL);
 	ID3D12GraphicsCommandList_IASetPrimitiveTopology(Renderer->CommandList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	ID3D12DescriptorHeap *Heaps[] = {Renderer->TexturesHeap};
 	ID3D12GraphicsCommandList_SetDescriptorHeaps(Renderer->CommandList, 1, Heaps);
 
-	Draw(Renderer, Camera, Scene);
+	DoDraw(Renderer, Camera, Scene);
 
 	ResourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	ResourceBarrier.Transition.pResource = Renderer->RtvBuffers[Renderer->RtvIndex];
@@ -203,7 +204,7 @@ R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const
 	Renderer->RtvIndex = (Renderer->RtvIndex + 1) % FRAME_COUNT;
 }
 
-void
+VOID
 R_ExecuteCommands(R_Core *const Renderer, ID3D12GraphicsCommandList *CommandList, ID3D12CommandAllocator *CommandAllocator)
 {
 	HRESULT hr = ID3D12GraphicsCommandList_Close(CommandList);
@@ -215,7 +216,7 @@ R_ExecuteCommands(R_Core *const Renderer, ID3D12GraphicsCommandList *CommandList
 	ID3D12GraphicsCommandList_Reset(CommandList, CommandAllocator, Renderer->PipelineState[Renderer->State]);
 }
 
-void
+VOID
 R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height)
 {
 	for (INT i = 0; i < FRAME_COUNT; ++i) {
@@ -255,7 +256,7 @@ R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height)
 	CreateDepthStencilBuffer(Renderer);
 }
 
-void
+VOID
 R_Destroy(R_Core *Renderer)
 {
 	UI_Destroy();
@@ -306,7 +307,7 @@ R_Destroy(R_Core *Renderer)
 	Implementation of private functions
 *****************************************************/
 
-static void
+static VOID
 SignalAndWait(R_Core *const Renderer)
 {
 	HRESULT hr = ID3D12CommandQueue_Signal(Renderer->CommandQueue, Renderer->Fence, ++Renderer->FenceValue);
@@ -315,10 +316,11 @@ SignalAndWait(R_Core *const Renderer)
 	WaitForSingleObject(Renderer->FenceEvent, INFINITE);
 }
 
-void
-RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants)
+VOID
+DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignPBR);
+	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[ERS_GLTF]);
 	UINT8 *MeshDataCpuAddress = Renderer->MeshDataUploadBufferCpuAddress;
 
 	R_SceneData SceneData = PreprocessSceneData(Scene);
@@ -330,6 +332,10 @@ RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConst
 	D3D12_GPU_DESCRIPTOR_HANDLE TexturesHeapStart;
 	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &TexturesHeapStart);
 	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 3, TexturesHeapStart);
+
+	D3D12_GPU_DESCRIPTOR_HANDLE IrradianceHandle = Renderer->IrradianceMap.GpuSrvHandle;
+
+	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 4, IrradianceHandle);
 
 	for (size_t ModelIndex = 0; ModelIndex < Scene->ModelsCount; ++ModelIndex) {
 		R_Model *Model = &Scene->Models[ModelIndex];
@@ -370,7 +376,7 @@ RenderPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConst
 	}
 }
 
-void
+VOID
 CreateDepthStencilBuffer(R_Core *const Renderer)
 {
 	D3D12_DESCRIPTOR_HEAP_DESC DepthStencilHeapDesc = {
@@ -392,7 +398,7 @@ CreateDepthStencilBuffer(R_Core *const Renderer)
 	ID3D12Device_CreateDepthStencilView(Renderer->Device, Renderer->DepthStencil, NULL, DepthStencilHandle);
 }
 
-void
+VOID
 SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers)
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE RtvDescriptorHandle;
@@ -406,7 +412,7 @@ SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers)
 	}
 }
 
-void
+VOID
 CreateSceneResources(R_Core *const Renderer)
 {
 	HRESULT hr;
@@ -452,10 +458,11 @@ CreateSceneResources(R_Core *const Renderer)
 	CreateBaseEngineTextures(Renderer);
 	R_CreateGrid(Renderer, 100.f);
 
-	R_SetupCubemapResources(Renderer, &Renderer->Cubemap);
+	R_SetupCubemapResources(Renderer, &Renderer->Cubemap, 2056, 2056);
+	R_SetupCubemapResources(Renderer, &Renderer->IrradianceMap, 32, 32);
 }
 
-void
+VOID
 CreateBaseEngineTextures(R_Core *const Renderer)
 {
 	WCHAR LampImagePath[MAX_PATH];
@@ -466,13 +473,14 @@ CreateBaseEngineTextures(R_Core *const Renderer)
 	Renderer->SceneDataOffset += CB_ALIGN(BillboardVertices);
 }
 
-void
+VOID
 CreateShaders(R_Core *const Renderer)
 {
 	R_CreatePBRPipelineState(Renderer);
 	R_CreateBillboardPipelineState(Renderer);
 	R_CreateGridPipelineState(Renderer);
 	R_CreateCubemapPipelineState(Renderer);
+	R_CreateIrradiancePipelineState(Renderer);
 	R_CreateSkyboxPipelineState(Renderer);
 }
 
@@ -485,28 +493,29 @@ PreprocessSceneData(const S_Scene *const Scene)
 	return Result;
 }
 
-void
-Draw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene)
+VOID
+DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene)
 {
 	UINT64 StartMeshDataOffset = Renderer->MeshDataOffset;
 	UINT64 StartSceneDataOffset = Renderer->SceneDataOffset;
+
 	R_MeshConstants MeshConstants = {.MVP = {
 									   .View = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection),
 									   .Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f),
 									 }};
-	RenderPrimitives(Scene, Renderer, &MeshConstants);
-	if (Renderer->bDrawGrid) {
-		R_RenderGrid(Renderer, &MeshConstants);
-	}
-	R_RenderLightBillboards(Renderer, Scene->Data.Lights, Scene->ActiveLightMask, &MeshConstants);
+	DrawPrimitives(Scene, Renderer, &MeshConstants);
 	R_DrawSkybox(Renderer, MeshConstants.MVP.View, MeshConstants.MVP.Proj);
+	if (Renderer->bDrawGrid) {
+		R_DrawGrid(Renderer, &MeshConstants);
+	}
+	R_DrawLightBillboards(Renderer, Scene->Data.Lights, Scene->ActiveLightMask, &MeshConstants);
 	UI_Draw(Renderer->CommandList);
 
 	Renderer->MeshDataOffset = StartMeshDataOffset;
 	Renderer->SceneDataOffset = StartSceneDataOffset;
 }
 
-void
+VOID
 GetAdapter(IDXGIFactory2 *Factory, R_Core *Renderer)
 {
 	for (UINT i = 0; SUCCEEDED(IDXGIFactory2_EnumAdapters1(Factory, i, &Renderer->Adapter)); ++i) {

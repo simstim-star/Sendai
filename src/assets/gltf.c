@@ -42,33 +42,33 @@ typedef enum ETextureFormat {
 
 static cgltf_data *GetData(PCWSTR Path, M_Arena *UploadArena);
 
-static void SetModelName(PCWSTR Path, R_Model *Model, M_Arena *Arena);
+static VOID SetModelName(PCWSTR Path, R_Model *Model, M_Arena *Arena);
 
-static void LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneArena, M_Arena *UploadArena);
+static VOID LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneArena, M_Arena *UploadArena);
 
-static void PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena *UploadArena);
+static VOID PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena *UploadArena);
 
 static BOOL ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_Arena *UploadArena, _Out_ R_Texture *Texture);
 
-static LONG LoadGLTFFile(_In_z_ PCWSTR Path, _In_ M_Arena *Arena, _Outptr_ void **Data);
+static LONG LoadGLTFFile(_In_z_ PCWSTR Path, _In_ M_Arena *Arena, _Outptr_ VOID **Data);
 
 static cgltf_result LoadGLTFBuffer(_In_z_ PCWSTR FullPath,
 								   _In_z_ PCWSTR BufferFileName,
 								   _In_ M_Arena *Arena,
 								   _Out_ size_t *Size,
-								   _Outptr_result_bytebuffer_(*Size) void **Data);
+								   _Outptr_result_bytebuffer_(*Size) VOID **Data);
 
 static PSTR CreateTextureName(M_Arena *UploadArena, cgltf_image *BaseImage, PCWSTR Path, int i);
 
 static BOOL IsDataEmbedded(const cgltf_image *const BaseImage);
 
-static void RetriveAttributeData(cgltf_primitive *PrimitiveData,
+static VOID RetriveAttributeData(cgltf_primitive *PrimitiveData,
 								 cgltf_accessor *UVAccessorsData[2],
 								 cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum]);
 
-static void LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB);
+static VOID LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB);
 
-static void LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
+static VOID LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 											  R_Primitive *Primitive,
 											  cgltf_accessor *PositionAccessor,
 											  cgltf_accessor *NormalAccessor,
@@ -87,14 +87,14 @@ static VOID GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Im
 
 /* The below functions are to inject into gltf loader to use my arena */
 
-static void *
-cgltf_arena_alloc(void *user, cgltf_size size)
+static VOID *
+cgltf_arena_alloc(VOID *user, cgltf_size size)
 {
 	return M_ArenaAlloc((M_Arena *)user, size);
 }
 
-static void
-cgltf_arena_free(void *user, void *ptr)
+static VOID
+cgltf_arena_free(VOID *user, VOID *ptr)
 {
 	/* arena handles lifetime */
 }
@@ -147,7 +147,7 @@ SendaiGLTF_LoadModel(R_Core *Renderer, PCWSTR Path, S_Scene *Scene)
 	Implementation of private functions
 *****************************************************/
 
-void
+VOID
 LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneArena, M_Arena *UploadArena)
 {
 	R_Mesh *Meshes = M_ArenaAlloc(SceneArena, Data->meshes_count * sizeof(R_Mesh));
@@ -211,7 +211,7 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 cgltf_data *
 GetData(PCWSTR Path, M_Arena *UploadArena)
 {
-	void *FileData = NULL;
+	VOID *FileData = NULL;
 
 	LONG Size = LoadGLTFFile(Path, UploadArena, &FileData);
 	if (Size <= 0) {
@@ -243,7 +243,7 @@ GetData(PCWSTR Path, M_Arena *UploadArena)
 	return Data;
 }
 
-void
+VOID
 SetModelName(PCWSTR Path, R_Model *Model, M_Arena *Arena)
 {
 	WCHAR FileNameW[MAX_PATH];
@@ -253,7 +253,7 @@ SetModelName(PCWSTR Path, R_Model *Model, M_Arena *Arena)
 	W_TO_UTF8(FileNameW, Model->Name, UTF8Size);
 }
 
-void
+VOID
 RetriveAttributeData(cgltf_primitive *PrimitiveData,
 					 cgltf_accessor *UVAccessorsData[2],
 					 cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum])
@@ -272,7 +272,7 @@ RetriveAttributeData(cgltf_primitive *PrimitiveData,
 	}
 }
 
-void
+VOID
 LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 								  R_Primitive *Primitive,
 								  cgltf_accessor *PositionAccessor,
@@ -338,7 +338,7 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	}
 
 	size_t IndexCount = IndicesAccessor ? IndicesAccessor->count : 0;
-	void *Indices = NULL;
+	VOID *Indices = NULL;
 	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
 	UINT IndexBufferSize = IndexCount * sizeof(UINT16);
 	UINT IndexStride = sizeof(uint16_t);
@@ -399,7 +399,7 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	Primitive->IndexCount = IndexCount;
 }
 
-void
+VOID
 PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena *UploadArena)
 {
 	Model->Images = M_ArenaAlloc(UploadArena, Data->images_count * sizeof(R_Texture));
@@ -416,7 +416,7 @@ PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M
 			wcscpy_s(BasePath, MAX_PATH, Path);
 			Win32RemoveAllAfterLastSlash(BasePath);
 
-			if (ExtractImageData(BasePath, BaseImage, UploadArena, &Model->Images[i])) {
+			if (ExtractImageData(BasePath, BaseImage, UploadArena, &Model->Images[ImageIndex])) {
 				Model->Images[ImageIndex].Name = CreateTextureName(UploadArena, BaseImage, Path, i);
 				Model->Images[ImageIndex].Format = DXGI_FORMAT_R8G8B8A8_UNORM; 
 			}
@@ -503,7 +503,7 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_
 
 cgltf_result
 LoadGLTFBuffer(
-	_In_z_ PCWSTR FullPath, _In_z_ PCWSTR BufferFileName, _In_ M_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) void **Data)
+	_In_z_ PCWSTR FullPath, _In_z_ PCWSTR BufferFileName, _In_ M_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) VOID **Data)
 {
 	WCHAR FullPathBuffer[MAX_PATH];
 	wcscpy_s(FullPathBuffer, MAX_PATH, FullPath);
@@ -587,7 +587,7 @@ LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ 
 }
 
 LONG
-LoadGLTFFile(_In_z_ PCWSTR Path, M_Arena *Arena, _Outptr_ void **Data)
+LoadGLTFFile(_In_z_ PCWSTR Path, M_Arena *Arena, _Outptr_ VOID **Data)
 {
 	FILE *FileHandle = _wfopen(Path, L"rb");
 	if (!FileHandle) {
@@ -642,18 +642,18 @@ CreateTextureName(M_Arena *UploadArena, cgltf_image *BaseImage, PCWSTR Path, int
 	return UniqueName;
 }
 
-void
+VOID
 LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB)
 {
 	CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, NULL);
 	CB->NormalTextureIndex = R_GetTextureIndex(Renderer, NULL);
-	CB->SpecularGlossTextureIndex = R_GetTextureIndex(Renderer, NULL);
+	CB->MetalRoughTextureIndex = R_GetTextureIndex(Renderer, NULL);
 	CB->OcclusionTextureIndex = R_GetTextureIndex(Renderer, NULL);
 	CB->EmissiveTextureIndex = R_GetTextureIndex(Renderer, NULL);
 
 	CB->BaseColorFactor = (XMFLOAT4){1.0f, 1.0f, 1.0f, 1.0f};
-	CB->SpecularFactor = (XMFLOAT3){1.0f, 1.0f, 1.0f};
-	CB->GlossinessFactor = 1.0f;
+	CB->MetallicFactor = 1.0f;
+	CB->RoughnessFactor = 1.0f;
 	CB->AlphaCutoff = 0.5f;
 	CB->UVScale = (XMFLOAT2){1.0f, 1.0f};
 	CB->UVOffset = (XMFLOAT2){0.0f, 0.0f};
@@ -662,6 +662,7 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 	if (!Material) {
 		return;
 	}
+
 
 	if (Material->alpha_mode == cgltf_alpha_mode_mask) {
 		CB->AlphaCutoff = Material->alpha_cutoff;
@@ -674,41 +675,41 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 		CB->BaseColorFactor.w *= (1.0f - transmission);
 	}
 
-	if (Material->has_pbr_specular_glossiness) {
-		cgltf_pbr_specular_glossiness *SG = &Material->pbr_specular_glossiness;
+	if (Material->has_pbr_metallic_roughness) {
+		cgltf_pbr_metallic_roughness *MetallicRoughness = &Material->pbr_metallic_roughness;
 
-		memcpy(&CB->BaseColorFactor, SG->diffuse_factor, sizeof(float) * 4);
-		memcpy(&CB->SpecularFactor, SG->specular_factor, sizeof(float) * 3);
-		CB->GlossinessFactor = SG->glossiness_factor;
+		memcpy(&CB->BaseColorFactor, MetallicRoughness->base_color_factor, sizeof(FLOAT) * 4);
+		CB->MetallicFactor = MetallicRoughness->metallic_factor;
+		CB->RoughnessFactor = MetallicRoughness->roughness_factor;
 
-		if (SG->diffuse_texture.texture) {
+		if (MetallicRoughness->base_color_texture.texture) {
 			INT Index = 0;
-			GetIndexAndFormatFromTexture(SG->diffuse_texture.texture, ImagesData, &Index, NULL);
+			GetIndexAndFormatFromTexture(MetallicRoughness->base_color_texture.texture, ImagesData, &Index, NULL);
 			CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
 
-			if (SG->diffuse_texture.has_transform) {
-				cgltf_texture_transform *T = &SG->diffuse_texture.transform;
-				CB->UVScale = (XMFLOAT2){T->scale[0], T->scale[1]};
-				CB->UVOffset = (XMFLOAT2){T->offset[0], T->offset[1]};
-				CB->UVRotation = T->rotation;
+			if (MetallicRoughness->base_color_texture.has_transform) {
+				cgltf_texture_transform *Transform = &MetallicRoughness->base_color_texture.transform;
+				CB->UVScale = (XMFLOAT2){Transform->scale[0], Transform->scale[1]};
+				CB->UVOffset = (XMFLOAT2){Transform->offset[0], Transform->offset[1]};
+				CB->UVRotation = Transform->rotation;
 			}
 		}
 
-		if (SG->specular_glossiness_texture.texture) {
-			INT SpecIndex = 0;
-			GetIndexAndFormatFromTexture(SG->specular_glossiness_texture.texture, ImagesData, &SpecIndex, NULL);
-			CB->SpecularGlossTextureIndex = R_GetTextureIndex(Renderer, &Images[SpecIndex]);
-		}
-	} else if (Material->has_pbr_metallic_roughness) {
-		cgltf_pbr_metallic_roughness *MR = &Material->pbr_metallic_roughness;
-
-		memcpy(&CB->BaseColorFactor, MR->base_color_factor, sizeof(float) * 4);
-		CB->SpecularFactor = (XMFLOAT3){0.04f, 0.04f, 0.04f};
-		CB->GlossinessFactor = 1.0f - MR->roughness_factor;
-
-		if (MR->base_color_texture.texture) {
+		if (MetallicRoughness->metallic_roughness_texture.texture) {
 			INT Index = 0;
-			GetIndexAndFormatFromTexture(MR->base_color_texture.texture, ImagesData, &Index, NULL);
+			GetIndexAndFormatFromTexture(MetallicRoughness->metallic_roughness_texture.texture, ImagesData, &Index, NULL);
+			CB->MetalRoughTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
+		}
+	}
+	else if (Material->has_pbr_specular_glossiness) {
+		cgltf_pbr_specular_glossiness *SpecularGlossiness = &Material->pbr_specular_glossiness;
+		memcpy(&CB->BaseColorFactor, SpecularGlossiness->diffuse_factor, sizeof(float) * 4);
+		CB->MetallicFactor = (SpecularGlossiness->specular_factor[0] + SpecularGlossiness->specular_factor[1] + SpecularGlossiness->specular_factor[2]) / 3.0f;
+		CB->RoughnessFactor = 1.0f - SpecularGlossiness->glossiness_factor;
+
+		if (SpecularGlossiness->diffuse_texture.texture) {
+			INT Index = 0;
+			GetIndexAndFormatFromTexture(SpecularGlossiness->diffuse_texture.texture, ImagesData, &Index, NULL);
 			CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
 		}
 	}
@@ -725,7 +726,7 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 		CB->OcclusionTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
 	}
 
-	memcpy(&CB->EmissiveFactor, Material->emissive_factor, sizeof(float) * 3);
+	memcpy(&CB->EmissiveFactor, Material->emissive_factor, sizeof(FLOAT) * 3);
 	if (Material->emissive_texture.texture) {
 		INT Index = 0;
 		GetIndexAndFormatFromTexture(Material->emissive_texture.texture, ImagesData, &Index, NULL);
