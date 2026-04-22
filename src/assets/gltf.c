@@ -7,20 +7,20 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_WINDOWS_UTF8
-#include "stb_image.h"
 #include "stb_ds.h"
+#include "stb_image.h"
 
 #include "b64.h"
 
 #include "core/log.h"
 #include "core/memory.h"
 #include "core/scene.h"
+#include "dds_loader.h"
 #include "renderer/render_types.h"
 #include "renderer/renderer.h"
 #include "renderer/texture.h"
 #include "win32/str_helper.h"
 #include "win32/win_path.h"
-#include "dds_loader.h"
 
 /****************************************************
 	Helper structs and enums
@@ -418,7 +418,7 @@ PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M
 
 			if (ExtractImageData(BasePath, BaseImage, UploadArena, &Model->Images[ImageIndex])) {
 				Model->Images[ImageIndex].Name = CreateTextureName(UploadArena, BaseImage, Path, i);
-				Model->Images[ImageIndex].Format = DXGI_FORMAT_R8G8B8A8_UNORM; 
+				Model->Images[ImageIndex].Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 			}
 			break;
 		}
@@ -663,7 +663,6 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 		return;
 	}
 
-
 	if (Material->alpha_mode == cgltf_alpha_mode_mask) {
 		CB->AlphaCutoff = Material->alpha_cutoff;
 	} else if (Material->alpha_mode == cgltf_alpha_mode_opaque) {
@@ -700,11 +699,11 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 			GetIndexAndFormatFromTexture(MetallicRoughness->metallic_roughness_texture.texture, ImagesData, &Index, NULL);
 			CB->MetalRoughTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
 		}
-	}
-	else if (Material->has_pbr_specular_glossiness) {
+	} else if (Material->has_pbr_specular_glossiness) {
 		cgltf_pbr_specular_glossiness *SpecularGlossiness = &Material->pbr_specular_glossiness;
 		memcpy(&CB->BaseColorFactor, SpecularGlossiness->diffuse_factor, sizeof(float) * 4);
-		CB->MetallicFactor = (SpecularGlossiness->specular_factor[0] + SpecularGlossiness->specular_factor[1] + SpecularGlossiness->specular_factor[2]) / 3.0f;
+		CB->MetallicFactor =
+			(SpecularGlossiness->specular_factor[0] + SpecularGlossiness->specular_factor[1] + SpecularGlossiness->specular_factor[2]) / 3.0f;
 		CB->RoughnessFactor = 1.0f - SpecularGlossiness->glossiness_factor;
 
 		if (SpecularGlossiness->diffuse_texture.texture) {
@@ -718,6 +717,16 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 		INT Index = 0;
 		GetIndexAndFormatFromTexture(Material->normal_texture.texture, ImagesData, &Index, NULL);
 		CB->NormalTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
+	} else {
+		// When the shader does sample * 2.0 - 1.0, this color becomes (0, 0, 1).
+		// In getNormalFromMap, multiplying by the TBN matrix with (0, 0, 1) returns the original vertex
+		const UINT8 NoEffectNormal[] = {128, 128, 255, 255};
+		CB->NormalTextureIndex = R_GetTextureIndex(Renderer, &(R_Texture){.Name = "fallback_normal",
+																		  .Width = 1,
+																		  .Height = 1,
+																		  .MipLevels = 1,
+																		  .MipPixels[0] = NoEffectNormal,
+																		  .Format = DXGI_FORMAT_R8G8B8A8_UNORM});
 	}
 
 	if (Material->occlusion_texture.texture) {
