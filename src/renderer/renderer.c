@@ -18,6 +18,8 @@
 #include "billboard.h"
 #include "stb_ds.h"
 
+typedef enum { PASS_OPAQUE, PASS_BLEND } RenderPassType;
+
 static const FLOAT CUBEMAP_CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
 /****************************************************
@@ -25,16 +27,19 @@ static const FLOAT CUBEMAP_CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 *****************************************************/
 
 static VOID SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers);
+static VOID GetAdapter(IDXGIFactory2 *Factory, R_Core *Renderer);
+static VOID SignalAndWait(R_Core *const Renderer);
+
 static VOID CreateSceneResources(R_Core *const Renderer);
 static VOID CreateBaseEngineTextures(R_Core *const Renderer);
 static VOID CreateDepthStencilBuffer(R_Core *const Renderer);
 static VOID CreateShaders(R_Core *const Renderer);
-static R_SceneData PreprocessSceneData(const S_Scene *const Scene);
-static VOID CreateBaseEngineTextures(R_Core *const Renderer);
-static VOID DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
-static VOID GetAdapter(IDXGIFactory2 *Factory, R_Core *Renderer);
 
-static VOID SignalAndWait(R_Core *const Renderer);
+static R_SceneData PreprocessSceneData(const S_Scene *const Scene);
+
+static VOID DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
+static VOID RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants, const RenderPassType Pass);
+static VOID DrawPrimitive(const R_Core *const Renderer, const R_Primitive *const Primitive);
 static VOID DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
 
 /****************************************************
@@ -307,7 +312,7 @@ R_Destroy(R_Core *Renderer)
 	Implementation of private functions
 *****************************************************/
 
-static VOID
+VOID
 SignalAndWait(R_Core *const Renderer)
 {
 	HRESULT hr = ID3D12CommandQueue_Signal(Renderer->CommandQueue, Renderer->Fence, ++Renderer->FenceValue);
@@ -317,11 +322,65 @@ SignalAndWait(R_Core *const Renderer)
 }
 
 VOID
+DrawPrimitive(const R_Core *const Renderer, const R_Primitive *const Primitive)
+{
+	ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES, &Primitive->ConstantBuffer, 0);
+	ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Primitive->VertexBufferView);
+	ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
+	ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);
+}
+
+VOID
+RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants, const RenderPassType Pass)
+{
+	const ERenderState PSO = (Pass == PASS_OPAQUE) ? ERS_GLTF : ERS_GLTF_BLEND;
+	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[PSO]);
+
+	for (size_t ModelIndex = 0; ModelIndex < Scene->ModelsCount; ++ModelIndex) {
+		R_Model *Model = &Scene->Models[ModelIndex];
+		if (!Model->Visible) {
+			continue;
+		}
+
+		XMMATRIX T = XMMatrixTranslation(Model->Position.x, Model->Position.y, Model->Position.z);
+		XMMATRIX R = XMMatrixRotationRollPitchYaw(Model->Rotation.x, Model->Rotation.y, Model->Rotation.z);
+		XMMATRIX S = XMMatrixScaling(Model->Scale.x, Model->Scale.y, Model->Scale.z);
+		XMMATRIX M = XM_MAT_MULT(S, R);
+		M = XM_MAT_MULT(M, T);
+
+		for (size_t NodeIndex = 0; NodeIndex < Model->NodesCount; ++NodeIndex) {
+			R_Node *Node = &Model->Nodes[NodeIndex];
+
+			if (Pass == PASS_OPAQUE) {
+				MeshConstants->MVP.Model = XMLoadFloat4x4(&Node->ModelMatrix);
+				MeshConstants->MVP.Model = XM_MAT_MULT(MeshConstants->MVP.Model, M);
+
+				XMFLOAT4X4 ModelFloat;
+				XM_STORE_FLOAT4X4(&ModelFloat, MeshConstants->MVP.Model);
+				MeshConstants->Normal = R_NormalMatrix(&ModelFloat);
+
+				memcpy(Renderer->MeshDataUploadBufferCpuAddress + Renderer->MeshDataOffset, MeshConstants, sizeof(R_MeshConstants));
+			}
+
+			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0,
+																		M_GpuAddress(Renderer->MeshDataUploadBuffer, Renderer->MeshDataOffset));
+			Renderer->MeshDataOffset += CB_ALIGN(R_MeshConstants);
+
+			if (Node->Mesh) {
+				INT PrimitiveCount = (Pass == PASS_OPAQUE) ? Node->Mesh->OpaquePrimitivesCount : Node->Mesh->BlendedPrimitivesCount;
+				R_Primitive *Primitives = (Pass == PASS_OPAQUE) ? Node->Mesh->OpaquePrimitives : Node->Mesh->BlendedPrimitives;
+				for (INT PrimitiveIndex = 0; PrimitiveIndex < PrimitiveCount; ++PrimitiveIndex) {
+					DrawPrimitive(Renderer, &Primitives[PrimitiveIndex]);
+				}
+			}
+		}
+	}
+}
+
+VOID
 DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignPBR);
-	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[ERS_GLTF]);
-	UINT8 *MeshDataCpuAddress = Renderer->MeshDataUploadBufferCpuAddress;
 
 	R_SceneData SceneData = PreprocessSceneData(Scene);
 	memcpy(Renderer->SceneDataUploadBufferCpuAddress + Renderer->SceneDataOffset, &SceneData, sizeof(R_SceneData));
@@ -332,48 +391,12 @@ DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstan
 	D3D12_GPU_DESCRIPTOR_HANDLE TexturesHeapStart;
 	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &TexturesHeapStart);
 	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 3, TexturesHeapStart);
+	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 4, Renderer->IrradianceMap.GpuSrvHandle);
 
-	D3D12_GPU_DESCRIPTOR_HANDLE IrradianceHandle = Renderer->IrradianceMap.GpuSrvHandle;
-
-	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 4, IrradianceHandle);
-
-	for (size_t ModelIndex = 0; ModelIndex < Scene->ModelsCount; ++ModelIndex) {
-		R_Model *Model = &Scene->Models[ModelIndex];
-		if (!Model->Visible) {
-			continue;
-		}
-		XMMATRIX T = XMMatrixTranslation(Model->Position.x, Model->Position.y, Model->Position.z);
-		XMMATRIX R = XMMatrixRotationRollPitchYaw(Model->Rotation.x, Model->Rotation.y, Model->Rotation.z);
-		XMMATRIX S = XMMatrixScaling(Model->Scale.x, Model->Scale.y, Model->Scale.z);
-		XMMATRIX M = XM_MAT_MULT(S, R);
-		M = XM_MAT_MULT(M, T);
-		for (size_t NodeIndex = 0; NodeIndex < Model->NodesCount; ++NodeIndex) {
-			R_Node *Node = &Model->Nodes[NodeIndex];
-
-			MeshConstants->MVP.Model = XMLoadFloat4x4(&Node->ModelMatrix);
-			MeshConstants->MVP.Model = XM_MAT_MULT(MeshConstants->MVP.Model, M);
-			XMFLOAT4X4 ModelXMFLOAT;
-			XM_STORE_FLOAT4X4(&ModelXMFLOAT, MeshConstants->MVP.Model);
-			MeshConstants->Normal = R_NormalMatrix(&ModelXMFLOAT);
-
-			memcpy(MeshDataCpuAddress + Renderer->MeshDataOffset, MeshConstants, sizeof(R_MeshConstants));
-			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0,
-																		M_GpuAddress(Renderer->MeshDataUploadBuffer, Renderer->MeshDataOffset));
-			Renderer->MeshDataOffset += CB_ALIGN(R_MeshConstants);
-
-			if (Node->Mesh != NULL) {
-				R_Mesh *Mesh = Node->Mesh;
-				for (INT PrimitiveIdx = 0; PrimitiveIdx < Mesh->PrimitivesCount; ++PrimitiveIdx) {
-					R_Primitive *Primitive = &Mesh->Primitives[PrimitiveIdx];
-					ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES,
-																			&Primitive->ConstantBuffer, 0);
-					ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Primitive->VertexBufferView);
-					ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
-					ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);
-				}
-			}
-		}
-	}
+	UINT64 PassStartOffset = Renderer->MeshDataOffset;
+	RenderScenePass(Scene, Renderer, MeshConstants, PASS_OPAQUE);
+	Renderer->MeshDataOffset = PassStartOffset;
+	RenderScenePass(Scene, Renderer, MeshConstants, PASS_BLEND);
 }
 
 VOID

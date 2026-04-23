@@ -99,7 +99,9 @@ float4 PSMain(PSIn input) : SV_TARGET
     
     float4 albedoSample = pbrTextures[albedoTextureIndex].Sample(defaultSampler, input.uv);
     if (albedoSample.a < alphaCutoff)
+    {
         discard;
+    }
 
     float4 mrSample = pbrTextures[metalRoughTextureIndex].Sample(defaultSampler, input.uv);
     

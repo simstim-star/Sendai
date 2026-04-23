@@ -23,6 +23,10 @@ M_ArenaInit(size_t ReserveSize)
 void *
 M_ArenaAlloc(M_Arena *Arena, size_t Size)
 {
+	if (Size == 0) {
+		return NULL;
+	}
+
 	size_t Position = ROUND_UP_POWER_OF_2(Arena->Offset, 8);
 	size_t End = Position + Size;
 

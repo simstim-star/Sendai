@@ -85,6 +85,15 @@ static XMFLOAT4 *ComputeTangents(cgltf_accessor *PositionAccessor,
 
 static VOID GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Images, int *Index, ETextureFormat *Format);
 
+static BOOL
+IsBlended(const cgltf_material *const material)
+{
+	if (material == NULL) {
+		return FALSE;
+	}
+	return (material->alpha_mode == cgltf_alpha_mode_blend) || material->has_transmission;
+}
+
 /* The below functions are to inject into gltf loader to use my arena */
 
 static VOID *
@@ -157,17 +166,39 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 		cgltf_mesh *MeshData = &Data->meshes[MeshIndex];
 		R_Mesh *CurrentMesh = &Meshes[MeshIndex];
 
-		CurrentMesh->PrimitivesCount = MeshData->primitives_count;
-		CurrentMesh->Primitives = M_ArenaAlloc(SceneArena, CurrentMesh->PrimitivesCount * sizeof(R_Primitive));
+		INT OpaqueCount = 0;
+		INT BlendedCount = 0;
+		for (INT PrimitiveIndex = 0; PrimitiveIndex < MeshData->primitives_count; PrimitiveIndex++) {
+			if (IsBlended(MeshData->primitives[PrimitiveIndex].material)) {
+				BlendedCount++;
+			} else {
+				OpaqueCount++;
+			}
+		}
 
-		for (cgltf_size PrimitiveId = 0; PrimitiveId < MeshData->primitives_count; PrimitiveId++) {
-			cgltf_primitive *PrimitiveData = &MeshData->primitives[PrimitiveId];
+		CurrentMesh->OpaquePrimitivesCount = OpaqueCount;
+		CurrentMesh->OpaquePrimitives = M_ArenaAlloc(SceneArena, CurrentMesh->OpaquePrimitivesCount * sizeof(R_Primitive));
+		CurrentMesh->BlendedPrimitivesCount = BlendedCount;
+		CurrentMesh->BlendedPrimitives = M_ArenaAlloc(SceneArena, CurrentMesh->BlendedPrimitivesCount * sizeof(R_Primitive));
+
+		UINT CurrentOpaqueIndex = 0;
+		UINT CurrentBlendedIndex = 0;
+
+		for (cgltf_size PrimitiveIndex = 0; PrimitiveIndex < MeshData->primitives_count; PrimitiveIndex++) {
+			cgltf_primitive *PrimitiveData = &MeshData->primitives[PrimitiveIndex];
 
 			cgltf_accessor *Accessors[cgltf_attribute_type_max_enum] = {0};
 			cgltf_accessor *UVAccessorsData[2] = {0};
 			RetriveAttributeData(PrimitiveData, UVAccessorsData, Accessors);
 
-			R_Primitive *Primitive = &CurrentMesh->Primitives[PrimitiveId];
+			R_Primitive *Primitive = NULL;
+			if (IsBlended(PrimitiveData->material)) {
+				Primitive = &CurrentMesh->BlendedPrimitives[CurrentBlendedIndex];
+				CurrentBlendedIndex++;
+			} else {
+				Primitive = &CurrentMesh->OpaquePrimitives[CurrentOpaqueIndex];
+				CurrentOpaqueIndex++;
+			}
 
 			LoadVerticesAndIndicesIntoBuffers(Renderer, Primitive, Accessors[cgltf_attribute_type_position],
 											  Accessors[cgltf_attribute_type_normal], Accessors[cgltf_attribute_type_tangent],
@@ -663,16 +694,8 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 		return;
 	}
 
-	if (Material->alpha_mode == cgltf_alpha_mode_mask) {
-		CB->AlphaCutoff = Material->alpha_cutoff;
-	} else if (Material->alpha_mode == cgltf_alpha_mode_opaque) {
-		CB->AlphaCutoff = 0.0f;
-	}
+	CB->AlphaCutoff = Material->alpha_cutoff;
 
-	if (Material->has_transmission) {
-		float transmission = Material->transmission.transmission_factor;
-		CB->BaseColorFactor.w *= (1.0f - transmission);
-	}
 
 	if (Material->has_pbr_metallic_roughness) {
 		cgltf_pbr_metallic_roughness *MetallicRoughness = &Material->pbr_metallic_roughness;
@@ -740,6 +763,11 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 		INT Index = 0;
 		GetIndexAndFormatFromTexture(Material->emissive_texture.texture, ImagesData, &Index, NULL);
 		CB->EmissiveTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
+	}
+
+	if (Material->has_transmission) {
+		float transmission = Material->transmission.transmission_factor;
+		CB->BaseColorFactor.w *= (1.0f - transmission);
 	}
 }
 

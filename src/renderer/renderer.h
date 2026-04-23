@@ -19,6 +19,7 @@ typedef enum EReservedSrvIndex {
 
 typedef enum ERenderState {
 	ERS_GLTF,
+	ERS_GLTF_BLEND,
 	ERS_WIREFRAME,
 	ERS_BILLBOARD,
 	ERS_GRID,

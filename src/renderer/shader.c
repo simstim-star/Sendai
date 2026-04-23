@@ -168,6 +168,26 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	PSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
 	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_WIREFRAME]);
 	ExitIfFailed(hr);
+
+	D3D12_BLEND_DESC BlendDesc = CD3DX12_DEFAULT_BLEND_DESC();
+	BlendDesc.RenderTarget[0].BlendEnable = TRUE;
+	BlendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+	BlendDesc.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+	BlendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+	BlendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
+	BlendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
+	BlendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+	BlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+	D3D12_DEPTH_STENCIL_DESC DepthDesc = CD3DX12_DEFAULT_DEPTH_STENCIL_DESC();
+	DepthDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	PSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+	PSODesc.BlendState = BlendDesc;
+	PSODesc.DepthStencilState = DepthDesc;
+
+	hr =
+		ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_GLTF_BLEND]);
+	ExitIfFailed(hr);
 }
 
 void

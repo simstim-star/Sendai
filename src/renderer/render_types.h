@@ -87,8 +87,11 @@ typedef struct R_Primitive {
 } R_Primitive;
 
 typedef struct R_Mesh {
-	R_Primitive *Primitives;
-	size_t PrimitivesCount;
+	R_Primitive *OpaquePrimitives;
+	size_t OpaquePrimitivesCount;
+
+	R_Primitive *BlendedPrimitives;
+	size_t BlendedPrimitivesCount;
 } R_Mesh;
 
 typedef struct R_Node {
