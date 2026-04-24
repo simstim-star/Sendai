@@ -119,9 +119,9 @@ typedef struct R_Core {
 	R_Cubemap IrradianceMap;
 } R_Core;
 
-void R_Init(R_Core *const Renderer, HWND hWnd);
-void R_Destroy(R_Core *Renderer);
-void R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const Camera);
-void DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
-void R_ExecuteCommands(R_Core *const Renderer, ID3D12GraphicsCommandList *CommandList, ID3D12CommandAllocator *CommandAllocator);
-void R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height);
+VOID R_Init(R_Core *const Renderer, HWND hWnd);
+VOID R_Destroy(R_Core *Renderer);
+VOID R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const Camera);
+VOID DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
+VOID R_ExecuteCommands(R_Core *const Renderer, ID3D12GraphicsCommandList *CommandList, ID3D12CommandAllocator *CommandAllocator);
+VOID R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height);

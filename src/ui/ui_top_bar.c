@@ -12,7 +12,7 @@ void InfoPopup(UI_Renderer *UI, UI_TopBarState *State);
 UI_EAction
 UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State)
 {
-	const float BarHeight = UI->Height * BAR_HEIGHT_PERCENTAGE;
+	const FLOAT BarHeight = UI->Height * BAR_HEIGHT_PERCENTAGE;
 	UI_EAction Action = UI_ACTION_NONE;
 	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, UI->Width, BarHeight), NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_dynamic(UI->Context, BarHeight * BUTTON_LAOYUT_PERCENTAGE, LAYOUT_ROW_COLS);
@@ -36,7 +36,7 @@ UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State)
 	return Action;
 }
 
-void
+VOID
 InfoPopup(UI_Renderer *UI, UI_TopBarState *State)
 {
 	if (!State->ShowInfo) {
@@ -54,10 +54,10 @@ InfoPopup(UI_Renderer *UI, UI_TopBarState *State)
 		DXGI_ADAPTER_DESC1 Desc = {0};
 		IDXGIAdapter3_GetDesc1(State->Adapter, &Desc);
 
-		const char *Vendor = (Desc.VendorId == 0x10DE)	 ? "NVIDIA"
-							 : (Desc.VendorId == 0x1002) ? "AMD"
-							 : (Desc.VendorId == 0x8086) ? "Intel"
-														 : "Unknown";
+		PCSTR Vendor = (Desc.VendorId == 0x10DE)   ? "NVIDIA"
+					   : (Desc.VendorId == 0x1002) ? "AMD"
+					   : (Desc.VendorId == 0x8086) ? "Intel"
+												   : "Unknown";
 
 		nk_labelf(UI->Context, NK_TEXT_LEFT, "  GPU: %ls (%s)", Desc.Description, Vendor);
 		nk_labelf(UI->Context, NK_TEXT_LEFT, "  Device ID: 0x%X", Desc.DeviceId);

@@ -9,9 +9,9 @@
 #include "core/scene.h"
 #include "shaders/sendai/shader_defs.h"
 
-static void RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint);
+static VOID RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint);
 
-void
+VOID
 R_LightsInit(S_Scene *const Scene, const R_Camera *const Camera)
 {
 	Scene->ActiveLightMask = 0;
@@ -28,7 +28,7 @@ R_LightsInit(S_Scene *const Scene, const R_Camera *const Camera)
 								}};
 }
 
-void
+VOID
 R_UpdateLights(BYTE ActiveLightMask, const R_Light *const InLights, R_Light *const OutLights, UINT NumLights)
 {
 	for (UINT i = 0; i < NumLights; i++) {
@@ -39,7 +39,7 @@ R_UpdateLights(BYTE ActiveLightMask, const R_Light *const InLights, R_Light *con
 	}
 }
 
-void
+VOID
 R_DrawLightBillboards(R_Core *const Renderer, R_Light *Lights, BYTE ActiveLightMask, R_MeshConstants *const MeshConstants)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignBillboard);
@@ -51,7 +51,7 @@ R_DrawLightBillboards(R_Core *const Renderer, R_Light *Lights, BYTE ActiveLightM
 	LampTextureHandle.ptr += (UINT64)ERSI_BILLBOARD_LAMP * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
 	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, LampTextureHandle);
 
-	for (int i = 0; i < PBR_MAX_LIGHT_NUMBER; ++i) {
+	for (INT i = 0; i < PBR_MAX_LIGHT_NUMBER; ++i) {
 		if (ActiveLightMask & (1 << i)) {
 			XMVECTOR LightPos = XMLoadFloat3(&Lights[i].LightPosition);
 			MeshConstants->MVP.Model = XM_MAT_TRANSLATION_FROM_VEC(LightPos);
@@ -60,7 +60,7 @@ R_DrawLightBillboards(R_Core *const Renderer, R_Light *Lights, BYTE ActiveLightM
 	}
 }
 
-void
+VOID
 RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint)
 {
 	R_LightBillboardConstants CB = {.MVP = MeshConstants->MVP, .Tint = Tint};

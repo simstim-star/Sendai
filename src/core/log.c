@@ -4,7 +4,7 @@
 
 S_Log SENDAI_LOG = {.Buffer = {0}, .Len = 0};
 
-void
+VOID
 S_LogAppend(PCWSTR Text)
 {
 	if (Text == NULL) {
@@ -16,12 +16,12 @@ S_LogAppend(PCWSTR Text)
 	if (SUCCEEDED(hr) || hr == STRSAFE_E_INSUFFICIENT_BUFFER) {
 		size_t NewLen = 0;
 		if (SUCCEEDED(StringCchLengthW(SENDAI_LOG.Buffer, LOG_CAPACITY, &NewLen))) {
-			SENDAI_LOG.Len = (int)NewLen;
+			SENDAI_LOG.Len = (INT)NewLen;
 		}
 	}
 }
 
-void
+VOID
 S_LogAppendf(PCWSTR Format, ...)
 {
 	if (Format == NULL) {
@@ -36,7 +36,7 @@ S_LogAppendf(PCWSTR Format, ...)
 	if (SUCCEEDED(hr) || hr == STRSAFE_E_INSUFFICIENT_BUFFER) {
 		size_t NewLen = 0;
 		if (SUCCEEDED(StringCchLengthW(SENDAI_LOG.Buffer, LOG_CAPACITY, &NewLen))) {
-			SENDAI_LOG.Len = (int)NewLen;
+			SENDAI_LOG.Len = (INT)NewLen;
 		}
 	}
 }

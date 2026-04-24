@@ -8,20 +8,20 @@
 // Integer format represents time using 10,000,000 ticks per second.
 #define TICKS_PER_SECOND 10000000
 
-inline float
+inline FLOAT
 TicksToSeconds_FLOAT(UINT64 Ticks)
 {
-	return ((float)Ticks) / TICKS_PER_SECOND;
+	return ((FLOAT)Ticks) / TICKS_PER_SECOND;
 }
 
-inline double
+inline DOUBLE
 TicksToSeconds_DOUBLE(UINT64 Ticks)
 {
-	return ((double)Ticks) / TICKS_PER_SECOND;
+	return ((DOUBLE)Ticks) / TICKS_PER_SECOND;
 }
 
 inline UINT64
-SecondsToTicks(double Seconds)
+SecondsToTicks(DOUBLE Seconds)
 {
 	return (UINT64)(Seconds * TICKS_PER_SECOND);
 }
@@ -42,24 +42,24 @@ typedef struct S_StepTimer {
 	UINT32 FramesThisSecond;
 	UINT64 QPCSecondCounter;
 	// Members for configuring fixed timestep mode.
-	bool bFixedTimeStep;
+	BOOL bFixedTimeStep;
 	UINT64 TargetElapsedTicks;
 } S_StepTimer;
 
-void S_TimerInit(S_StepTimer *StepTimer);
+VOID S_TimerInit(S_StepTimer *StepTimer);
 
 // After an intentional timing discontinuity (for instance a blocking IO operation)
 // call this to avoid having the fixed timestep logic attempt a set of catch-up
 // Update calls.
-inline void S_ResetElapsedTime(S_StepTimer *StepTimer);
+inline VOID S_ResetElapsedTime(S_StepTimer *StepTimer);
 
-typedef void (*LPUPDATEFUNC)(void);
+typedef VOID (*LPUPDATEFUNC)(VOID);
 
 // Update timer state, calling the specified Update function the appropriate number of times.
 void S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC update);
 
 // Only updates timer state, but doesn't do anything else
-inline void
+inline VOID
 S_Tick(S_StepTimer *StepTimer)
 {
 	S_TickWithUpdateFn(StepTimer, NULL);

@@ -15,7 +15,7 @@ Win32ShowFileDialog(COMDLG_FILTERSPEC *Filters, UINT FiltersSize)
 	}
 
 	IFileOpenDialog *FileOpenDialog = NULL;
-	hr = CoCreateInstance(&CLSID_FileOpenDialog, NULL, CLSCTX_ALL, &IID_IFileOpenDialog, (void **)&FileOpenDialog);
+	hr = CoCreateInstance(&CLSID_FileOpenDialog, NULL, CLSCTX_ALL, &IID_IFileOpenDialog, (VOID **)&FileOpenDialog);
 	if (FAILED(hr)) {
 		CoUninitialize();
 		return NULL;

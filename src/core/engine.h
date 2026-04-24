@@ -22,10 +22,10 @@ typedef struct Sendai {
 	UINT FrameCounter;
 } Sendai;
 
-INT S_Run(void);
+INT S_Run(VOID);
 
-void S_DoNothing(Sendai *const Engine);
-void S_FileOpen(Sendai *const Engine);
-void S_CubemapOpen(Sendai *const Engine);
-void S_WireframeMode(Sendai *const Engine);
-void S_GridMode(Sendai *const Engine);
+VOID S_DoNothing(Sendai *const Engine);
+VOID S_FileOpen(Sendai *const Engine);
+VOID S_CubemapOpen(Sendai *const Engine);
+VOID S_WireframeMode(Sendai *const Engine);
+VOID S_GridMode(Sendai *const Engine);

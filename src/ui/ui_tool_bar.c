@@ -5,10 +5,10 @@
 
 #include "core/camera.h"
 
-static const float HEIGHT_PERCENTAGE = 0.05f;
-static const float BUTTON_SIZE = 50.0f;
-static const float WINDOW_WIDTH = 650.0f;
-static const int TAB_COLS = 8;
+static const FLOAT HEIGHT_PERCENTAGE = 0.05f;
+static const FLOAT BUTTON_SIZE = 50.0f;
+static const FLOAT WINDOW_WIDTH = 650.0f;
+static const INT TAB_COLS = 8;
 
 UI_EAction
 UI_DrawToolbar(UI_Renderer *UI, UI_ToolBarState *State)
@@ -16,7 +16,7 @@ UI_DrawToolbar(UI_Renderer *UI, UI_ToolBarState *State)
 	struct nk_context *Ctx = UI->Context;
 	UI_EAction Action = UI_ACTION_NONE;
 
-	const float TopBarHeight = UI->Height * HEIGHT_PERCENTAGE;
+	const FLOAT TopBarHeight = UI->Height * HEIGHT_PERCENTAGE;
 	struct nk_rect WindowRect = nk_rect(10, TopBarHeight + 10, WINDOW_WIDTH, BUTTON_SIZE);
 
 	nk_style_push_vec2(Ctx, &Ctx->style.window.padding, nk_vec2(5, 5));

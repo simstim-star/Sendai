@@ -7,7 +7,7 @@
 
 #include "timer.h"
 
-void
+VOID
 S_TimerInit(S_StepTimer *StepTimer)
 {
 	StepTimer->ElapsedTicks = 0;
@@ -28,9 +28,9 @@ S_TimerInit(S_StepTimer *StepTimer)
 }
 
 // After an intentional timing discontinuity (for instance a blocking IO operation)
-// call this to avoid having the fixed timestep logic attempt a set of catch-up
+// call this to aVOID having the fixed timestep logic attempt a set of catch-up
 // Update calls.
-void
+VOID
 S_ResetElapsedTime(S_StepTimer *StepTimer)
 {
 	QueryPerformanceCounter(&StepTimer->QPCLastTime);
@@ -42,7 +42,7 @@ S_ResetElapsedTime(S_StepTimer *StepTimer)
 }
 
 // Update timer state, calling the specified Update function the appropriate number of times.
-void
+VOID
 S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC Update)
 {
 	// Query the current time.
@@ -71,7 +71,7 @@ S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC Update)
 		// fixed update, running with vsync enabled on a 59.94 NTSC display, would eventually
 		// accumulate enough tiny errors that it would drop a frame. It is better to just round
 		// small deviations down to zero to leave things running smoothly.
-		if (abs((int)(Delta - StepTimer->TargetElapsedTicks)) < TICKS_PER_SECOND / 4000) {
+		if (abs((INT)(Delta - StepTimer->TargetElapsedTicks)) < TICKS_PER_SECOND / 4000) {
 			Delta = StepTimer->TargetElapsedTicks;
 		}
 		// Add to the leftover. If the accumulated leftover passes a certain target, we will need to take some actions to

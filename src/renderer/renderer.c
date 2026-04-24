@@ -18,7 +18,7 @@
 #include "billboard.h"
 #include "stb_ds.h"
 
-typedef enum { PASS_OPAQUE, PASS_BLEND } RenderPassType;
+typedef enum { ERPT_PASS_OPAQUE, ERPT_PASS_BLEND } ERenderPassType;
 
 static const FLOAT CUBEMAP_CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
@@ -38,8 +38,7 @@ static VOID CreateShaders(R_Core *const Renderer);
 static R_SceneData PreprocessSceneData(const S_Scene *const Scene);
 
 static VOID DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
-static VOID RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants, const RenderPassType Pass);
-static VOID DrawPrimitive(const R_Core *const Renderer, const R_Primitive *const Primitive);
+static VOID RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants, const ERenderPassType Pass);
 static VOID DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
 
 /****************************************************
@@ -322,18 +321,9 @@ SignalAndWait(R_Core *const Renderer)
 }
 
 VOID
-DrawPrimitive(const R_Core *const Renderer, const R_Primitive *const Primitive)
+RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants, const ERenderPassType Pass)
 {
-	ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES, &Primitive->ConstantBuffer, 0);
-	ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Primitive->VertexBufferView);
-	ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
-	ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);
-}
-
-VOID
-RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants, const RenderPassType Pass)
-{
-	const ERenderState PSO = (Pass == PASS_OPAQUE) ? ERS_GLTF : ERS_GLTF_BLEND;
+	const ERenderState PSO = (Pass == ERPT_PASS_OPAQUE) ? ERS_GLTF : ERS_GLTF_BLEND;
 	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[PSO]);
 
 	for (size_t ModelIndex = 0; ModelIndex < Scene->ModelsCount; ++ModelIndex) {
@@ -351,7 +341,7 @@ RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *c
 		for (size_t NodeIndex = 0; NodeIndex < Model->NodesCount; ++NodeIndex) {
 			R_Node *Node = &Model->Nodes[NodeIndex];
 
-			if (Pass == PASS_OPAQUE) {
+			if (Pass == ERPT_PASS_OPAQUE) {
 				MeshConstants->MVP.Model = XMLoadFloat4x4(&Node->ModelMatrix);
 				MeshConstants->MVP.Model = XM_MAT_MULT(MeshConstants->MVP.Model, M);
 
@@ -367,10 +357,15 @@ RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *c
 			Renderer->MeshDataOffset += CB_ALIGN(R_MeshConstants);
 
 			if (Node->Mesh) {
-				INT PrimitiveCount = (Pass == PASS_OPAQUE) ? Node->Mesh->OpaquePrimitivesCount : Node->Mesh->BlendedPrimitivesCount;
-				R_Primitive *Primitives = (Pass == PASS_OPAQUE) ? Node->Mesh->OpaquePrimitives : Node->Mesh->BlendedPrimitives;
+				INT PrimitiveCount = (Pass == ERPT_PASS_OPAQUE) ? Node->Mesh->OpaquePrimitivesCount : Node->Mesh->BlendedPrimitivesCount;
+				R_Primitive *Primitives = (Pass == ERPT_PASS_OPAQUE) ? Node->Mesh->OpaquePrimitives : Node->Mesh->BlendedPrimitives;
 				for (INT PrimitiveIndex = 0; PrimitiveIndex < PrimitiveCount; ++PrimitiveIndex) {
-					DrawPrimitive(Renderer, &Primitives[PrimitiveIndex]);
+					R_Primitive *Primitive = &Primitives[PrimitiveIndex];
+					ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES,
+																			&Primitive->ConstantBuffer, 0);
+					ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &Primitive->VertexBufferView);
+					ID3D12GraphicsCommandList_IASetIndexBuffer(Renderer->CommandList, &Primitive->IndexBufferView);
+					ID3D12GraphicsCommandList_DrawIndexedInstanced(Renderer->CommandList, Primitive->IndexCount, 1, 0, 0, 0);
 				}
 			}
 		}
@@ -394,9 +389,9 @@ DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstan
 	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 4, Renderer->IrradianceMap.GpuSrvHandle);
 
 	UINT64 PassStartOffset = Renderer->MeshDataOffset;
-	RenderScenePass(Scene, Renderer, MeshConstants, PASS_OPAQUE);
+	RenderScenePass(Scene, Renderer, MeshConstants, ERPT_PASS_OPAQUE);
 	Renderer->MeshDataOffset = PassStartOffset;
-	RenderScenePass(Scene, Renderer, MeshConstants, PASS_BLEND);
+	RenderScenePass(Scene, Renderer, MeshConstants, ERPT_PASS_BLEND);
 }
 
 VOID

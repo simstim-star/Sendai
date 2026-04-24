@@ -38,7 +38,7 @@ R_CompileShader(PCWSTR FilePath, ID3DBlob **Blob, EShaderType ShaderType)
 	return hr;
 }
 
-void
+VOID
 R_CreatePBRPipelineState(R_Core *Renderer)
 {
 	D3D12_ROOT_PARAMETER RootParameters[5] = {0};
@@ -190,7 +190,7 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	ExitIfFailed(hr);
 }
 
-void
+VOID
 R_CreateBillboardPipelineState(R_Core *Renderer)
 {
 	WCHAR LightShadersPath[512];
@@ -291,7 +291,7 @@ R_CreateBillboardPipelineState(R_Core *Renderer)
 	ExitIfFailed(hr);
 }
 
-void
+VOID
 R_CreateGridPipelineState(R_Core *Renderer)
 {
 	WCHAR ShadersPath[MAX_PATH];
@@ -375,7 +375,7 @@ R_CreateGridPipelineState(R_Core *Renderer)
 	ExitIfFailed(hr);
 }
 
-void
+VOID
 R_CreateCubemapPipelineState(R_Core *Renderer)
 {
 	D3D12_ROOT_PARAMETER RootParameters[2] = {0};
@@ -462,7 +462,7 @@ R_CreateCubemapPipelineState(R_Core *Renderer)
 	ExitIfFailed(hr);
 }
 
-void
+VOID
 R_CreateIrradiancePipelineState(R_Core *Renderer)
 {
 	D3D12_ROOT_PARAMETER RootParameters[2] = {0};
@@ -550,7 +550,7 @@ R_CreateIrradiancePipelineState(R_Core *Renderer)
 	ExitIfFailed(hr);
 }
 
-void
+VOID
 R_CreateSkyboxPipelineState(R_Core *Renderer)
 {
 	D3D12_ROOT_PARAMETER RootParameters[2] = {0};

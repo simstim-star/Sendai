@@ -20,7 +20,7 @@ static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
 static const R_Texture WhiteTexture = {
   .Name = "fallback_white", .Width = 1, .Height = 1, .MipLevels = 1, .MipPixels[0] = WHITE_PIXEL, .Format = DXGI_FORMAT_R8G8B8A8_UNORM};
 
-void
+VOID
 R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
 {
 	char PathUTF8[MAX_PATH * 4];
@@ -85,7 +85,7 @@ R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source)
 	return NewTex;
 }
 
-void
+VOID
 R_CreateCustomTexture(PCWSTR Path, R_Core *Renderer)
 {
 	char PathUTF8[MAX_PATH * 4];
@@ -209,7 +209,7 @@ R_CalculateMipLevels(INT Width, INT Height)
 	return 1 + (uint32_t)floorf(log2f((float)max(Width, Height)));
 }
 
-void
+VOID
 R_GenerateMips(R_Model *Model, M_Arena *UploadArena)
 {
 	for (size_t i = 0; i < Model->ImagesCount; ++i) {
@@ -237,7 +237,7 @@ R_GenerateMips(R_Model *Model, M_Arena *UploadArena)
 	}
 }
 
-void
+VOID
 R_UploadDDSResource(R_Core *const Renderer, ID3D12Resource *Texture, D3D12_SUBRESOURCE_DATA *Subresources, UINT MipLevels)
 {
 	D3D12_RESOURCE_DESC TexDesc;

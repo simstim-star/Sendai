@@ -30,25 +30,25 @@ typedef struct UI_State {
 typedef struct S_UI {
 	UI_Renderer Renderer;
 	UI_State State;
-	void (*Action[N_UI_ACTIONS])(Sendai *const Engine);
+	VOID (*Action[N_UI_ACTIONS])(Sendai *const Engine);
 } S_UI;
 
-void UI_Init(S_UI *const UI, struct R_Core *Renderer);
+VOID UI_Init(S_UI *const UI, struct R_Core *Renderer);
 
-void (*UI_GetAction(S_UI *const UI))(Sendai *const Engine);
+VOID (*UI_GetAction(S_UI *const UI))(Sendai *const Engine);
 
-void UI_InputBegin(const UI_Renderer *UI);
+VOID UI_InputBegin(const UI_Renderer *UI);
 
-void UI_InputEnd(const UI_Renderer *UI);
+VOID UI_InputEnd(const UI_Renderer *UI);
 
 UI_EAction UI_LogWindow(UI_Renderer *const UI);
 
-void UI_Draw(ID3D12GraphicsCommandList *CommandList);
+VOID UI_Draw(ID3D12GraphicsCommandList *CommandList);
 
-void UI_Resize(UI_Renderer *UI, const int Width, const int Height);
+VOID UI_Resize(UI_Renderer *UI, const INT Width, const INT Height);
 
-int UI_HandleEvent(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam);
+INT UI_HandleEvent(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam);
 
-void UI_Destroy();
+VOID UI_Destroy();
 
-void UI_SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *OutTexture);
+VOID UI_SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *OutTexture);

@@ -17,13 +17,13 @@ struct nk_image UI_TEXTURES[UI_EUT_NUM_USER_TEXTURES];
 	Forward declaration of private functions
 *****************************************************/
 
-static void LoadCustomTextures(R_Core *Renderer);
+static VOID LoadCustomTextures(R_Core *Renderer);
 
 /****************************************************
 	Public functions
 *****************************************************/
 
-void
+VOID
 UI_Init(S_UI *const UI, R_Core *Renderer)
 {
 	UI->Renderer.Context =
@@ -43,7 +43,7 @@ UI_Init(S_UI *const UI, R_Core *Renderer)
 	LoadCustomTextures(Renderer);
 }
 
-void (*UI_GetAction(S_UI *const UI))(Sendai *const Engine)
+VOID (*UI_GetAction(S_UI *const UI))(Sendai *const Engine)
 {
 	UI_EAction Action = UI_DrawTopBar(&UI->Renderer, &UI->State.TopBar) | UI_DrawToolbar(&UI->Renderer, &UI->State.ToolBar) |
 						UI_DrawBottomPanel(&UI->Renderer, &UI->State.BottomBar);
@@ -64,7 +64,7 @@ UI_LogWindow(UI_Renderer *const UI)
 		nk_layout_row_dynamic(Context, WindowW * 2, 1);
 		const nk_flags LogFlags = NK_EDIT_MULTILINE | NK_EDIT_READ_ONLY | NK_EDIT_ALWAYS_INSERT_MODE | NK_EDIT_GOTO_END_ON_ACTIVATE;
 
-		int RequiredBytes = WideCharToMultiByte(CP_UTF8, 0, SENDAI_LOG.Buffer, SENDAI_LOG.Len, SENDAI_LOG.UTF8Buffer,
+		INT RequiredBytes = WideCharToMultiByte(CP_UTF8, 0, SENDAI_LOG.Buffer, SENDAI_LOG.Len, SENDAI_LOG.UTF8Buffer,
 												sizeof(SENDAI_LOG.UTF8Buffer) - 1, NULL, NULL);
 
 		if (RequiredBytes >= 0) {
@@ -77,45 +77,45 @@ UI_LogWindow(UI_Renderer *const UI)
 	return UI_ACTION_NONE;
 }
 
-void
+VOID
 UI_InputBegin(const UI_Renderer *UI)
 {
 	nk_input_begin(UI->Context);
 }
 
-void
+VOID
 UI_InputEnd(const UI_Renderer *UI)
 {
 	nk_input_end(UI->Context);
 }
 
-void
+VOID
 UI_Draw(ID3D12GraphicsCommandList *CommandList)
 {
 	nk_d3d12_render(CommandList, NK_ANTI_ALIASING_ON);
 }
 
-void
-UI_Resize(UI_Renderer *UI, const int Width, const int Height)
+VOID
+UI_Resize(UI_Renderer *UI, const INT Width, const INT Height)
 {
 	UI->Width = Width;
 	UI->Height = Height;
 	nk_d3d12_resize(Width, Height);
 }
 
-int
+INT
 UI_HandleEvent(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
 	return nk_d3d12_handle_event(hWnd, Message, wParam, lParam);
 }
 
-void
+VOID
 UI_Destroy()
 {
 	nk_d3d12_shutdown();
 }
 
-void
+VOID
 UI_SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *Texture)
 {
 	if (nkSrvIndex >= UI_EUT_NUM_USER_TEXTURES) {
@@ -135,7 +135,7 @@ UI_SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *Texture)
 	Implementation of private functions
 *****************************************************/
 
-void
+VOID
 LoadCustomTextures(R_Core *Renderer)
 {
 	WCHAR Path[512];

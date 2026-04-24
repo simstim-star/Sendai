@@ -85,7 +85,7 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 	Cubemap->RTVDescriptorSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 	/* Create each RTV on the RTV Heap */
-	for (int Face = 0; Face < N_CUBE_FACES; Face++) {
+	for (INT Face = 0; Face < N_CUBE_FACES; Face++) {
 		D3D12_RENDER_TARGET_VIEW_DESC RTVDesc = {
 		  .Format = TextureDesc.Format,
 		  .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY,
@@ -98,7 +98,7 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 	}
 
 	XMVECTOR EyePosition = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-	for (int Face = 0; Face < N_CUBE_FACES; Face++) {
+	for (INT Face = 0; Face < N_CUBE_FACES; Face++) {
 		XMVECTOR TargetDirection = XMLoadFloat3(&LOOK_AT_CUBE_FACES[Face]);
 		XMVECTOR UpDirection = XMLoadFloat3(&UP_DIRECTION_CUBE_FACES[Face]);
 		CAPTURE_VIEWS[Face] = XM_MAT_LOOK_AT_LH(EyePosition, TargetDirection, UpDirection);
@@ -112,7 +112,7 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &CBDesc,
 											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Cubemap->ConstantBufferUploadHeap);
 
-	ID3D12Resource_Map(Cubemap->ConstantBufferUploadHeap, 0, NULL, (void **)&Cubemap->MappedCBVData);
+	ID3D12Resource_Map(Cubemap->ConstantBufferUploadHeap, 0, NULL, (VOID **)&Cubemap->MappedCBVData);
 	D3D12_HEAP_PROPERTIES UploadHeap = {.Type = D3D12_HEAP_TYPE_UPLOAD};
 	D3D12_RESOURCE_DESC VertexBufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(CUBEMAP_VERTICES), D3D12_RESOURCE_FLAG_NONE, 0);
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeap, D3D12_HEAP_FLAG_NONE, &VertexBufferDesc,
@@ -120,7 +120,7 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 	ExitIfFailed(hr);
 
 	UINT8 *pVertexData;
-	ID3D12Resource_Map(Cubemap->VertexBuffer, 0, NULL, (void **)&pVertexData);
+	ID3D12Resource_Map(Cubemap->VertexBuffer, 0, NULL, (VOID **)&pVertexData);
 	memcpy(pVertexData, CUBEMAP_VERTICES, sizeof(CUBEMAP_VERTICES));
 	ID3D12Resource_Unmap(Cubemap->VertexBuffer, 0, NULL);
 
@@ -129,12 +129,12 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Cubemap->IndexBuffer);
 
 	UINT8 *pIndexData;
-	ID3D12Resource_Map(Cubemap->IndexBuffer, 0, NULL, (void **)&pIndexData);
+	ID3D12Resource_Map(Cubemap->IndexBuffer, 0, NULL, (VOID **)&pIndexData);
 	memcpy(pIndexData, CUBEMAP_INDICES, sizeof(CUBEMAP_INDICES));
 	ID3D12Resource_Unmap(Cubemap->IndexBuffer, 0, NULL);
 
 	Cubemap->CubeVBView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Cubemap->VertexBuffer);
-	Cubemap->CubeVBView.StrideInBytes = sizeof(float) * 3;
+	Cubemap->CubeVBView.StrideInBytes = sizeof(FLOAT) * 3;
 	Cubemap->CubeVBView.SizeInBytes = sizeof(CUBEMAP_VERTICES);
 
 	Cubemap->CubeIBView.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(Cubemap->IndexBuffer);

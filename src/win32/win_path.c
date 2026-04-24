@@ -3,7 +3,7 @@
 #include "win_path.h"
 #include <strsafe.h>
 
-void
+VOID
 Win32CurrPath(_Out_writes_(PathSize) PWSTR const Path, UINT PathSize)
 {
 	if (Path == NULL) {
@@ -22,7 +22,7 @@ Win32CurrPath(_Out_writes_(PathSize) PWSTR const Path, UINT PathSize)
 	}
 }
 
-void
+VOID
 Win32FullPath(PCWSTR SubPath, _Out_writes_(PathSize) PWSTR const Path, UINT PathSize)
 {
 	Win32CurrPath(Path, PathSize);
@@ -32,7 +32,7 @@ Win32FullPath(PCWSTR SubPath, _Out_writes_(PathSize) PWSTR const Path, UINT Path
 	}
 }
 
-void
+VOID
 Win32GetFileNameOnly(PCWSTR FullPath, _Out_writes_(BufferSize) PWSTR const OutBuffer, UINT BufferSize)
 {
 	if (!FullPath || !OutBuffer || BufferSize == 0) {
@@ -48,7 +48,7 @@ Win32GetFileNameOnly(PCWSTR FullPath, _Out_writes_(BufferSize) PWSTR const OutBu
 	}
 }
 
-void
+VOID
 Win32AppendFileNameToPath(_In_z_ PWSTR BasePathW, _In_z_ char *FileName, _Out_writes_z_(MAX_PATH) char FullPath[MAX_PATH])
 {
 	char BasePart[MAX_PATH];
@@ -63,7 +63,7 @@ Win32AppendFileNameToPath(_In_z_ PWSTR BasePathW, _In_z_ char *FileName, _Out_wr
 	strcat_s(FullPath, MAX_PATH, FileName);
 }
 
-void
+VOID
 Win32RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBuffer[MAX_PATH])
 {
 	PWSTR LastDoubleSlash = wcsrchr(FullPathBuffer, L'\\');

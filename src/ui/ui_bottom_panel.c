@@ -8,12 +8,12 @@
 #include "renderer/render_types.h"
 #include "shaders/sendai/shader_defs.h"
 
-static const float HANDLE_HEIGHT = 10.0f;
-static const float INFO_BAR_HEIGHT = 22.0f;
-static const float TAB_BAR_HEIGHT = 30.0f;
-static const float MIN_PANEL_HEIGHT_PERCENTAGE = 0.08f;
-static const float MAX_PANEL_HEIGHT_PERCENTAGE = 0.9f;
-static const float TAB_WIDTH = 80.0f;
+static const FLOAT HANDLE_HEIGHT = 10.0f;
+static const FLOAT INFO_BAR_HEIGHT = 22.0f;
+static const FLOAT TAB_BAR_HEIGHT = 30.0f;
+static const FLOAT MIN_PANEL_HEIGHT_PERCENTAGE = 0.08f;
+static const FLOAT MAX_PANEL_HEIGHT_PERCENTAGE = 0.9f;
+static const FLOAT TAB_WIDTH = 80.0f;
 
 #define INFO_BAR_BACKGROUND_COLOR nk_rgba(30, 30, 35, 255)
 #define INFO_BAR_TEXT_COLOR nk_rgba(0, 255, 0, 255)
@@ -23,10 +23,10 @@ static const float TAB_WIDTH = 80.0f;
 	Forward declaration of private functions
 *****************************************************/
 
-static void BottomPanelDraggingArea(struct nk_context *Ctx, const float HandleHeight, UI_Renderer *UI, UI_BottomPanelState *State);
-static void BottomPanelTabArea(struct nk_context *Ctx, const float TabBarHeight, UI_BottomPanelState *State);
-static void BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const float HandleHeight, const float TabBarHeight);
-static void BottomBarInfoArea(struct nk_context *Ctx, UI_Renderer *UI, const float InfoBarHeight, UI_BottomPanelState *State);
+static VOID BottomPanelDraggingArea(struct nk_context *Ctx, const FLOAT HandleHeight, UI_Renderer *UI, UI_BottomPanelState *State);
+static VOID BottomPanelTabArea(struct nk_context *Ctx, const FLOAT TabBarHeight, UI_BottomPanelState *State);
+static VOID BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const FLOAT HandleHeight, const FLOAT TabBarHeight);
+static VOID BottomBarInfoArea(struct nk_context *Ctx, UI_Renderer *UI, const FLOAT InfoBarHeight, UI_BottomPanelState *State);
 
 /****************************************************
 	Public functions
@@ -39,7 +39,7 @@ UI_DrawBottomPanel(UI_Renderer *UI, UI_BottomPanelState *State)
 	State->BottomPanelHeight = fmax(State->BottomPanelHeight, UI->Height * MIN_PANEL_HEIGHT_PERCENTAGE);
 	State->BottomPanelHeight = fmin(State->BottomPanelHeight, UI->Height * MAX_PANEL_HEIGHT_PERCENTAGE);
 
-	float MaxAvailableHeight = UI->Height - INFO_BAR_HEIGHT;
+	FLOAT MaxAvailableHeight = UI->Height - INFO_BAR_HEIGHT;
 	struct nk_rect BarRect = nk_rect(0, MaxAvailableHeight - State->BottomPanelHeight, UI->Width, State->BottomPanelHeight);
 
 	if (nk_begin(Ctx, "BottomBar", BarRect, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
@@ -62,8 +62,8 @@ UI_DrawBottomPanel(UI_Renderer *UI, UI_BottomPanelState *State)
 	Implementation of private functions
 *****************************************************/
 
-void
-BottomPanelDraggingArea(struct nk_context *Ctx, const float HandleHeight, UI_Renderer *UI, UI_BottomPanelState *State)
+VOID
+BottomPanelDraggingArea(struct nk_context *Ctx, const FLOAT HandleHeight, UI_Renderer *UI, UI_BottomPanelState *State)
 {
 	nk_layout_row_static(Ctx, HandleHeight, UI->Width, 1);
 	struct nk_rect Bounds = nk_widget_bounds(Ctx);
@@ -84,8 +84,8 @@ BottomPanelDraggingArea(struct nk_context *Ctx, const float HandleHeight, UI_Ren
 	}
 }
 
-void
-BottomPanelTabArea(struct nk_context *Ctx, const float TabBarHeight, UI_BottomPanelState *State)
+VOID
+BottomPanelTabArea(struct nk_context *Ctx, const FLOAT TabBarHeight, UI_BottomPanelState *State)
 {
 	nk_layout_row_begin(Ctx, NK_STATIC, TabBarHeight, 4);
 	{
@@ -111,16 +111,16 @@ BottomPanelTabArea(struct nk_context *Ctx, const float TabBarHeight, UI_BottomPa
 	nk_layout_row_end(Ctx);
 }
 
-void
-BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const float HandleHeight, const float TabBarHeight)
+VOID
+BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const FLOAT HandleHeight, const FLOAT TabBarHeight)
 {
-	float ContentAreaHeight = State->BottomPanelHeight - (HandleHeight + TabBarHeight + 10.0f);
+	FLOAT ContentAreaHeight = State->BottomPanelHeight - (HandleHeight + TabBarHeight + 10.0f);
 	switch (State->ActiveTab) {
 	case EBBS_LOG_TAB: {
 		nk_layout_row_dynamic(Ctx, fmax(10.0f, ContentAreaHeight), 1);
 		const nk_flags LogFlags = NK_EDIT_MULTILINE | NK_EDIT_READ_ONLY | NK_EDIT_ALWAYS_INSERT_MODE | NK_EDIT_GOTO_END_ON_ACTIVATE;
 
-		int RequiredBytes =
+		INT RequiredBytes =
 			WideCharToMultiByte(CP_UTF8, 0, SENDAI_LOG.Buffer, SENDAI_LOG.Len, SENDAI_LOG.UTF8Buffer, sizeof(SENDAI_LOG.UTF8Buffer) - 1, NULL, NULL);
 		if (RequiredBytes >= 0) {
 			SENDAI_LOG.UTF8Buffer[RequiredBytes] = '\0';
@@ -129,7 +129,7 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 		break;
 	}
 	case EBBS_SCENE_TAB: {
-		float SafeHeight = fmax(50.0f, ContentAreaHeight);
+		FLOAT SafeHeight = fmax(50.0f, ContentAreaHeight);
 
 		nk_layout_row_template_begin(Ctx, SafeHeight);
 		nk_layout_row_template_push_variable(Ctx, 200);
@@ -142,9 +142,9 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 			nk_label(Ctx, "Name", NK_TEXT_LEFT);
 			nk_label(Ctx, "Visible", NK_TEXT_LEFT);
 
-			for (int i = 0; i < State->Scene->ModelsCount; i++) {
+			for (INT i = 0; i < State->Scene->ModelsCount; i++) {
 				R_Model *Model = &State->Scene->Models[i];
-				int IsSelected = (State->SelectedModelIndex == i);
+				INT IsSelected = (State->SelectedModelIndex == i);
 
 				nk_layout_row_dynamic(Ctx, 20, 2);
 				if (nk_selectable_label(Ctx, Model->Name, NK_TEXT_LEFT, &IsSelected)) {
@@ -194,7 +194,7 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 	}
 
 	case EBBS_LIGHT_TAB: {
-		float SafeHeight = fmax(50.0f, ContentAreaHeight);
+		FLOAT SafeHeight = fmax(50.0f, ContentAreaHeight);
 
 		nk_layout_row_template_begin(Ctx, SafeHeight);
 		nk_layout_row_template_push_variable(Ctx, 200);
@@ -207,9 +207,9 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 			nk_label(Ctx, "Name", NK_TEXT_LEFT);
 			nk_label(Ctx, "Active", NK_TEXT_LEFT);
 
-			for (int i = 0; i < PBR_MAX_LIGHT_NUMBER; i++) {
+			for (INT i = 0; i < PBR_MAX_LIGHT_NUMBER; i++) {
 				BOOL IsSelected = (State->SelectedLightIndex == i);
-				char AsStr[12];
+				CHAR AsStr[12];
 				sprintf_s(AsStr, sizeof(AsStr), "%d", i);
 				nk_layout_row_dynamic(Ctx, 20, 2);
 				BOOL IsActive = (State->Scene->ActiveLightMask >> i) & 1;
@@ -269,8 +269,8 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 	}
 }
 
-void
-BottomBarInfoArea(struct nk_context *Ctx, UI_Renderer *UI, const float InfoBarHeight, UI_BottomPanelState *State)
+VOID
+BottomBarInfoArea(struct nk_context *Ctx, UI_Renderer *UI, const FLOAT InfoBarHeight, UI_BottomPanelState *State)
 {
 	nk_style_push_style_item(Ctx, &Ctx->style.window.fixed_background, nk_style_item_color(INFO_BAR_BACKGROUND_COLOR));
 	nk_style_push_vec2(Ctx, &Ctx->style.window.padding, INFO_BAR_PADDING);
@@ -283,7 +283,7 @@ BottomBarInfoArea(struct nk_context *Ctx, UI_Renderer *UI, const float InfoBarHe
 		nk_label(Ctx, " Sendai Engine v0.1", NK_TEXT_LEFT);
 
 		nk_layout_row_push(Ctx, 0.15f);
-		char FPSBuffer[16];
+		CHAR FPSBuffer[16];
 		snprintf(FPSBuffer, sizeof(FPSBuffer), "%u FPS", State->FPS);
 		nk_label(Ctx, FPSBuffer, NK_TEXT_RIGHT);
 		nk_layout_row_end(Ctx);

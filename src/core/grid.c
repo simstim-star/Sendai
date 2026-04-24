@@ -9,11 +9,11 @@
 #define GRID_VERTICES_COUNT 300
 static XMFLOAT3 GRID_VERTICES[GRID_VERTICES_COUNT] = {0};
 
-void
-R_CreateGrid(R_Core *const Renderer, const float HalfSide)
+VOID
+R_CreateGrid(R_Core *const Renderer, const FLOAT HalfSide)
 {
 	const INT LinesPerDirection = (GRID_VERTICES_COUNT / 4);
-	const FLOAT Step = (HalfSide * 2.0f) / (float)(LinesPerDirection - 1);
+	const FLOAT Step = (HalfSide * 2.0f) / (FLOAT)(LinesPerDirection - 1);
 
 	for (INT Line = 0; Line < LinesPerDirection; Line++) {
 		FLOAT Position = -HalfSide + (Line * Step);
@@ -29,7 +29,7 @@ R_CreateGrid(R_Core *const Renderer, const float HalfSide)
 	Renderer->SceneDataOffset += CB_ALIGN(GRID_VERTICES);
 }
 
-void
+VOID
 R_DrawGrid(R_Core *const Renderer, R_MeshConstants *const MeshConstants)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignGrid);

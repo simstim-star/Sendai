@@ -6,7 +6,7 @@
  Private functions
 ******************************************************************/
 
-static void
+static VOID
 CameraReset(R_Camera *Camera)
 {
 	Camera->Position = Camera->InitialPosition;
@@ -36,10 +36,10 @@ R_CameraSpawn(XMFLOAT3 Position)
 	};
 }
 
-void
-R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
+VOID
+R_CameraUpdate(R_Camera *Camera, FLOAT ElapsedSeconds)
 {
-	float RotateDelta = Camera->TurnSpeed * ElapsedSeconds;
+	FLOAT RotateDelta = Camera->TurnSpeed * ElapsedSeconds;
 
 	if (Camera->KeysPressed.LeftArrow) {
 		Camera->Yaw -= RotateDelta;
@@ -63,7 +63,7 @@ R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 		 y = sin(pitch)
 		 z = cos(pitch) * cos(yaw)
 	*/
-	float look_b = cosf(Camera->Pitch);
+	FLOAT look_b = cosf(Camera->Pitch);
 	Camera->LookDirection.x = look_b * sinf(Camera->Yaw);
 	Camera->LookDirection.y = sinf(Camera->Pitch);
 	Camera->LookDirection.z = look_b * cosf(Camera->Yaw);
@@ -76,7 +76,7 @@ R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 
 	// Process input, which can be [-1,0,1] and will be applied to the direction we want to move
 	{
-		float RightInput = 0.f;
+		FLOAT RightInput = 0.f;
 		if (Camera->KeysPressed.A) {
 			RightInput += 1.0f;
 		}
@@ -84,7 +84,7 @@ R_CameraUpdate(R_Camera *Camera, float ElapsedSeconds)
 			RightInput -= 1.0f;
 		}
 
-		float ForwardInput = 0.f;
+		FLOAT ForwardInput = 0.f;
 		if (Camera->KeysPressed.W) {
 			ForwardInput += 1.0f;
 		}
@@ -122,12 +122,12 @@ R_CameraViewMatrix(XMFLOAT3 Pos, XMFLOAT3 Look, XMFLOAT3 Up)
 }
 
 XMMATRIX
-R_CameraProjectionMatrix(float FOV, float AspectRatio, float NearPlane, float FarPlane)
+R_CameraProjectionMatrix(FLOAT FOV, FLOAT AspectRatio, FLOAT NearPlane, FLOAT FarPlane)
 {
 	return XMMatrixPerspectiveFovLH(FOV, AspectRatio, NearPlane, FarPlane);
 }
 
-void
+VOID
 R_CameraOnKeyDown(R_Camera *Camera, WPARAM Key)
 {
 	switch (Key) {
@@ -164,7 +164,7 @@ R_CameraOnKeyDown(R_Camera *Camera, WPARAM Key)
 	}
 }
 
-void
+VOID
 R_CameraOnKeyUp(R_Camera *Camera, WPARAM Key)
 {
 	switch (Key) {

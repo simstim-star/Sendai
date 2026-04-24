@@ -20,7 +20,7 @@ M_ArenaInit(size_t ReserveSize)
 	return Arena;
 }
 
-void *
+VOID *
 M_ArenaAlloc(M_Arena *Arena, size_t Size)
 {
 	if (Size == 0) {
@@ -47,7 +47,7 @@ M_ArenaAlloc(M_Arena *Arena, size_t Size)
 	return Arena->Base + Position;
 }
 
-void
+VOID
 M_ArenaReset(M_Arena *Arena)
 {
 	Arena->Offset = 0;
@@ -56,7 +56,7 @@ M_ArenaReset(M_Arena *Arena)
 	}
 }
 
-void
+VOID
 M_ArenaRelease(M_Arena *Arena)
 {
 	if (Arena->Base) {

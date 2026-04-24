@@ -14,16 +14,16 @@
 	Forward declaration of private functions
 *****************************************************/
 
-static void InitWindow(Sendai *const Engine);
+static VOID InitWindow(Sendai *const Engine);
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam);
-static void EngineUpdate(Sendai *const Engine);
+static VOID EngineUpdate(Sendai *const Engine);
 
 /****************************************************
 	Public functions
 *****************************************************/
 
 INT
-S_Run(void)
+S_Run(VOID)
 {
 	Sendai Engine = {.Title = L"Sendai",
 					 .RendererCore = {.Width = 1280, .Height = 720},
@@ -46,15 +46,15 @@ S_Run(void)
 
 	ShowWindow(Engine.hWnd, SW_MAXIMIZE);
 
-	MSG msg = {0};
+	MSG Message = {0};
 	while (Engine.bRunning) {
 		UI_InputBegin(&Engine.UI.Renderer);
-		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-			if (msg.message == WM_QUIT) {
+		while (PeekMessage(&Message, NULL, 0, 0, PM_REMOVE)) {
+			if (Message.message == WM_QUIT) {
 				Engine.bRunning = false;
 			}
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+			TranslateMessage(&Message);
+			DispatchMessage(&Message);
 		}
 		UI_InputEnd(&Engine.UI.Renderer);
 
@@ -73,15 +73,15 @@ S_Run(void)
 		IDXGIDebug_ReportLiveObjects(debugDev, DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
 	}
 #endif
-	return (INT)(msg.wParam);
+	return (INT)(Message.wParam);
 }
 
-void
+VOID
 S_DoNothing(Sendai *const Engine)
 {
 }
 
-void
+VOID
 S_FileOpen(Sendai *const Engine)
 {
 	PWSTR FilePath = Win32ShowFileDialog(GLTFModelsFilter, ARRAYSIZE(GLTFModelsFilter));
@@ -101,7 +101,7 @@ S_FileOpen(Sendai *const Engine)
 	M_ArenaRelease(&Scene->UploadArena);
 }
 
-void
+VOID
 S_CubemapOpen(Sendai *const Engine)
 {
 	PWSTR FilePath = Win32ShowFileDialog(HDRModelsFilter, ARRAYSIZE(HDRModelsFilter));
@@ -122,7 +122,7 @@ S_CubemapOpen(Sendai *const Engine)
 						 Engine->RendererCore.RootSignIrradiance, Engine->RendererCore.Cubemap.GpuSrvHandle);
 }
 
-void
+VOID
 S_WireframeMode(Sendai *const Engine)
 {
 	if (Engine->RendererCore.State != ERS_WIREFRAME) {
@@ -132,7 +132,7 @@ S_WireframeMode(Sendai *const Engine)
 	}
 }
 
-void
+VOID
 S_GridMode(Sendai *const Engine)
 {
 	Engine->RendererCore.bDrawGrid = !Engine->RendererCore.bDrawGrid;
@@ -142,7 +142,7 @@ S_GridMode(Sendai *const Engine)
 	Implementation of private functions
 *****************************************************/
 
-void
+VOID
 InitWindow(Sendai *const Engine)
 {
 	WNDCLASSEX wc = {0};
@@ -177,8 +177,8 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			return 0;
 		}
 		if (Engine && Engine->RendererCore.SwapChain) {
-			int width = LOWORD(lParam);
-			int height = HIWORD(lParam);
+			INT width = LOWORD(lParam);
+			INT height = HIWORD(lParam);
 			R_SwapchainResize(&Engine->RendererCore, width, height);
 			UI_Resize(&Engine->UI.Renderer, width, height);
 		}
@@ -211,7 +211,7 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(hWnd, Message, wParam, lParam);
 }
 
-static void
+static VOID
 EngineUpdate(Sendai *const Engine)
 {
 	if (Engine->FrameCounter == 50) {
@@ -228,6 +228,6 @@ EngineUpdate(Sendai *const Engine)
 	Engine->UI.State.BottomBar.Scene = &Engine->Scene;
 	Engine->UI.State.ToolBar.Camera = &Engine->Camera;
 	Engine->UI.State.TopBar.Adapter = Engine->RendererCore.Adapter;
-	void (*Action)(Sendai *const Engine) = UI_GetAction(&Engine->UI);
+	VOID (*Action)(Sendai *const Engine) = UI_GetAction(&Engine->UI);
 	Action(Engine);
 }

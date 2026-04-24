@@ -1,4 +1,4 @@
 #pragma once
 
-void ExitIfFailed(const HRESULT hr);
-void ExitWithMessage(const char *Message);
+VOID ExitIfFailed(const HRESULT hr);
+VOID ExitWithMessage(PCSTR Message);

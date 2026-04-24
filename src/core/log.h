@@ -4,11 +4,11 @@
 
 typedef struct S_Log {
 	WCHAR Buffer[LOG_CAPACITY];
-	char UTF8Buffer[LOG_CAPACITY * 3];
-	int Len;
+	CHAR UTF8Buffer[LOG_CAPACITY * 3];
+	INT Len;
 } S_Log;
 
 extern S_Log SENDAI_LOG;
 
-void S_LogAppend(PCWSTR Text);
-void S_LogAppendf(PCWSTR Format, ...);
+VOID S_LogAppend(PCWSTR Text);
+VOID S_LogAppendf(PCWSTR Format, ...);
