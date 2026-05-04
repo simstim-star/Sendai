@@ -1,6 +1,6 @@
 # Sendai Renderer
 
-Physically Based Renderer for glTF models using pure C and DirectX 12. This is a working in progress project that I created for educational purposes, in order to learn better about COM and DirectX.
+Physically based renderer for glTF models using pure C and DirectX 12. This is a working in progress project that I created for educational purposes, in order to learn better about COM and DirectX.
 
 Also check my ports of the official DirectX 12 samples to pure C: https://github.com/simstim-star/DirectX-Graphics-Samples-in-C
 
