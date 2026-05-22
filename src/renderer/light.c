@@ -63,7 +63,7 @@ R_DrawLightBillboards(R_Core *const Renderer, R_Light *Lights, BYTE ActiveLightM
 VOID
 RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint)
 {
-	R_LightBillboardConstants CB = {.MVP = MeshConstants->MVP, .Tint = Tint};
+	const R_LightBillboardConstants CB = {.MVP = MeshConstants->MVP, .Tint = Tint};
 	memcpy(Renderer->MeshDataUploadBufferCpuAddress + Renderer->MeshDataOffset, &CB, sizeof(R_LightBillboardConstants));
 
 	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0,
@@ -71,7 +71,7 @@ RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const R
 
 	D3D12_VERTEX_BUFFER_VIEW VBV = {
 	  .BufferLocation = Renderer->BillboardBufferLocation,
-	  .SizeInBytes = sizeof(BillboardVertices),
+	  .SizeInBytes = sizeof(BILLBOARD_VERTICES),
 	  .StrideInBytes = sizeof(BillboardVertex),
 	};
 	ID3D12GraphicsCommandList_IASetVertexBuffers(Renderer->CommandList, 0, 1, &VBV);

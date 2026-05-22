@@ -7,4 +7,4 @@ typedef struct BillboardVertex {
 	XMFLOAT2 UV;
 } BillboardVertex;
 
-extern BillboardVertex BillboardVertices[4];
+extern const BillboardVertex BILLBOARD_VERTICES[4];

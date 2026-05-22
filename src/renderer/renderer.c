@@ -286,6 +286,9 @@ R_Destroy(R_Core *Renderer)
 	}
 	CloseHandle(Renderer->FenceEvent);
 
+	R_CubemapRelease(&Renderer->Cubemap);
+	R_CubemapRelease(&Renderer->IrradianceMap);
+
 	ID3D12DescriptorHeap_Release(Renderer->RtvDescriptorHeap);
 	ID3D12DescriptorHeap_Release(Renderer->TexturesHeap);
 	ID3D12DescriptorHeap_Release(Renderer->DepthStencilHeap);
@@ -296,9 +299,15 @@ R_Destroy(R_Core *Renderer)
 	ID3D12RootSignature_Release(Renderer->RootSignPBR);
 	ID3D12RootSignature_Release(Renderer->RootSignBillboard);
 	ID3D12RootSignature_Release(Renderer->RootSignGrid);
+	ID3D12RootSignature_Release(Renderer->RootSignCubemap);
+	ID3D12RootSignature_Release(Renderer->RootSignIrradiance);
+	ID3D12RootSignature_Release(Renderer->RootSignSkybox);
+	ID3D12RootSignature_Release(Renderer->RootSignGrid);
 
 	ID3D12CommandAllocator_Release(Renderer->CommandAllocator);
 	ID3D12GraphicsCommandList_Release(Renderer->CommandList);
+	ID3D12CommandAllocator_Release(Renderer->UploadCommandAllocator);
+	ID3D12GraphicsCommandList_Release(Renderer->UploadCommandList);
 	ID3D12CommandQueue_Release(Renderer->CommandQueue);
 	ID3D12Fence_Release(Renderer->Fence);
 	IDXGISwapChain1_Release(Renderer->SwapChain);
@@ -486,9 +495,9 @@ CreateBaseEngineTextures(R_Core *const Renderer)
 	WCHAR LampImagePath[MAX_PATH];
 	Win32FullPath(L"/assets/images/lamp.png", LampImagePath, _countof(LampImagePath));
 	R_CreateCustomTexture(LampImagePath, Renderer);
-	memcpy(Renderer->SceneDataUploadBufferCpuAddress + Renderer->SceneDataOffset, BillboardVertices, sizeof(BillboardVertices));
+	memcpy(Renderer->SceneDataUploadBufferCpuAddress + Renderer->SceneDataOffset, BILLBOARD_VERTICES, sizeof(BILLBOARD_VERTICES));
 	Renderer->BillboardBufferLocation = M_GpuAddress(Renderer->SceneDataUploadBuffer, Renderer->SceneDataOffset);
-	Renderer->SceneDataOffset += CB_ALIGN(BillboardVertices);
+	Renderer->SceneDataOffset += CB_ALIGN(BILLBOARD_VERTICES);
 }
 
 VOID

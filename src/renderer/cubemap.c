@@ -241,3 +241,13 @@ R_DrawSkybox(R_Core *Renderer, XMMATRIX View, XMMATRIX Proj)
 	ID3D12GraphicsCommandList_IASetIndexBuffer(CommandList, &Renderer->Cubemap.CubeIBView);
 	ID3D12GraphicsCommandList_DrawIndexedInstanced(CommandList, 36, 1, 0, 0, 0);
 }
+
+VOID
+R_CubemapRelease(R_Cubemap *Cubemap)
+{
+	ID3D12Resource_Release(Cubemap->Resource);
+	ID3D12Resource_Release(Cubemap->ConstantBufferUploadHeap);
+	ID3D12Resource_Release(Cubemap->VertexBuffer);
+	ID3D12Resource_Release(Cubemap->IndexBuffer);
+	ID3D12DescriptorHeap_Release(Cubemap->DescriptorHeap);
+}

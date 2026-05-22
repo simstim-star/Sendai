@@ -32,3 +32,4 @@ VOID R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Wi
 VOID R_DrawToCubemapFaces(
 	R_Core *Renderer, R_Cubemap *Target, ID3D12PipelineState *PSO, ID3D12RootSignature *RootSign, D3D12_GPU_DESCRIPTOR_HANDLE SourceSRV);
 VOID R_DrawSkybox(R_Core *Renderer, XMMATRIX View, XMMATRIX Proj);
+VOID R_CubemapRelease(R_Cubemap *Cubemap);
