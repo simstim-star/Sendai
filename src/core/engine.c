@@ -96,7 +96,6 @@ S_FileOpen(Sendai *const Engine)
 
 	Scene->UploadArena = M_ArenaInit(GIGABYTES(1));
 	SendaiGLTF_LoadModel(&Engine->RendererCore, FilePath, Scene);
-	UINT ModelIdx = Scene->ModelsCount - 1;
 	CoTaskMemFree(FilePath);
 	M_ArenaRelease(&Scene->UploadArena);
 }
@@ -117,7 +116,6 @@ S_CubemapOpen(Sendai *const Engine)
 	ID3D12GraphicsCommandList_SetDescriptorHeaps(Engine->RendererCore.CommandList, _countof(Heaps), Heaps);
 	R_DrawToCubemapFaces(&Engine->RendererCore, &Engine->RendererCore.Cubemap, Engine->RendererCore.PipelineState[ERS_CUBEMAP],
 						 Engine->RendererCore.RootSignCubemap, HdrSrvHandle);
-
 	R_DrawToCubemapFaces(&Engine->RendererCore, &Engine->RendererCore.IrradianceMap, Engine->RendererCore.PipelineState[ERS_IRRADIANCE],
 						 Engine->RendererCore.RootSignIrradiance, Engine->RendererCore.Cubemap.GpuSrvHandle);
 }
@@ -205,8 +203,9 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		return 0;
 	}
 
-	if (UI_HandleEvent(hWnd, Message, wParam, lParam))
+	if (UI_HandleEvent(hWnd, Message, wParam, lParam)) {
 		return 0;
+	}
 
 	return DefWindowProc(hWnd, Message, wParam, lParam);
 }

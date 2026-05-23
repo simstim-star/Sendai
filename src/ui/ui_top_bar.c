@@ -58,7 +58,6 @@ InfoPopup(UI_Renderer *UI, UI_TopBarState *State)
 					   : (Desc.VendorId == 0x1002) ? "AMD"
 					   : (Desc.VendorId == 0x8086) ? "Intel"
 												   : "Unknown";
-
 		nk_labelf(UI->Context, NK_TEXT_LEFT, "  GPU: %ls (%s)", Desc.Description, Vendor);
 		nk_labelf(UI->Context, NK_TEXT_LEFT, "  Device ID: 0x%X", Desc.DeviceId);
 
@@ -68,9 +67,9 @@ InfoPopup(UI_Renderer *UI, UI_TopBarState *State)
 		nk_layout_row_dynamic(UI->Context, 20, 1);
 		nk_label(UI->Context, "VRAM USAGE", NK_TEXT_LEFT);
 
-		const nk_size UsageMB = MemInfo.CurrentUsage / (1024 * 1024);
-		const nk_size BudgetMB = MemInfo.Budget / (1024 * 1024);
-		const nk_size TotalMB = Desc.DedicatedVideoMemory / (1024 * 1024);
+		nk_size UsageMB = MemInfo.CurrentUsage / (1024 * 1024);
+		nk_size BudgetMB = MemInfo.Budget / (1024 * 1024);
+		nk_size TotalMB = Desc.DedicatedVideoMemory / (1024 * 1024);
 
 		nk_layout_row_dynamic(UI->Context, 25, 1);
 		nk_progress(UI->Context, &UsageMB, BudgetMB, NK_FIXED);

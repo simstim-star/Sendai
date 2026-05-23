@@ -2,7 +2,7 @@ BasedOnStyle: LLVM
 IndentWidth: 4
 TabWidth: 4
 UseTab: Always
-ColumnLimit: 145
+ColumnLimit: 120
 
 BreakAfterReturnType: AllDefinitions
 
@@ -20,3 +20,6 @@ AllowShortFunctionsOnASingleLine: All
 SpaceBeforeParens: ControlStatements
 KeepEmptyLinesAtTheStartOfBlocks: false
 BracedInitializerIndentWidth: 2
+
+# Not sure why, but it doesn't work with AttributeMacros 
+StatementMacros: [_Success_]

@@ -48,15 +48,24 @@ static VOID LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Aren
 
 static VOID PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M_Arena *UploadArena);
 
-static BOOL ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_Arena *UploadArena, _Out_ R_Texture *Texture);
-
+_Success_(return)
+static BOOL ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
+							 _In_ cgltf_image *Img,
+							 _In_ M_Arena *UploadArena,
+							 _Out_ R_Texture *Texture);
+_Success_(return > 0)
 static LONG LoadGLTFFile(_In_z_ PCWSTR Path, _In_ M_Arena *Arena, _Outptr_ VOID **Data);
 
+_Success_(return == cgltf_result_success)
 static cgltf_result LoadGLTFBuffer(_In_z_ PCWSTR FullPath,
 								   _In_z_ PCWSTR BufferFileName,
 								   _In_ M_Arena *Arena,
 								   _Out_ size_t *Size,
 								   _Outptr_result_bytebuffer_(*Size) VOID **Data);
+
+_Success_(return == cgltf_result_success)
+static cgltf_result
+LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path);
 
 static PSTR CreateTextureName(M_Arena *UploadArena, cgltf_image *BaseImage, PCWSTR Path, int i);
 
@@ -66,7 +75,11 @@ static VOID RetriveAttributeData(cgltf_primitive *PrimitiveData,
 								 cgltf_accessor *UVAccessorsData[2],
 								 cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum]);
 
-static VOID LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB);
+static VOID LoadPBRData(R_Core *Renderer,
+						R_Texture *const Images,
+						cgltf_image *ImagesData,
+						cgltf_material *Material,
+						R_PBRConstantBuffer *CB);
 
 static VOID LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 											  R_Primitive *Primitive,
@@ -83,7 +96,8 @@ static XMFLOAT4 *ComputeTangents(cgltf_accessor *PositionAccessor,
 								 cgltf_accessor *IndicesAccessor,
 								 M_Arena *Arena);
 
-static VOID GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Images, int *Index, ETextureFormat *Format);
+static VOID
+GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Images, int *Index, ETextureFormat *Format);
 
 static BOOL
 IsBlended(const cgltf_material *const material)
@@ -104,14 +118,14 @@ cgltf_arena_alloc(VOID *user, cgltf_size size)
 
 static VOID
 cgltf_arena_free(VOID *user, VOID *ptr)
-{
-	/* arena handles lifetime */
+{ /* arena handles lifetime */
 }
 
 /****************************************************
 	Public functions
 *****************************************************/
 
+_Success_(return)
 BOOL
 SendaiGLTF_LoadModel(R_Core *Renderer, PCWSTR Path, S_Scene *Scene)
 {
@@ -177,9 +191,11 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 		}
 
 		CurrentMesh->OpaquePrimitivesCount = OpaqueCount;
-		CurrentMesh->OpaquePrimitives = M_ArenaAlloc(SceneArena, CurrentMesh->OpaquePrimitivesCount * sizeof(R_Primitive));
+		CurrentMesh->OpaquePrimitives =
+			M_ArenaAlloc(SceneArena, CurrentMesh->OpaquePrimitivesCount * sizeof(R_Primitive));
 		CurrentMesh->BlendedPrimitivesCount = BlendedCount;
-		CurrentMesh->BlendedPrimitives = M_ArenaAlloc(SceneArena, CurrentMesh->BlendedPrimitivesCount * sizeof(R_Primitive));
+		CurrentMesh->BlendedPrimitives =
+			M_ArenaAlloc(SceneArena, CurrentMesh->BlendedPrimitivesCount * sizeof(R_Primitive));
 
 		UINT CurrentOpaqueIndex = 0;
 		UINT CurrentBlendedIndex = 0;
@@ -200,9 +216,9 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 				CurrentOpaqueIndex++;
 			}
 
-			LoadVerticesAndIndicesIntoBuffers(Renderer, Primitive, Accessors[cgltf_attribute_type_position],
-											  Accessors[cgltf_attribute_type_normal], Accessors[cgltf_attribute_type_tangent],
-											  PrimitiveData->indices, UVAccessorsData, UploadArena);
+			LoadVerticesAndIndicesIntoBuffers(
+				Renderer, Primitive, Accessors[cgltf_attribute_type_position], Accessors[cgltf_attribute_type_normal],
+				Accessors[cgltf_attribute_type_tangent], PrimitiveData->indices, UVAccessorsData, UploadArena);
 			LoadPBRData(Renderer, Model->Images, Data->images, PrimitiveData->material, &Primitive->ConstantBuffer);
 		}
 
@@ -214,7 +230,7 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 	Model->NodesCount = 0;
 
 	for (; Model->NodesCount < Data->nodes_count; Model->NodesCount++) {
-		UINT NodeIndex = Model->NodesCount;
+		UINT64 NodeIndex = Model->NodesCount;
 		cgltf_node *NodeData = &Data->nodes[NodeIndex];
 		R_Node *CurrentNode = &Model->Nodes[NodeIndex];
 
@@ -222,14 +238,14 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 		// This way, the matrix is automatically transposed already, because XMLoadFloat4x4
 		// will pick as row what is col and vice-versa. Therefore, ModelMatrix is Mesh->Transform
 		// converted to row-major.
-		cgltf_float TransformColMajor[4][4];
+		cgltf_float TransformColMajor[16];
 		cgltf_node_transform_world(NodeData, TransformColMajor);
 		/* Corrections for left-hand system */
-		TransformColMajor[3][2] *= -1.0f;
-		TransformColMajor[0][2] *= -1.0f;
-		TransformColMajor[1][2] *= -1.0f;
-		TransformColMajor[2][0] *= -1.0f;
-		TransformColMajor[2][1] *= -1.0f;
+		TransformColMajor[14] *= -1.0f; // 3,2
+		TransformColMajor[2] *= -1.0f;  // 0,2
+		TransformColMajor[6] *= -1.0f; // 1,2
+		TransformColMajor[8] *= -1.0f; // 2,0
+		TransformColMajor[9] *= -1.0f; // 2,1
 		memcpy(&CurrentNode->ModelMatrix, TransformColMajor, sizeof(XMFLOAT4X4));
 
 		if (NodeData->mesh) {
@@ -382,6 +398,9 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 		}
 
 		Indices = M_ArenaAlloc(Arena, IndexStride * IndexCount);
+		if (Indices == NULL) {
+			return;
+		}
 
 		for (size_t i = 0; i < IndexCount; i += 3) {
 			uint32_t i0, i1, i2;
@@ -408,25 +427,30 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	  .SizeInBytes = VertexBufferSize,
 	  .StrideInBytes = sizeof(R_Vertex),
 	};
-	ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->VertexBufferDefault, Renderer->CurrentVertexBufferOffset,
-											   Renderer->UploadBuffer, Renderer->CurrentUploadBufferOffset, VertexBufferSize);
+	ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->VertexBufferDefault,
+											   Renderer->CurrentVertexBufferOffset, Renderer->UploadBuffer,
+											   Renderer->CurrentUploadBufferOffset, VertexBufferSize);
 	Renderer->CurrentVertexBufferOffset += VertexBufferSize;
 	Renderer->CurrentUploadBufferOffset += VertexBufferSize;
 
-	/* Ensure alignment for both 2 and 4 bytes indices */
-	Renderer->CurrentUploadBufferOffset = ROUND_UP_POWER_OF_2(Renderer->CurrentUploadBufferOffset, 4);
-	Renderer->CurrentIndexBufferOffset = ROUND_UP_POWER_OF_2(Renderer->CurrentIndexBufferOffset, 4);
-	memcpy(Renderer->UploadBufferCpuAddress + Renderer->CurrentUploadBufferOffset, Indices, IndexBufferSize);
-	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {.BufferLocation = M_GpuAddress(Renderer->IndexBufferDefault, Renderer->CurrentIndexBufferOffset),
-											   .Format = IndexFormat,
-											   .SizeInBytes = IndexBufferSize};
-	ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->IndexBufferDefault, Renderer->CurrentIndexBufferOffset,
-											   Renderer->UploadBuffer, Renderer->CurrentUploadBufferOffset, IndexBufferSize);
-	Renderer->CurrentIndexBufferOffset += IndexBufferSize;
-	Renderer->CurrentUploadBufferOffset += IndexBufferSize;
+	if (Indices != NULL) {
+		/* Ensure alignment for both 2 and 4 bytes indices */
+		Renderer->CurrentUploadBufferOffset = ROUND_UP_POWER_OF_2(Renderer->CurrentUploadBufferOffset, 4);
+		Renderer->CurrentIndexBufferOffset = ROUND_UP_POWER_OF_2(Renderer->CurrentIndexBufferOffset, 4);
+		memcpy(Renderer->UploadBufferCpuAddress + Renderer->CurrentUploadBufferOffset, Indices, IndexBufferSize);
+		D3D12_INDEX_BUFFER_VIEW IndexBufferView = {
+		  .BufferLocation = M_GpuAddress(Renderer->IndexBufferDefault, Renderer->CurrentIndexBufferOffset),
+		  .Format = IndexFormat,
+		  .SizeInBytes = IndexBufferSize};
+		ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->IndexBufferDefault,
+												   Renderer->CurrentIndexBufferOffset, Renderer->UploadBuffer,
+												   Renderer->CurrentUploadBufferOffset, IndexBufferSize);
+		Renderer->CurrentIndexBufferOffset += IndexBufferSize;
+		Renderer->CurrentUploadBufferOffset += IndexBufferSize;
+		Primitive->IndexBufferView = IndexBufferView;
+	}
 
 	Primitive->VertexBufferView = VertexBufferView;
-	Primitive->IndexBufferView = IndexBufferView;
 	Primitive->IndexCount = IndexCount;
 }
 
@@ -473,8 +497,12 @@ PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M
 	}
 }
 
+_Success_(return)
 BOOL
-ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_Arena *UploadArena, _Out_ R_Texture *Texture)
+ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
+				 _In_ cgltf_image *Img,
+				 _In_ M_Arena *UploadArena,
+				 _Out_ R_Texture *Texture)
 {
 	if (Texture == NULL) {
 		return FALSE;
@@ -496,7 +524,8 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_
 				return FALSE;
 			}
 			b64_decode(EncodedB64, Decoded);
-			StbiData = stbi_load_from_memory(Decoded, (int)DecodedMaxCap, &Texture->Width, &Texture->Height, &Texture->Channels, 4);
+			StbiData = stbi_load_from_memory(Decoded, (int)DecodedMaxCap, &Texture->Width, &Texture->Height,
+											 &Texture->Channels, 4);
 			if (StbiData == NULL) {
 				return FALSE;
 			}
@@ -512,7 +541,8 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_
 		cgltf_buffer_view *BufferView = Img->buffer_view;
 		cgltf_buffer *Buffer = BufferView->buffer;
 		const UINT8 *Data = (const UINT8 *)Buffer->vertex_data + BufferView->offset;
-		StbiData = stbi_load_from_memory(Data, (int)BufferView->size, &Texture->Width, &Texture->Height, &Texture->Channels, 4);
+		StbiData = stbi_load_from_memory(Data, (int)BufferView->size, &Texture->Width, &Texture->Height,
+										 &Texture->Channels, 4);
 		if (StbiData == NULL) {
 			return FALSE;
 		}
@@ -532,9 +562,13 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_
 	return TRUE;
 }
 
+_Success_(return == cgltf_result_success)
 cgltf_result
-LoadGLTFBuffer(
-	_In_z_ PCWSTR FullPath, _In_z_ PCWSTR BufferFileName, _In_ M_Arena *Arena, _Out_ size_t *Size, _Outptr_result_bytebuffer_(*Size) VOID **Data)
+LoadGLTFBuffer(_In_z_ PCWSTR FullPath,
+			   _In_z_ PCWSTR BufferFileName,
+			   _In_ M_Arena *Arena,
+			   _Out_ size_t *Size,
+			   _Outptr_result_bytebuffer_(*Size) VOID **Data)
 {
 	WCHAR FullPathBuffer[MAX_PATH];
 	wcscpy_s(FullPathBuffer, MAX_PATH, FullPath);
@@ -561,6 +595,7 @@ LoadGLTFBuffer(
 	return cgltf_result_success;
 }
 
+_Success_(return == cgltf_result_success)
 cgltf_result
 LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path)
 {
@@ -591,7 +626,8 @@ LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ 
 			char *Comma = strrchr(Uri, ',');
 
 			if (Comma && Comma - Uri >= 7 && strncmp(Comma - 7, ";base64", 7) == 0) {
-				cgltf_result Result = cgltf_load_buffer_base64(Options, Data->buffers[i].size, Comma + 1, &Data->buffers[i].vertex_data);
+				cgltf_result Result =
+					cgltf_load_buffer_base64(Options, Data->buffers[i].size, Comma + 1, &Data->buffers[i].vertex_data);
 				Data->buffers[i].data_free_method = cgltf_data_free_method_memory_free;
 
 				if (Result != cgltf_result_success) {
@@ -603,7 +639,8 @@ LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ 
 		} else if (strstr(Uri, "://") == NULL && Path) {
 			WCHAR UriW[MAX_PATH];
 			UTF8_TO_W(Uri, UriW, MAX_PATH);
-			cgltf_result Result = LoadGLTFBuffer(Path, UriW, Arena, &Data->buffers[i].size, &Data->buffers[i].vertex_data);
+			cgltf_result Result =
+				LoadGLTFBuffer(Path, UriW, Arena, &Data->buffers[i].size, &Data->buffers[i].vertex_data);
 			Data->buffers[i].data_free_method = cgltf_data_free_method_file_release;
 
 			if (Result != cgltf_result_success) {
@@ -617,13 +654,15 @@ LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ 
 	return cgltf_result_success;
 }
 
+_Success_(return > 0)
 LONG
-LoadGLTFFile(_In_z_ PCWSTR Path, M_Arena *Arena, _Outptr_ VOID **Data)
+LoadGLTFFile(_In_z_ PCWSTR Path, _In_ M_Arena *Arena, _Outptr_ VOID **Data)
 {
 	FILE *FileHandle = _wfopen(Path, L"rb");
 	if (!FileHandle) {
 		return 0;
 	}
+
 	fseek(FileHandle, 0, SEEK_END);
 	long Size = ftell(FileHandle);
 	fseek(FileHandle, 0, SEEK_SET);
@@ -674,7 +713,11 @@ CreateTextureName(M_Arena *UploadArena, cgltf_image *BaseImage, PCWSTR Path, int
 }
 
 VOID
-LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB)
+LoadPBRData(R_Core *Renderer,
+			R_Texture *const Images,
+			cgltf_image *ImagesData,
+			cgltf_material *Material,
+			R_PBRConstantBuffer *CB)
 {
 	CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, NULL);
 	CB->NormalTextureIndex = R_GetTextureIndex(Renderer, NULL);
@@ -695,7 +738,6 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 	}
 
 	CB->AlphaCutoff = Material->alpha_cutoff;
-
 
 	if (Material->has_pbr_metallic_roughness) {
 		cgltf_pbr_metallic_roughness *MetallicRoughness = &Material->pbr_metallic_roughness;
@@ -719,14 +761,16 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 
 		if (MetallicRoughness->metallic_roughness_texture.texture) {
 			INT Index = 0;
-			GetIndexAndFormatFromTexture(MetallicRoughness->metallic_roughness_texture.texture, ImagesData, &Index, NULL);
+			GetIndexAndFormatFromTexture(MetallicRoughness->metallic_roughness_texture.texture, ImagesData, &Index,
+										 NULL);
 			CB->MetalRoughTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
 		}
 	} else if (Material->has_pbr_specular_glossiness) {
 		cgltf_pbr_specular_glossiness *SpecularGlossiness = &Material->pbr_specular_glossiness;
 		memcpy(&CB->BaseColorFactor, SpecularGlossiness->diffuse_factor, sizeof(float) * 4);
-		CB->MetallicFactor =
-			(SpecularGlossiness->specular_factor[0] + SpecularGlossiness->specular_factor[1] + SpecularGlossiness->specular_factor[2]) / 3.0f;
+		CB->MetallicFactor = (SpecularGlossiness->specular_factor[0] + SpecularGlossiness->specular_factor[1] +
+							  SpecularGlossiness->specular_factor[2]) /
+							 3.0f;
 		CB->RoughnessFactor = 1.0f - SpecularGlossiness->glossiness_factor;
 
 		if (SpecularGlossiness->diffuse_texture.texture) {
@@ -771,7 +815,8 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 	}
 }
 
-// Based on https://github.com/salvatorespoto/gLTFViewer/blob/master/DX12Engine/Source/Utils/Cpp/GLTFSceneLoader.cpp#L508
+// Based on
+// https://github.com/salvatorespoto/gLTFViewer/blob/master/DX12Engine/Source/Utils/Cpp/GLTFSceneLoader.cpp#L508
 XMFLOAT4 *
 ComputeTangents(cgltf_accessor *PositionAccessor,
 				cgltf_accessor *NormalAccessor,
@@ -855,7 +900,7 @@ VOID
 GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Image, int *OutIndex, ETextureFormat *OutFormat)
 {
 	if (!Texture || !Image) {
-		return -1;
+		return;
 	}
 
 	for (cgltf_size i = 0; i < Texture->extensions_count; ++i) {

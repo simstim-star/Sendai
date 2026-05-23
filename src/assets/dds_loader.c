@@ -1406,8 +1406,7 @@ SetDebugTextureInfo(_In_z_ const wchar_t *fileName, _In_ ID3D12Resource *texture
 }
 
 //--------------------------------------------------------------------------------------
-_Use_decl_annotations_ HRESULT
-LoadDDSTextureFromMemoryEx(ID3D12Device *d3dDevice,
+_Use_decl_annotations_ HRESULT __cdecl LoadDDSTextureFromMemoryEx(ID3D12Device *d3dDevice,
 						   const UINT8 *ddsData,
 						   size_t ddsDataSize,
 						   size_t maxsize,
@@ -1482,8 +1481,7 @@ LoadDDSTextureFromFile(ID3D12Device *d3dDevice,
 									alphaMode, isCubeMap);
 }
 
-_Use_decl_annotations_ HRESULT
-LoadDDSTextureFromFileEx(ID3D12Device *d3dDevice,
+_Use_decl_annotations_ HRESULT __cdecl LoadDDSTextureFromFileEx(ID3D12Device *d3dDevice,
 						 const wchar_t *fileName,
 						 size_t maxsize,
 						 D3D12_RESOURCE_FLAGS resFlags,
@@ -1526,7 +1524,6 @@ LoadDDSTextureFromFileEx(ID3D12Device *d3dDevice,
 			*alphaMode = GetAlphaMode(header);
 	} else {
 		hr = ID3D12Device_GetDeviceRemovedReason(d3dDevice);
-		int b = 1;
 	}
 
 	return hr;

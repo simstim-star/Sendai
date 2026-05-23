@@ -9,9 +9,9 @@ ExitIfFailed(const HRESULT hr)
 		return;
 	}
 
-	CHAR s_str[64] = "";
-	if (snprintf(s_str, 64, "ERROR: HRESULT 0x%08X\n", (UINT)hr) > 0) {
-		OutputDebugString(s_str);
+	WCHAR Message[64] = L"";
+	if (swprintf(Message, 64, L"ERROR: HRESULT 0x%08X\n", (UINT)hr) > 0) {
+		OutputDebugString(Message);
 	}
 
 	if (IsDebuggerPresent()) {

@@ -2,6 +2,8 @@
 
 #include "DirectXMathC.h"
 
+#define N_CUBE_FACES 6
+
 typedef struct ID3D12Device ID3D12Device;
 typedef struct ID3D12Resource ID3D12Resource;
 typedef struct ID3D12DescriptorHeap ID3D12DescriptorHeap;
@@ -26,6 +28,8 @@ typedef struct R_Cubemap {
 
 	UINT Width;
 	UINT Height;
+
+	XMMATRIX ViewMatrices[N_CUBE_FACES];
 } R_Cubemap;
 
 VOID R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, UINT Height);

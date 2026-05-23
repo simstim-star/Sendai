@@ -37,7 +37,6 @@ static VOID CreateShaders(R_Core *const Renderer);
 
 static R_SceneData PreprocessSceneData(const S_Scene *const Scene);
 
-static VOID DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
 static VOID RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants, const ERenderPassType Pass);
 static VOID DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
 
@@ -76,11 +75,13 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	IDXGIFactory2 *Factory = NULL;
 	HRESULT hr = CreateDXGIFactory2(bIsDebugFactory, &IID_IDXGIFactory2, &Factory);
 	ExitIfFailed(hr);
+	_Analysis_assume_(Factory != NULL);
 
 	GetAdapter(Factory, Renderer);
 
 	hr = D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_11_0, &IID_ID3D12Device, &Renderer->Device);
 	ExitIfFailed(hr);
+	_Analysis_assume_(Renderer->Device != NULL);
 
 	D3D12_COMMAND_QUEUE_DESC CommandQueueDesc = {
 	  .Type = D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -366,7 +367,7 @@ RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *c
 			Renderer->MeshDataOffset += CB_ALIGN(R_MeshConstants);
 
 			if (Node->Mesh) {
-				INT PrimitiveCount = (Pass == ERPT_PASS_OPAQUE) ? Node->Mesh->OpaquePrimitivesCount : Node->Mesh->BlendedPrimitivesCount;
+				UINT64 PrimitiveCount = (Pass == ERPT_PASS_OPAQUE) ? Node->Mesh->OpaquePrimitivesCount : Node->Mesh->BlendedPrimitivesCount;
 				R_Primitive *Primitives = (Pass == ERPT_PASS_OPAQUE) ? Node->Mesh->OpaquePrimitives : Node->Mesh->BlendedPrimitives;
 				for (INT PrimitiveIndex = 0; PrimitiveIndex < PrimitiveCount; ++PrimitiveIndex) {
 					R_Primitive *Primitive = &Primitives[PrimitiveIndex];

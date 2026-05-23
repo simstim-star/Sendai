@@ -36,11 +36,11 @@ UI_EAction
 UI_DrawBottomPanel(UI_Renderer *UI, UI_BottomPanelState *State)
 {
 	struct nk_context *Ctx = UI->Context;
-	State->BottomPanelHeight = fmax(State->BottomPanelHeight, UI->Height * MIN_PANEL_HEIGHT_PERCENTAGE);
-	State->BottomPanelHeight = fmin(State->BottomPanelHeight, UI->Height * MAX_PANEL_HEIGHT_PERCENTAGE);
+	State->BottomPanelHeight = fmaxf(State->BottomPanelHeight, UI->Height * MIN_PANEL_HEIGHT_PERCENTAGE);
+	State->BottomPanelHeight = fminf(State->BottomPanelHeight, UI->Height * MAX_PANEL_HEIGHT_PERCENTAGE);
 
 	FLOAT MaxAvailableHeight = UI->Height - INFO_BAR_HEIGHT;
-	struct nk_rect BarRect = nk_rect(0, MaxAvailableHeight - State->BottomPanelHeight, UI->Width, State->BottomPanelHeight);
+	struct nk_rect BarRect = nk_rect(0.0f, MaxAvailableHeight - State->BottomPanelHeight, UI->Width, State->BottomPanelHeight);
 
 	if (nk_begin(Ctx, "BottomBar", BarRect, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
 		BottomPanelDraggingArea(Ctx, HANDLE_HEIGHT, UI, State);
@@ -117,7 +117,7 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 	FLOAT ContentAreaHeight = State->BottomPanelHeight - (HandleHeight + TabBarHeight + 10.0f);
 	switch (State->ActiveTab) {
 	case EBBS_LOG_TAB: {
-		nk_layout_row_dynamic(Ctx, fmax(10.0f, ContentAreaHeight), 1);
+		nk_layout_row_dynamic(Ctx, fmaxf(10.0f, ContentAreaHeight), 1);
 		const nk_flags LogFlags = NK_EDIT_MULTILINE | NK_EDIT_READ_ONLY | NK_EDIT_ALWAYS_INSERT_MODE | NK_EDIT_GOTO_END_ON_ACTIVATE;
 
 		INT RequiredBytes =
@@ -142,9 +142,9 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 			nk_label(Ctx, "Name", NK_TEXT_LEFT);
 			nk_label(Ctx, "Visible", NK_TEXT_LEFT);
 
-			for (INT i = 0; i < State->Scene->ModelsCount; i++) {
+			for (UINT i = 0; i < State->Scene->ModelsCount; i++) {
 				R_Model *Model = &State->Scene->Models[i];
-				INT IsSelected = (State->SelectedModelIndex == i);
+				BOOL IsSelected = (State->SelectedModelIndex == i);
 
 				nk_layout_row_dynamic(Ctx, 20, 2);
 				if (nk_selectable_label(Ctx, Model->Name, NK_TEXT_LEFT, &IsSelected)) {

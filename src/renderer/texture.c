@@ -17,8 +17,10 @@
 
 static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
 
-static const R_Texture WhiteTexture = {
-  .Name = "fallback_white", .Width = 1, .Height = 1, .MipLevels = 1, .MipPixels[0] = WHITE_PIXEL, .Format = DXGI_FORMAT_R8G8B8A8_UNORM};
+#define WHITE_TEXTURE (R_Texture){                                         \
+		.Name = "fallback_white", .Width = 1, .Height = 1, .MipLevels = 1, \
+        .MipPixels[0] = WHITE_PIXEL, .Format = DXGI_FORMAT_R8G8B8A8_UNORM  \
+}
 
 VOID
 R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
@@ -196,7 +198,7 @@ R_GetTextureIndex(R_Core *const Renderer, const R_Texture *const Texture)
 	if (Texture && Texture->Name) {
 		Target = *Texture;
 	} else {
-		Target = WhiteTexture;
+		Target = WHITE_TEXTURE;
 	}
 
 	GPUTexture Tex = R_UploadTexture(Renderer, &Target);

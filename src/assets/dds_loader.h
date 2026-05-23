@@ -58,16 +58,17 @@ HRESULT __cdecl LoadDDSTextureFromMemory(_In_ ID3D12Device *d3dDevice,
 										 _Out_opt_ DDS_ALPHA_MODE *alphaMode,
 										 _Out_opt_ BOOL *isCubeMap);
 
-HRESULT __cdecl LoadDDSTextureFromMemoryEx(ID3D12Device *d3dDevice,
-						   const UINT8 *ddsData,
-						   size_t ddsDataSize,
-						   size_t maxsize,
-						   D3D12_RESOURCE_FLAGS resFlags,
-						   DDS_LOADER_FLAGS loadFlags,
-						   ID3D12Resource **texture,
-						   D3D12_SUBRESOURCE_DATA *subresources,
-						   DDS_ALPHA_MODE *alphaMode,
-						   BOOL *isCubeMap);
+
+HRESULT __cdecl LoadDDSTextureFromMemoryEx(_In_ ID3D12Device *d3dDevice,
+										   _In_reads_bytes_(ddsDataSize) const UINT8 *ddsData,
+										   size_t ddsDataSize,
+										   size_t maxsize,
+										   D3D12_RESOURCE_FLAGS resFlags,
+										   DDS_LOADER_FLAGS loadFlags,
+										   _Outptr_ ID3D12Resource **texture,
+										   D3D12_SUBRESOURCE_DATA *subresources,
+										   _Out_opt_ DDS_ALPHA_MODE *alphaMode,
+										   _Out_opt_ BOOL *isCubeMap);
 
 HRESULT __cdecl LoadDDSTextureFromFile(_In_ ID3D12Device *d3dDevice,
 									   _In_z_ const wchar_t *szFileName,
@@ -78,13 +79,13 @@ HRESULT __cdecl LoadDDSTextureFromFile(_In_ ID3D12Device *d3dDevice,
 									   _Out_opt_ DDS_ALPHA_MODE *alphaMode,
 									   _Out_opt_ BOOL *isCubeMap);
 
-HRESULT __cdecl LoadDDSTextureFromFileEx(ID3D12Device *d3dDevice,
-						 const wchar_t *fileName,
-						 size_t maxsize,
-						 D3D12_RESOURCE_FLAGS resFlags,
-						 DDS_LOADER_FLAGS loadFlags,
-						 ID3D12Resource **texture,
-						 UINT8 **ddsData,
-						 D3D12_SUBRESOURCE_DATA *subresources,
-						 DDS_ALPHA_MODE *alphaMode,
-						 BOOL *isCubeMap);
+HRESULT __cdecl LoadDDSTextureFromFileEx(_In_ ID3D12Device *d3dDevice,
+										 _In_z_ const wchar_t *fileName,
+										 size_t maxsize,
+										 D3D12_RESOURCE_FLAGS resFlags,
+										 DDS_LOADER_FLAGS loadFlags,
+										 _Outptr_ ID3D12Resource **texture,
+										 UINT8 **ddsData,
+										 D3D12_SUBRESOURCE_DATA *subresources,
+										 _Out_opt_ DDS_ALPHA_MODE *alphaMode,
+										 _Out_opt_ BOOL *isCubeMap);

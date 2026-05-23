@@ -7,12 +7,8 @@
 #include "renderer.h"
 #include <DirectXMathC.h>
 
-#define N_CUBE_FACES 6
-
 static const FLOAT CUBEMAP_CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
-static const FLOAT RIGHT_ANGLE_RAD = 1.5708;
-
-static XMMATRIX CAPTURE_VIEWS[N_CUBE_FACES];
+static const FLOAT RIGHT_ANGLE_RAD = 1.5708f;
 
 static const XMFLOAT3 LOOK_AT_CUBE_FACES[N_CUBE_FACES] = {
   {1.0f, 0.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}, /* +X, -X */
@@ -62,6 +58,7 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 	TextureDesc.Format = TextureFormat;
 	TextureDesc.SampleDesc.Count = 1;
 	TextureDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
 	const D3D12_HEAP_PROPERTIES DefaultHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	const D3D12_CLEAR_VALUE OptimizedClear = {
 	  .Format = TextureFormat,
@@ -101,11 +98,11 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 	for (INT Face = 0; Face < N_CUBE_FACES; Face++) {
 		XMVECTOR TargetDirection = XMLoadFloat3(&LOOK_AT_CUBE_FACES[Face]);
 		XMVECTOR UpDirection = XMLoadFloat3(&UP_DIRECTION_CUBE_FACES[Face]);
-		CAPTURE_VIEWS[Face] = XM_MAT_LOOK_AT_LH(EyePosition, TargetDirection, UpDirection);
+		Cubemap->ViewMatrices[Face] = XM_MAT_LOOK_AT_LH(EyePosition, TargetDirection, UpDirection);
 	}
 
 	UINT64 Alignment = CB_ALIGN(XMMATRIX[3]);
-	UINT CBSize = Alignment * N_CUBE_FACES;
+	UINT64 CBSize = Alignment * N_CUBE_FACES;
 	D3D12_HEAP_PROPERTIES UploadHeapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 	D3D12_RESOURCE_DESC CBDesc = CD3DX12_RESOURCE_DESC_BUFFER(CBSize, D3D12_RESOURCE_FLAG_NONE, 0);
 
@@ -198,7 +195,7 @@ R_DrawToCubemapFaces(
 		ID3D12GraphicsCommandList_OMSetRenderTargets(Renderer->CommandList, 1, &RtvHandle, FALSE, NULL);
 		ID3D12GraphicsCommandList_ClearRenderTargetView(Renderer->CommandList, RtvHandle, CUBEMAP_CLEAR_COLOR, 0, NULL);
 
-		CB.View = CAPTURE_VIEWS[Face];
+		CB.View = Target->ViewMatrices[Face];
 		memcpy(Target->MappedCBVData + (Face * Alignment), &CB, sizeof(CB));
 
 		ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0, CBGpuBase + (Face * Alignment));

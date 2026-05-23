@@ -4,4 +4,5 @@ typedef struct S_Scene S_Scene;
 typedef struct R_Core R_Core;
 typedef struct R_Model R_Model;
 
+_Success_(return)
 BOOL SendaiGLTF_LoadModel(R_Core *Renderer, PCWSTR Path, S_Scene *Scene);

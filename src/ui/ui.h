@@ -9,6 +9,7 @@
 typedef struct nk_context nk_context;
 typedef struct S_Scene S_Scene;
 typedef struct R_Camera R_Camera;
+typedef struct R_Core R_Core;
 typedef struct Sendai Sendai;
 typedef struct ID3D12GraphicsCommandList ID3D12GraphicsCommandList;
 typedef struct ID3D12Resource ID3D12Resource;
@@ -33,7 +34,7 @@ typedef struct S_UI {
 	VOID (*Action[N_UI_ACTIONS])(Sendai *const Engine);
 } S_UI;
 
-VOID UI_Init(S_UI *const UI, struct R_Core *Renderer);
+VOID UI_Init(S_UI *const UI, R_Core *Renderer);
 
 VOID (*UI_GetAction(S_UI *const UI))(Sendai *const Engine);
 

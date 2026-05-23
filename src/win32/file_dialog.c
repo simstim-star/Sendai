@@ -7,7 +7,7 @@ const COMDLG_FILTERSPEC GLTFModelsFilter[] = {{L"glTF Models", L"*.gltf;*.glb"},
 const COMDLG_FILTERSPEC HDRModelsFilter[] = {{L"HDR Files", L"*.hdr"}, {L"All Files", L"*.*"}};
 
 PWSTR
-Win32ShowFileDialog(COMDLG_FILTERSPEC *Filters, UINT FiltersSize)
+Win32ShowFileDialog(const COMDLG_FILTERSPEC *const Filters, UINT FiltersSize)
 {
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 	if (FAILED(hr)) {

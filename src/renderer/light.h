@@ -9,4 +9,4 @@ typedef struct R_Core R_Core;
 
 VOID R_LightsInit(S_Scene *const Scene, const R_Camera *const Camera);
 VOID R_UpdateLights(BYTE ActiveLightMask, const R_Light *const InLights, R_Light *const OutLights, UINT NumLights);
-VOID R_DrawLightBillboards(R_Core *const Renderer, R_Light *Lights, BYTE ActiveLightMask, R_MeshConstants *const MeshConstants);
+VOID R_DrawLightBillboards(R_Core *const Renderer, const R_Light *const Lights, BYTE ActiveLightMask, R_MeshConstants *const MeshConstants);

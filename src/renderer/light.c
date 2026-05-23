@@ -40,7 +40,7 @@ R_UpdateLights(BYTE ActiveLightMask, const R_Light *const InLights, R_Light *con
 }
 
 VOID
-R_DrawLightBillboards(R_Core *const Renderer, R_Light *Lights, BYTE ActiveLightMask, R_MeshConstants *const MeshConstants)
+R_DrawLightBillboards(R_Core *const Renderer, const R_Light *const Lights, BYTE ActiveLightMask, R_MeshConstants *const MeshConstants)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignBillboard);
 	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[ERS_BILLBOARD]);
