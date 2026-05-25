@@ -47,10 +47,13 @@ S_Run(VOID)
 	ShowWindow(Engine.hWnd, SW_MAXIMIZE);
 
 	MSG Message = {0};
-	while (Engine.bRunning) {
+	while (Engine.bRunning)
+	{
 		UI_InputBegin(&Engine.UI.Renderer);
-		while (PeekMessage(&Message, NULL, 0, 0, PM_REMOVE)) {
-			if (Message.message == WM_QUIT) {
+		while (PeekMessage(&Message, NULL, 0, 0, PM_REMOVE))
+		{
+			if (Message.message == WM_QUIT)
+			{
 				Engine.bRunning = false;
 			}
 			TranslateMessage(&Message);
@@ -58,7 +61,8 @@ S_Run(VOID)
 		}
 		UI_InputEnd(&Engine.UI.Renderer);
 
-		if (Engine.bRunning) {
+		if (Engine.bRunning)
+		{
 			EngineUpdate(&Engine);
 			R_Draw(&Engine.RendererCore, &Engine.Scene, &Engine.Camera);
 		}
@@ -69,7 +73,8 @@ S_Run(VOID)
 
 #if defined(_DEBUG)
 	IDXGIDebug1 *debugDev = NULL;
-	if (SUCCEEDED(DXGIGetDebugInterface1(0, &IID_IDXGIDebug1, &debugDev))) {
+	if (SUCCEEDED(DXGIGetDebugInterface1(0, &IID_IDXGIDebug1, &debugDev)))
+	{
 		IDXGIDebug_ReportLiveObjects(debugDev, DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
 	}
 #endif
@@ -85,12 +90,14 @@ VOID
 S_FileOpen(Sendai *const Engine)
 {
 	PWSTR FilePath = Win32ShowFileDialog(GLTFModelsFilter, ARRAYSIZE(GLTFModelsFilter));
-	if (FilePath == NULL) {
+	if (FilePath == NULL)
+	{
 		return;
 	}
 
 	S_Scene *Scene = &Engine->Scene;
-	if (Scene->UploadArena.Base) {
+	if (Scene->UploadArena.Base)
+	{
 		M_ArenaRelease(&Scene->UploadArena);
 	}
 
@@ -104,7 +111,8 @@ VOID
 S_CubemapOpen(Sendai *const Engine)
 {
 	PWSTR FilePath = Win32ShowFileDialog(HDRModelsFilter, ARRAYSIZE(HDRModelsFilter));
-	if (FilePath == NULL) {
+	if (FilePath == NULL)
+	{
 		return;
 	}
 	GPUTexture HDRTexture = R_CreateHDRTexture(FilePath, &Engine->RendererCore);
@@ -116,16 +124,20 @@ S_CubemapOpen(Sendai *const Engine)
 	ID3D12GraphicsCommandList_SetDescriptorHeaps(Engine->RendererCore.CommandList, _countof(Heaps), Heaps);
 	R_DrawToCubemapFaces(&Engine->RendererCore, &Engine->RendererCore.Cubemap, Engine->RendererCore.PipelineState[ERS_CUBEMAP],
 						 Engine->RendererCore.RootSignCubemap, HdrSrvHandle);
-	R_DrawToCubemapFaces(&Engine->RendererCore, &Engine->RendererCore.IrradianceMap, Engine->RendererCore.PipelineState[ERS_IRRADIANCE],
-						 Engine->RendererCore.RootSignIrradiance, Engine->RendererCore.Cubemap.GpuSrvHandle);
+	R_DrawToCubemapFaces(&Engine->RendererCore, &Engine->RendererCore.IrradianceMap,
+						 Engine->RendererCore.PipelineState[ERS_IRRADIANCE], Engine->RendererCore.RootSignIrradiance,
+						 Engine->RendererCore.Cubemap.GpuSrvHandle);
 }
 
 VOID
 S_WireframeMode(Sendai *const Engine)
 {
-	if (Engine->RendererCore.State != ERS_WIREFRAME) {
+	if (Engine->RendererCore.State != ERS_WIREFRAME)
+	{
 		Engine->RendererCore.State = ERS_WIREFRAME;
-	} else {
+	}
+	else
+	{
 		Engine->RendererCore.State = ERS_GLTF;
 	}
 }
@@ -164,17 +176,20 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
 	Sendai *Engine = (Sendai *)(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
-	switch (Message) {
+	switch (Message)
+	{
 	case WM_CREATE: {
 		LPCREATESTRUCT pCreateStruct = (LPCREATESTRUCT)(lParam);
 		SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)(pCreateStruct->lpCreateParams));
 		return 0;
 	}
 	case WM_SIZE:
-		if (wParam == SIZE_MINIMIZED) {
+		if (wParam == SIZE_MINIMIZED)
+		{
 			return 0;
 		}
-		if (Engine && Engine->RendererCore.SwapChain) {
+		if (Engine && Engine->RendererCore.SwapChain)
+		{
 			INT width = LOWORD(lParam);
 			INT height = HIWORD(lParam);
 			R_SwapchainResize(&Engine->RendererCore, width, height);
@@ -187,13 +202,15 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		return 0;
 
 	case WM_KEYDOWN:
-		if (Engine) {
+		if (Engine)
+		{
 			R_CameraOnKeyDown(&Engine->Camera, wParam);
 		}
 		return 0;
 
 	case WM_KEYUP:
-		if (Engine) {
+		if (Engine)
+		{
 			R_CameraOnKeyUp(&Engine->Camera, wParam);
 		}
 		return 0;
@@ -203,7 +220,8 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		return 0;
 	}
 
-	if (UI_HandleEvent(hWnd, Message, wParam, lParam)) {
+	if (UI_HandleEvent(hWnd, Message, wParam, lParam))
+	{
 		return 0;
 	}
 
@@ -213,7 +231,8 @@ WindowProc(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam)
 static VOID
 EngineUpdate(Sendai *const Engine)
 {
-	if (Engine->FrameCounter == 50) {
+	if (Engine->FrameCounter == 50)
+	{
 		Engine->FrameCounter = 0;
 	}
 	Engine->FrameCounter++;

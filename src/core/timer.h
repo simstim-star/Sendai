@@ -27,7 +27,8 @@ SecondsToTicks(DOUBLE Seconds)
 }
 
 // Helper class for animation and simulation timing.
-typedef struct S_StepTimer {
+typedef struct S_StepTimer
+{
 	// Source timing data uses QueryPerformanceCounter units.
 	LARGE_INTEGER QPCFrequency;
 	LARGE_INTEGER QPCLastTime;

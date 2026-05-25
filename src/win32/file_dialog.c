@@ -10,13 +10,15 @@ PWSTR
 Win32ShowFileDialog(const COMDLG_FILTERSPEC *const Filters, UINT FiltersSize)
 {
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-	if (FAILED(hr)) {
+	if (FAILED(hr))
+	{
 		return NULL;
 	}
 
 	IFileOpenDialog *FileOpenDialog = NULL;
 	hr = CoCreateInstance(&CLSID_FileOpenDialog, NULL, CLSCTX_ALL, &IID_IFileOpenDialog, (VOID **)&FileOpenDialog);
-	if (FAILED(hr)) {
+	if (FAILED(hr))
+	{
 		CoUninitialize();
 		return NULL;
 	}
@@ -24,7 +26,8 @@ Win32ShowFileDialog(const COMDLG_FILTERSPEC *const Filters, UINT FiltersSize)
 	IFileDialog_SetFileTypes(FileOpenDialog, FiltersSize, Filters);
 
 	hr = IFileDialog_Show(FileOpenDialog, NULL);
-	if (FAILED(hr)) {
+	if (FAILED(hr))
+	{
 		IFileDialog_Release(FileOpenDialog);
 		CoUninitialize();
 		return NULL;
@@ -32,7 +35,8 @@ Win32ShowFileDialog(const COMDLG_FILTERSPEC *const Filters, UINT FiltersSize)
 
 	IShellItem *ChosenFile = NULL;
 	hr = IFileDialog_GetResult(FileOpenDialog, &ChosenFile);
-	if (FAILED(hr)) {
+	if (FAILED(hr))
+	{
 		IFileDialog_Release(FileOpenDialog);
 		CoUninitialize();
 		return NULL;
@@ -45,7 +49,8 @@ Win32ShowFileDialog(const COMDLG_FILTERSPEC *const Filters, UINT FiltersSize)
 	IFileDialog_Release(FileOpenDialog);
 	CoUninitialize();
 
-	if (FAILED(hr)) {
+	if (FAILED(hr))
+	{
 		return NULL;
 	}
 

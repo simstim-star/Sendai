@@ -26,12 +26,14 @@
 	Helper structs and enums
 *****************************************************/
 
-typedef struct MeshLookup {
+typedef struct MeshLookup
+{
 	cgltf_mesh *key;
 	R_Mesh *value;
 } MeshLookup;
 
-typedef enum ETextureFormat {
+typedef enum ETextureFormat
+{
 	ETF_DDS,
 	ETF_PNG,
 } ETextureFormat;
@@ -64,8 +66,10 @@ static cgltf_result LoadGLTFBuffer(_In_z_ PCWSTR FullPath,
 								   _Outptr_result_bytebuffer_(*Size) VOID **Data);
 
 _Success_(return == cgltf_result_success)
-static cgltf_result
-LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path);
+static cgltf_result LoadGLTFBuffers(_In_ const cgltf_options *Options,
+									_In_ M_Arena *Arena,
+									_Inout_ cgltf_data *Data,
+									_In_z_ PCWSTR Path);
 
 static PSTR CreateTextureName(M_Arena *UploadArena, cgltf_image *BaseImage, PCWSTR Path, int i);
 
@@ -75,11 +79,8 @@ static VOID RetriveAttributeData(cgltf_primitive *PrimitiveData,
 								 cgltf_accessor *UVAccessorsData[2],
 								 cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum]);
 
-static VOID LoadPBRData(R_Core *Renderer,
-						R_Texture *const Images,
-						cgltf_image *ImagesData,
-						cgltf_material *Material,
-						R_PBRConstantBuffer *CB);
+static VOID LoadPBRData(
+	R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB);
 
 static VOID LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 											  R_Primitive *Primitive,
@@ -96,13 +97,13 @@ static XMFLOAT4 *ComputeTangents(cgltf_accessor *PositionAccessor,
 								 cgltf_accessor *IndicesAccessor,
 								 M_Arena *Arena);
 
-static VOID
-GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Images, int *Index, ETextureFormat *Format);
+static VOID GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Images, int *Index, ETextureFormat *Format);
 
 static BOOL
 IsBlended(const cgltf_material *const material)
 {
-	if (material == NULL) {
+	if (material == NULL)
+	{
 		return FALSE;
 	}
 	return (material->alpha_mode == cgltf_alpha_mode_blend) || material->has_transmission;
@@ -130,7 +131,8 @@ BOOL
 SendaiGLTF_LoadModel(R_Core *Renderer, PCWSTR Path, S_Scene *Scene)
 {
 	cgltf_data *Data = GetData(Path, &Scene->UploadArena);
-	if (Data == NULL) {
+	if (Data == NULL)
+	{
 		return FALSE;
 	}
 
@@ -139,7 +141,8 @@ SendaiGLTF_LoadModel(R_Core *Renderer, PCWSTR Path, S_Scene *Scene)
 	Model->Visible = TRUE;
 	SetModelName(Path, Model, &Scene->SceneArena);
 
-	if (Data->images_count > 0) {
+	if (Data->images_count > 0)
+	{
 		PreloadImages(Renderer, Model, Data, Path, &Scene->UploadArena);
 	}
 
@@ -176,31 +179,35 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 	R_Mesh *Meshes = M_ArenaAlloc(SceneArena, Data->meshes_count * sizeof(R_Mesh));
 	MeshLookup *MeshMap = NULL;
 
-	for (INT MeshIndex = 0; MeshIndex < Data->meshes_count; MeshIndex++) {
+	for (INT MeshIndex = 0; MeshIndex < Data->meshes_count; MeshIndex++)
+	{
 		cgltf_mesh *MeshData = &Data->meshes[MeshIndex];
 		R_Mesh *CurrentMesh = &Meshes[MeshIndex];
 
 		INT OpaqueCount = 0;
 		INT BlendedCount = 0;
-		for (INT PrimitiveIndex = 0; PrimitiveIndex < MeshData->primitives_count; PrimitiveIndex++) {
-			if (IsBlended(MeshData->primitives[PrimitiveIndex].material)) {
+		for (INT PrimitiveIndex = 0; PrimitiveIndex < MeshData->primitives_count; PrimitiveIndex++)
+		{
+			if (IsBlended(MeshData->primitives[PrimitiveIndex].material))
+			{
 				BlendedCount++;
-			} else {
+			}
+			else
+			{
 				OpaqueCount++;
 			}
 		}
 
 		CurrentMesh->OpaquePrimitivesCount = OpaqueCount;
-		CurrentMesh->OpaquePrimitives =
-			M_ArenaAlloc(SceneArena, CurrentMesh->OpaquePrimitivesCount * sizeof(R_Primitive));
+		CurrentMesh->OpaquePrimitives = M_ArenaAlloc(SceneArena, CurrentMesh->OpaquePrimitivesCount * sizeof(R_Primitive));
 		CurrentMesh->BlendedPrimitivesCount = BlendedCount;
-		CurrentMesh->BlendedPrimitives =
-			M_ArenaAlloc(SceneArena, CurrentMesh->BlendedPrimitivesCount * sizeof(R_Primitive));
+		CurrentMesh->BlendedPrimitives = M_ArenaAlloc(SceneArena, CurrentMesh->BlendedPrimitivesCount * sizeof(R_Primitive));
 
 		UINT CurrentOpaqueIndex = 0;
 		UINT CurrentBlendedIndex = 0;
 
-		for (cgltf_size PrimitiveIndex = 0; PrimitiveIndex < MeshData->primitives_count; PrimitiveIndex++) {
+		for (cgltf_size PrimitiveIndex = 0; PrimitiveIndex < MeshData->primitives_count; PrimitiveIndex++)
+		{
 			cgltf_primitive *PrimitiveData = &MeshData->primitives[PrimitiveIndex];
 
 			cgltf_accessor *Accessors[cgltf_attribute_type_max_enum] = {0};
@@ -208,17 +215,20 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 			RetriveAttributeData(PrimitiveData, UVAccessorsData, Accessors);
 
 			R_Primitive *Primitive = NULL;
-			if (IsBlended(PrimitiveData->material)) {
+			if (IsBlended(PrimitiveData->material))
+			{
 				Primitive = &CurrentMesh->BlendedPrimitives[CurrentBlendedIndex];
 				CurrentBlendedIndex++;
-			} else {
+			}
+			else
+			{
 				Primitive = &CurrentMesh->OpaquePrimitives[CurrentOpaqueIndex];
 				CurrentOpaqueIndex++;
 			}
 
-			LoadVerticesAndIndicesIntoBuffers(
-				Renderer, Primitive, Accessors[cgltf_attribute_type_position], Accessors[cgltf_attribute_type_normal],
-				Accessors[cgltf_attribute_type_tangent], PrimitiveData->indices, UVAccessorsData, UploadArena);
+			LoadVerticesAndIndicesIntoBuffers(Renderer, Primitive, Accessors[cgltf_attribute_type_position],
+											  Accessors[cgltf_attribute_type_normal], Accessors[cgltf_attribute_type_tangent],
+											  PrimitiveData->indices, UVAccessorsData, UploadArena);
 			LoadPBRData(Renderer, Model->Images, Data->images, PrimitiveData->material, &Primitive->ConstantBuffer);
 		}
 
@@ -229,7 +239,8 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 	Model->Nodes = M_ArenaAlloc(SceneArena, Data->nodes_count * sizeof(R_Node));
 	Model->NodesCount = 0;
 
-	for (; Model->NodesCount < Data->nodes_count; Model->NodesCount++) {
+	for (; Model->NodesCount < Data->nodes_count; Model->NodesCount++)
+	{
 		UINT64 NodeIndex = Model->NodesCount;
 		cgltf_node *NodeData = &Data->nodes[NodeIndex];
 		R_Node *CurrentNode = &Model->Nodes[NodeIndex];
@@ -242,13 +253,14 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 		cgltf_node_transform_world(NodeData, TransformColMajor);
 		/* Corrections for left-hand system */
 		TransformColMajor[14] *= -1.0f; // 3,2
-		TransformColMajor[2] *= -1.0f;  // 0,2
-		TransformColMajor[6] *= -1.0f; // 1,2
-		TransformColMajor[8] *= -1.0f; // 2,0
-		TransformColMajor[9] *= -1.0f; // 2,1
+		TransformColMajor[2] *= -1.0f;	// 0,2
+		TransformColMajor[6] *= -1.0f;	// 1,2
+		TransformColMajor[8] *= -1.0f;	// 2,0
+		TransformColMajor[9] *= -1.0f;	// 2,1
 		memcpy(&CurrentNode->ModelMatrix, TransformColMajor, sizeof(XMFLOAT4X4));
 
-		if (NodeData->mesh) {
+		if (NodeData->mesh)
+		{
 			CurrentNode->Mesh = hmget(MeshMap, NodeData->mesh);
 		}
 	}
@@ -261,7 +273,8 @@ GetData(PCWSTR Path, M_Arena *UploadArena)
 	VOID *FileData = NULL;
 
 	LONG Size = LoadGLTFFile(Path, UploadArena, &FileData);
-	if (Size <= 0) {
+	if (Size <= 0)
+	{
 		S_LogAppendf(L"Failed to load %s\n", Path);
 		return NULL;
 	}
@@ -272,16 +285,20 @@ GetData(PCWSTR Path, M_Arena *UploadArena)
 	Options.memory.user_data = UploadArena;
 
 	cgltf_data *Data = NULL;
-	if (cgltf_parse(&Options, FileData, Size, &Data) != cgltf_result_success) {
-		if (Data) {
+	if (cgltf_parse(&Options, FileData, Size, &Data) != cgltf_result_success)
+	{
+		if (Data)
+		{
 			cgltf_free(Data);
 		}
 		S_LogAppendf(L"Failed to parse %s\n", Path);
 		return NULL;
 	}
 
-	if (LoadGLTFBuffers(&Options, UploadArena, Data, Path) != cgltf_result_success) {
-		if (Data) {
+	if (LoadGLTFBuffers(&Options, UploadArena, Data, Path) != cgltf_result_success)
+	{
+		if (Data)
+		{
 			cgltf_free(Data);
 		}
 		S_LogAppendf(L"Failed to load GLTF buffers from %s\n", Path);
@@ -305,15 +322,20 @@ RetriveAttributeData(cgltf_primitive *PrimitiveData,
 					 cgltf_accessor *UVAccessorsData[2],
 					 cgltf_accessor *AccessorsData[cgltf_attribute_type_max_enum])
 {
-	for (int AttributeId = 0; AttributeId < PrimitiveData->attributes_count; ++AttributeId) {
+	for (int AttributeId = 0; AttributeId < PrimitiveData->attributes_count; ++AttributeId)
+	{
 		cgltf_attribute *AttributeData = &PrimitiveData->attributes[AttributeId];
 
-		if (AttributeData->type == cgltf_attribute_type_texcoord) {
-			if (AttributeData->index > 1) {
+		if (AttributeData->type == cgltf_attribute_type_texcoord)
+		{
+			if (AttributeData->index > 1)
+			{
 				continue;
 			}
 			UVAccessorsData[AttributeData->index] = AttributeData->vertex_data;
-		} else {
+		}
+		else
+		{
 			AccessorsData[AttributeData->type] = AttributeData->vertex_data;
 		}
 	}
@@ -329,7 +351,8 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 								  cgltf_accessor *UVAccessorsData[2],
 								  M_Arena *Arena)
 {
-	if (!PositionAccessor) {
+	if (!PositionAccessor)
+	{
 		S_LogAppend(L"Mesh has no POSITION attribute\n");
 		return;
 	}
@@ -338,16 +361,19 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	UINT VertexBufferSize = sizeof(R_Vertex) * VertexCount;
 	R_Vertex *Vertices = M_ArenaAlloc(Arena, VertexBufferSize);
 	XMFLOAT4 *Tangents = NULL;
-	if (PositionAccessor && NormalAccessor && UVAccessorsData[0] && IndicesAccessor) {
+	if (PositionAccessor && NormalAccessor && UVAccessorsData[0] && IndicesAccessor)
+	{
 		Tangents = ComputeTangents(PositionAccessor, NormalAccessor, UVAccessorsData[0], IndicesAccessor, Arena);
 	}
 
-	for (UINT VertexIndex = 0; VertexIndex < VertexCount; VertexIndex++) {
+	for (UINT VertexIndex = 0; VertexIndex < VertexCount; VertexIndex++)
+	{
 		FLOAT Position[3];
 		cgltf_accessor_read_float(PositionAccessor, VertexIndex, Position, 3);
 		Vertices[VertexIndex].Position = (XMFLOAT3){Position[0], Position[1], -Position[2]};
 
-		if (NormalAccessor) {
+		if (NormalAccessor)
+		{
 			FLOAT Normal[3];
 			cgltf_accessor_read_float(NormalAccessor, VertexIndex, Normal, 3);
 			Vertices[VertexIndex].Normal.x = Normal[0];
@@ -355,28 +381,33 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 			Vertices[VertexIndex].Normal.z = -Normal[2];
 		}
 
-		if (TangentAccessor) {
+		if (TangentAccessor)
+		{
 			FLOAT Tangent[4];
 			cgltf_accessor_read_float(TangentAccessor, VertexIndex, Tangent, 4);
 			Vertices[VertexIndex].Tangent.x = Tangent[0];
 			Vertices[VertexIndex].Tangent.y = Tangent[1];
 			Vertices[VertexIndex].Tangent.z = -Tangent[2];
 			Vertices[VertexIndex].Tangent.w = -Tangent[3];
-		} else if (Tangents) {
+		}
+		else if (Tangents)
+		{
 			Vertices[VertexIndex].Tangent.x = Tangents[VertexIndex].x;
 			Vertices[VertexIndex].Tangent.y = Tangents[VertexIndex].y;
 			Vertices[VertexIndex].Tangent.z = Tangents[VertexIndex].z;
 			Vertices[VertexIndex].Tangent.w = Tangents[VertexIndex].w;
 		}
 
-		if (UVAccessorsData[0]) {
+		if (UVAccessorsData[0])
+		{
 			float uv[2];
 			cgltf_accessor_read_float(UVAccessorsData[0], VertexIndex, uv, 2);
 			Vertices[VertexIndex].UV0.x = uv[0];
 			Vertices[VertexIndex].UV0.y = uv[1];
 		}
 
-		if (UVAccessorsData[1]) {
+		if (UVAccessorsData[1])
+		{
 			float uv[2];
 			cgltf_accessor_read_float(UVAccessorsData[1], VertexIndex, uv, 2);
 			Vertices[VertexIndex].UV1.x = uv[0];
@@ -390,30 +421,37 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	UINT IndexBufferSize = IndexCount * sizeof(UINT16);
 	UINT IndexStride = sizeof(uint16_t);
 
-	if (IndexCount > 0) {
-		if (VertexCount > UINT16_MAX) {
+	if (IndexCount > 0)
+	{
+		if (VertexCount > UINT16_MAX)
+		{
 			IndexStride = sizeof(uint32_t);
 			IndexFormat = DXGI_FORMAT_R32_UINT;
 			IndexBufferSize = IndexCount * sizeof(UINT32);
 		}
 
 		Indices = M_ArenaAlloc(Arena, IndexStride * IndexCount);
-		if (Indices == NULL) {
+		if (Indices == NULL)
+		{
 			return;
 		}
 
-		for (size_t i = 0; i < IndexCount; i += 3) {
+		for (size_t i = 0; i < IndexCount; i += 3)
+		{
 			uint32_t i0, i1, i2;
 			cgltf_accessor_read_uint(IndicesAccessor, i, &i0, 1);
 			cgltf_accessor_read_uint(IndicesAccessor, i + 1, &i1, 1);
 			cgltf_accessor_read_uint(IndicesAccessor, i + 2, &i2, 1);
 
 			/* Corrections for left-hand system */
-			if (IndexStride == sizeof(uint16_t)) {
+			if (IndexStride == sizeof(uint16_t))
+			{
 				((uint16_t *)Indices)[i] = (uint16_t)i0;
 				((uint16_t *)Indices)[i + 1] = (uint16_t)i2;
 				((uint16_t *)Indices)[i + 2] = (uint16_t)i1;
-			} else {
+			}
+			else
+			{
 				((uint32_t *)Indices)[i] = i0;
 				((uint32_t *)Indices)[i + 1] = i2;
 				((uint32_t *)Indices)[i + 2] = i1;
@@ -433,7 +471,8 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	Renderer->CurrentVertexBufferOffset += VertexBufferSize;
 	Renderer->CurrentUploadBufferOffset += VertexBufferSize;
 
-	if (Indices != NULL) {
+	if (Indices != NULL)
+	{
 		/* Ensure alignment for both 2 and 4 bytes indices */
 		Renderer->CurrentUploadBufferOffset = ROUND_UP_POWER_OF_2(Renderer->CurrentUploadBufferOffset, 4);
 		Renderer->CurrentIndexBufferOffset = ROUND_UP_POWER_OF_2(Renderer->CurrentIndexBufferOffset, 4);
@@ -460,18 +499,21 @@ PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M
 	Model->Images = M_ArenaAlloc(UploadArena, Data->images_count * sizeof(R_Texture));
 	Model->ImagesCount = Data->images_count;
 
-	for (INT i = 0; i < Data->textures_count; ++i) {
+	for (INT i = 0; i < Data->textures_count; ++i)
+	{
 		INT ImageIndex;
 		ETextureFormat Format;
 		GetIndexAndFormatFromTexture(&Data->textures[i], Data->images, &ImageIndex, &Format);
 		cgltf_image *BaseImage = &Data->images[ImageIndex];
-		switch (Format) {
+		switch (Format)
+		{
 		case ETF_PNG: {
 			WCHAR BasePath[MAX_PATH];
 			wcscpy_s(BasePath, MAX_PATH, Path);
 			Win32RemoveAllAfterLastSlash(BasePath);
 
-			if (ExtractImageData(BasePath, BaseImage, UploadArena, &Model->Images[ImageIndex])) {
+			if (ExtractImageData(BasePath, BaseImage, UploadArena, &Model->Images[ImageIndex]))
+			{
 				Model->Images[ImageIndex].Name = CreateTextureName(UploadArena, BaseImage, Path, i);
 				Model->Images[ImageIndex].Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 			}
@@ -499,56 +541,65 @@ PreloadImages(R_Core *Renderer, R_Model *Model, cgltf_data *Data, PCWSTR Path, M
 
 _Success_(return)
 BOOL
-ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH],
-				 _In_ cgltf_image *Img,
-				 _In_ M_Arena *UploadArena,
-				 _Out_ R_Texture *Texture)
+ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_Arena *UploadArena, _Out_ R_Texture *Texture)
 {
-	if (Texture == NULL) {
+	if (Texture == NULL)
+	{
 		return FALSE;
 	}
 
 	unsigned char *StbiData = NULL;
 
-	if (Img->uri) {
-		if (IsDataEmbedded(Img)) {
+	if (Img->uri)
+	{
+		if (IsDataEmbedded(Img))
+		{
 			const char *FirstCommaPtr = strchr(Img->uri, ',');
-			if (FirstCommaPtr == NULL) {
+			if (FirstCommaPtr == NULL)
+			{
 				return FALSE;
 			}
 			const char *EncodedB64 = FirstCommaPtr + 1;
 			size_t EncLen = strlen(EncodedB64);
 			size_t DecodedMaxCap = (EncLen / 4) * 3 + 4;
 			stbi_uc *Decoded = M_ArenaAlloc(UploadArena, DecodedMaxCap);
-			if (Decoded == NULL) {
+			if (Decoded == NULL)
+			{
 				return FALSE;
 			}
 			b64_decode(EncodedB64, Decoded);
-			StbiData = stbi_load_from_memory(Decoded, (int)DecodedMaxCap, &Texture->Width, &Texture->Height,
-											 &Texture->Channels, 4);
-			if (StbiData == NULL) {
-				return FALSE;
-			}
-		} else {
-			char FullPath[MAX_PATH];
-			Win32AppendFileNameToPath(BasePath, Img->uri, FullPath);
-			StbiData = stbi_load(FullPath, &Texture->Width, &Texture->Height, &Texture->Channels, 4);
-			if (StbiData == NULL) {
+			StbiData =
+				stbi_load_from_memory(Decoded, (int)DecodedMaxCap, &Texture->Width, &Texture->Height, &Texture->Channels, 4);
+			if (StbiData == NULL)
+			{
 				return FALSE;
 			}
 		}
-	} else if (Img->buffer_view) {
+		else
+		{
+			char FullPath[MAX_PATH];
+			Win32AppendFileNameToPath(BasePath, Img->uri, FullPath);
+			StbiData = stbi_load(FullPath, &Texture->Width, &Texture->Height, &Texture->Channels, 4);
+			if (StbiData == NULL)
+			{
+				return FALSE;
+			}
+		}
+	}
+	else if (Img->buffer_view)
+	{
 		cgltf_buffer_view *BufferView = Img->buffer_view;
 		cgltf_buffer *Buffer = BufferView->buffer;
 		const UINT8 *Data = (const UINT8 *)Buffer->vertex_data + BufferView->offset;
-		StbiData = stbi_load_from_memory(Data, (int)BufferView->size, &Texture->Width, &Texture->Height,
-										 &Texture->Channels, 4);
-		if (StbiData == NULL) {
+		StbiData = stbi_load_from_memory(Data, (int)BufferView->size, &Texture->Width, &Texture->Height, &Texture->Channels, 4);
+		if (StbiData == NULL)
+		{
 			return FALSE;
 		}
 	}
 
-	if (StbiData == NULL) {
+	if (StbiData == NULL)
+	{
 		return FALSE;
 	}
 
@@ -576,7 +627,8 @@ LoadGLTFBuffer(_In_z_ PCWSTR FullPath,
 	wcscat_s(FullPathBuffer, MAX_PATH, BufferFileName);
 
 	FILE *file = _wfopen(FullPathBuffer, L"rb");
-	if (!file) {
+	if (!file)
+	{
 		return cgltf_result_file_not_found;
 	}
 
@@ -585,7 +637,8 @@ LoadGLTFBuffer(_In_z_ PCWSTR FullPath,
 	fseek(file, 0, SEEK_SET);
 
 	*Data = M_ArenaAlloc(Arena, *Size);
-	if (!*Data) {
+	if (!*Data)
+	{
 		fclose(file);
 		return cgltf_result_out_of_memory;
 	}
@@ -599,54 +652,69 @@ _Success_(return == cgltf_result_success)
 cgltf_result
 LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ cgltf_data *Data, _In_z_ PCWSTR Path)
 {
-	if (Options == NULL) {
+	if (Options == NULL)
+	{
 		return cgltf_result_invalid_options;
 	}
 
-	if (Data->buffers_count && Data->buffers[0].vertex_data == NULL && Data->buffers[0].uri == NULL && Data->bin) {
-		if (Data->bin_size < Data->buffers[0].size) {
+	if (Data->buffers_count && Data->buffers[0].vertex_data == NULL && Data->buffers[0].uri == NULL && Data->bin)
+	{
+		if (Data->bin_size < Data->buffers[0].size)
+		{
 			return cgltf_result_data_too_short;
 		}
 		Data->buffers[0].vertex_data = Data->bin;
 		Data->buffers[0].data_free_method = cgltf_data_free_method_none;
 	}
 
-	for (cgltf_size i = 0; i < Data->buffers_count; ++i) {
-		if (Data->buffers[i].vertex_data) {
+	for (cgltf_size i = 0; i < Data->buffers_count; ++i)
+	{
+		if (Data->buffers[i].vertex_data)
+		{
 			continue;
 		}
 
 		const char *Uri = Data->buffers[i].uri;
 
-		if (Uri == NULL) {
+		if (Uri == NULL)
+		{
 			continue;
 		}
 
-		if (strncmp(Uri, "data:", 5) == 0) {
+		if (strncmp(Uri, "data:", 5) == 0)
+		{
 			char *Comma = strrchr(Uri, ',');
 
-			if (Comma && Comma - Uri >= 7 && strncmp(Comma - 7, ";base64", 7) == 0) {
+			if (Comma && Comma - Uri >= 7 && strncmp(Comma - 7, ";base64", 7) == 0)
+			{
 				cgltf_result Result =
 					cgltf_load_buffer_base64(Options, Data->buffers[i].size, Comma + 1, &Data->buffers[i].vertex_data);
 				Data->buffers[i].data_free_method = cgltf_data_free_method_memory_free;
 
-				if (Result != cgltf_result_success) {
+				if (Result != cgltf_result_success)
+				{
 					return Result;
 				}
-			} else {
+			}
+			else
+			{
 				return cgltf_result_unknown_format;
 			}
-		} else if (strstr(Uri, "://") == NULL && Path) {
+		}
+		else if (strstr(Uri, "://") == NULL && Path)
+		{
 			WCHAR UriW[MAX_PATH];
 			UTF8_TO_W(Uri, UriW, MAX_PATH);
-			cgltf_result Result =
-				LoadGLTFBuffer(Path, UriW, Arena, &Data->buffers[i].size, &Data->buffers[i].vertex_data);
+			cgltf_result Result = LoadGLTFBuffer(Path, UriW, Arena, &Data->buffers[i].size, &Data->buffers[i].vertex_data);
 			Data->buffers[i].data_free_method = cgltf_data_free_method_file_release;
 
-			if (Result != cgltf_result_success) {
+			if (Result != cgltf_result_success)
+			{
 				return Result;
 			}
-		} else {
+		}
+		else
+		{
 			return cgltf_result_unknown_format;
 		}
 	}
@@ -659,7 +727,8 @@ LONG
 LoadGLTFFile(_In_z_ PCWSTR Path, _In_ M_Arena *Arena, _Outptr_ VOID **Data)
 {
 	FILE *FileHandle = _wfopen(Path, L"rb");
-	if (!FileHandle) {
+	if (!FileHandle)
+	{
 		return 0;
 	}
 
@@ -667,13 +736,15 @@ LoadGLTFFile(_In_z_ PCWSTR Path, _In_ M_Arena *Arena, _Outptr_ VOID **Data)
 	long Size = ftell(FileHandle);
 	fseek(FileHandle, 0, SEEK_SET);
 
-	if (Size <= 0) {
+	if (Size <= 0)
+	{
 		fclose(FileHandle);
 		return Size;
 	}
 
 	*Data = M_ArenaAlloc(Arena, Size);
-	if (!*Data) {
+	if (!*Data)
+	{
 		fclose(FileHandle);
 		return 0;
 	}
@@ -681,7 +752,8 @@ LoadGLTFFile(_In_z_ PCWSTR Path, _In_ M_Arena *Arena, _Outptr_ VOID **Data)
 	size_t ReadBytes = fread(*Data, 1, Size, FileHandle);
 	fclose(FileHandle);
 
-	if (ReadBytes != (size_t)Size) {
+	if (ReadBytes != (size_t)Size)
+	{
 		return 0;
 	}
 
@@ -698,11 +770,14 @@ PSTR
 CreateTextureName(M_Arena *UploadArena, cgltf_image *BaseImage, PCWSTR Path, int i)
 {
 	PWSTR UniqueNameW = M_ArenaAlloc(UploadArena, MAX_PATH * sizeof(WCHAR));
-	if (BaseImage->uri && !IsDataEmbedded(BaseImage)) {
+	if (BaseImage->uri && !IsDataEmbedded(BaseImage))
+	{
 		WCHAR UriW[MAX_PATH];
 		UTF8_TO_W(BaseImage->uri, UriW, MAX_PATH);
 		swprintf_s(UniqueNameW, MAX_PATH, L"%s_%d_%s", Path, i, UriW);
-	} else {
+	}
+	else
+	{
 		swprintf_s(UniqueNameW, MAX_PATH, L"%s_Internal_%d", Path, i);
 	}
 
@@ -713,11 +788,7 @@ CreateTextureName(M_Arena *UploadArena, cgltf_image *BaseImage, PCWSTR Path, int
 }
 
 VOID
-LoadPBRData(R_Core *Renderer,
-			R_Texture *const Images,
-			cgltf_image *ImagesData,
-			cgltf_material *Material,
-			R_PBRConstantBuffer *CB)
+LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, cgltf_material *Material, R_PBRConstantBuffer *CB)
 {
 	CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, NULL);
 	CB->NormalTextureIndex = R_GetTextureIndex(Renderer, NULL);
@@ -733,25 +804,29 @@ LoadPBRData(R_Core *Renderer,
 	CB->UVOffset = (XMFLOAT2){0.0f, 0.0f};
 	CB->UVRotation = 0.0f;
 
-	if (!Material) {
+	if (!Material)
+	{
 		return;
 	}
 
 	CB->AlphaCutoff = Material->alpha_cutoff;
 
-	if (Material->has_pbr_metallic_roughness) {
+	if (Material->has_pbr_metallic_roughness)
+	{
 		cgltf_pbr_metallic_roughness *MetallicRoughness = &Material->pbr_metallic_roughness;
 
 		memcpy(&CB->BaseColorFactor, MetallicRoughness->base_color_factor, sizeof(FLOAT) * 4);
 		CB->MetallicFactor = MetallicRoughness->metallic_factor;
 		CB->RoughnessFactor = MetallicRoughness->roughness_factor;
 
-		if (MetallicRoughness->base_color_texture.texture) {
+		if (MetallicRoughness->base_color_texture.texture)
+		{
 			INT Index = 0;
 			GetIndexAndFormatFromTexture(MetallicRoughness->base_color_texture.texture, ImagesData, &Index, NULL);
 			CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
 
-			if (MetallicRoughness->base_color_texture.has_transform) {
+			if (MetallicRoughness->base_color_texture.has_transform)
+			{
 				cgltf_texture_transform *Transform = &MetallicRoughness->base_color_texture.transform;
 				CB->UVScale = (XMFLOAT2){Transform->scale[0], Transform->scale[1]};
 				CB->UVOffset = (XMFLOAT2){Transform->offset[0], Transform->offset[1]};
@@ -759,13 +834,15 @@ LoadPBRData(R_Core *Renderer,
 			}
 		}
 
-		if (MetallicRoughness->metallic_roughness_texture.texture) {
+		if (MetallicRoughness->metallic_roughness_texture.texture)
+		{
 			INT Index = 0;
-			GetIndexAndFormatFromTexture(MetallicRoughness->metallic_roughness_texture.texture, ImagesData, &Index,
-										 NULL);
+			GetIndexAndFormatFromTexture(MetallicRoughness->metallic_roughness_texture.texture, ImagesData, &Index, NULL);
 			CB->MetalRoughTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
 		}
-	} else if (Material->has_pbr_specular_glossiness) {
+	}
+	else if (Material->has_pbr_specular_glossiness)
+	{
 		cgltf_pbr_specular_glossiness *SpecularGlossiness = &Material->pbr_specular_glossiness;
 		memcpy(&CB->BaseColorFactor, SpecularGlossiness->diffuse_factor, sizeof(float) * 4);
 		CB->MetallicFactor = (SpecularGlossiness->specular_factor[0] + SpecularGlossiness->specular_factor[1] +
@@ -773,18 +850,22 @@ LoadPBRData(R_Core *Renderer,
 							 3.0f;
 		CB->RoughnessFactor = 1.0f - SpecularGlossiness->glossiness_factor;
 
-		if (SpecularGlossiness->diffuse_texture.texture) {
+		if (SpecularGlossiness->diffuse_texture.texture)
+		{
 			INT Index = 0;
 			GetIndexAndFormatFromTexture(SpecularGlossiness->diffuse_texture.texture, ImagesData, &Index, NULL);
 			CB->AlbedoTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
 		}
 	}
 
-	if (Material->normal_texture.texture) {
+	if (Material->normal_texture.texture)
+	{
 		INT Index = 0;
 		GetIndexAndFormatFromTexture(Material->normal_texture.texture, ImagesData, &Index, NULL);
 		CB->NormalTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
-	} else {
+	}
+	else
+	{
 		// When the shader does sample * 2.0 - 1.0, this color becomes (0, 0, 1).
 		// In getNormalFromMap, multiplying by the TBN matrix with (0, 0, 1) returns the original vertex
 		const UINT8 NoEffectNormal[] = {128, 128, 255, 255};
@@ -796,20 +877,23 @@ LoadPBRData(R_Core *Renderer,
 																		  .Format = DXGI_FORMAT_R8G8B8A8_UNORM});
 	}
 
-	if (Material->occlusion_texture.texture) {
+	if (Material->occlusion_texture.texture)
+	{
 		INT Index = 0;
 		GetIndexAndFormatFromTexture(Material->occlusion_texture.texture, ImagesData, &Index, NULL);
 		CB->OcclusionTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
 	}
 
 	memcpy(&CB->EmissiveFactor, Material->emissive_factor, sizeof(FLOAT) * 3);
-	if (Material->emissive_texture.texture) {
+	if (Material->emissive_texture.texture)
+	{
 		INT Index = 0;
 		GetIndexAndFormatFromTexture(Material->emissive_texture.texture, ImagesData, &Index, NULL);
 		CB->EmissiveTextureIndex = R_GetTextureIndex(Renderer, &Images[Index]);
 	}
 
-	if (Material->has_transmission) {
+	if (Material->has_transmission)
+	{
 		float transmission = Material->transmission.transmission_factor;
 		CB->BaseColorFactor.w *= (1.0f - transmission);
 	}
@@ -829,7 +913,8 @@ ComputeTangents(cgltf_accessor *PositionAccessor,
 	XMFLOAT3 *Tan2 = M_ArenaAlloc(Arena, VertexCount * sizeof(XMFLOAT3));
 	XMFLOAT4 *FinalTangents = M_ArenaAlloc(Arena, VertexCount * sizeof(XMFLOAT4));
 
-	for (size_t i = 0; i < IndicesAccessor->count; i += 3) {
+	for (size_t i = 0; i < IndicesAccessor->count; i += 3)
+	{
 		uint32_t i1 = (uint32_t)cgltf_accessor_read_index(IndicesAccessor, i);
 		uint32_t i2 = (uint32_t)cgltf_accessor_read_index(IndicesAccessor, i + 1);
 		uint32_t i3 = (uint32_t)cgltf_accessor_read_index(IndicesAccessor, i + 2);
@@ -871,7 +956,8 @@ ComputeTangents(cgltf_accessor *PositionAccessor,
 		Tan2[i3] = (XMFLOAT3){Tan2[i3].x + tdir.x, Tan2[i3].y + tdir.y, Tan2[i3].z + tdir.z};
 	}
 
-	for (size_t i = 0; i < VertexCount; i++) {
+	for (size_t i = 0; i < VertexCount; i++)
+	{
 		XMFLOAT3 N;
 		cgltf_accessor_read_float(NormalAccessor, i, &N.x, 3);
 
@@ -899,20 +985,26 @@ ComputeTangents(cgltf_accessor *PositionAccessor,
 VOID
 GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Image, int *OutIndex, ETextureFormat *OutFormat)
 {
-	if (!Texture || !Image) {
+	if (!Texture || !Image)
+	{
 		return;
 	}
 
-	for (cgltf_size i = 0; i < Texture->extensions_count; ++i) {
-		if (strcmp(Texture->extensions[i].name, "MSFT_texture_dds") == 0) {
+	for (cgltf_size i = 0; i < Texture->extensions_count; ++i)
+	{
+		if (strcmp(Texture->extensions[i].name, "MSFT_texture_dds") == 0)
+		{
 			// MSFT_texture_dds data contains the index of the DDS image
 			// Structure is usually {"source": <image_index>}
 			const PSTR pSource = strstr(Texture->extensions[i].vertex_data, "\"source\":");
-			if (pSource) {
-				if (OutIndex) {
+			if (pSource)
+			{
+				if (OutIndex)
+				{
 					*OutIndex = atoi(pSource + 9);
 				}
-				if (OutFormat) {
+				if (OutFormat)
+				{
 					*OutFormat = ETF_DDS;
 				}
 				return;
@@ -920,10 +1012,12 @@ GetIndexAndFormatFromTexture(cgltf_texture *Texture, cgltf_image *Image, int *Ou
 		}
 	}
 
-	if (OutIndex) {
+	if (OutIndex)
+	{
 		*OutIndex = (INT)(Texture->image - Image);
 	}
-	if (OutFormat) {
+	if (OutFormat)
+	{
 		*OutFormat = ETF_PNG;
 	}
 }

@@ -14,22 +14,27 @@ UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State)
 {
 	const FLOAT BarHeight = UI->Height * BAR_HEIGHT_PERCENTAGE;
 	UI_EAction Action = UI_ACTION_NONE;
-	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, UI->Width, BarHeight), NK_WINDOW_NO_SCROLLBAR)) {
+	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, UI->Width, BarHeight), NK_WINDOW_NO_SCROLLBAR))
+	{
 		nk_layout_row_dynamic(UI->Context, BarHeight * BUTTON_LAOYUT_PERCENTAGE, LAYOUT_ROW_COLS);
-		if (nk_button_label_styled(UI->Context, &UI->Context->style.contextual_button, "File")) {
+		if (nk_button_label_styled(UI->Context, &UI->Context->style.contextual_button, "File"))
+		{
 			Action = UI_ACTION_FILE_OPEN;
 		}
-		if (nk_button_label_styled(UI->Context, &UI->Context->style.contextual_button, "Info")) {
+		if (nk_button_label_styled(UI->Context, &UI->Context->style.contextual_button, "Info"))
+		{
 			State->ShowInfo = !State->ShowInfo;
 			Action = UI_ACTION_NONE;
 		}
-		if (nk_button_label_styled(UI->Context, &UI->Context->style.contextual_button, "Cubemap")) {
+		if (nk_button_label_styled(UI->Context, &UI->Context->style.contextual_button, "Cubemap"))
+		{
 			Action = UI_ACTION_CUBEMAP_OPEN;
 		}
 	}
 	nk_end(UI->Context);
 
-	if (State->ShowInfo) {
+	if (State->ShowInfo)
+	{
 		InfoPopup(UI, State);
 	}
 
@@ -39,7 +44,8 @@ UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State)
 VOID
 InfoPopup(UI_Renderer *UI, UI_TopBarState *State)
 {
-	if (!State->ShowInfo) {
+	if (!State->ShowInfo)
+	{
 		return;
 	}
 
@@ -48,7 +54,9 @@ InfoPopup(UI_Renderer *UI, UI_TopBarState *State)
 
 	struct nk_rect InfoRect = nk_rect(UI->Width * 0.5f - 225, UI->Height * 0.5f - 150, 450, 300);
 
-	if (nk_begin(UI->Context, "Renderer Info", InfoRect, NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_CLOSABLE | NK_WINDOW_TITLE)) {
+	if (nk_begin(UI->Context, "Renderer Info", InfoRect,
+				 NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_CLOSABLE | NK_WINDOW_TITLE))
+	{
 		nk_layout_row_dynamic(UI->Context, 20, 1);
 		nk_label(UI->Context, "HARDWARE", NK_TEXT_LEFT);
 		DXGI_ADAPTER_DESC1 Desc = {0};
@@ -84,7 +92,9 @@ InfoPopup(UI_Renderer *UI, UI_TopBarState *State)
 		nk_layout_row_dynamic(UI->Context, 30, 1);
 		if (nk_button_label(UI->Context, "Close"))
 			State->ShowInfo = false;
-	} else {
+	}
+	else
+	{
 		State->ShowInfo = false;
 	}
 	nk_end(UI->Context);

@@ -8,7 +8,8 @@
 
 #define COLOR_DISABLED nk_rgba(100, 100, 100, 255)
 
-typedef enum {
+typedef enum
+{
 	UI_ACTION_NONE = 0,
 	UI_ACTION_FILE_OPEN,
 	UI_ACTION_CUBEMAP_OPEN,
@@ -17,4 +18,10 @@ typedef enum {
 	N_UI_ACTIONS
 } UI_EAction;
 
-typedef enum { UI_EUT_WIREFRAME, UI_EUT_CAMERA, UI_EUT_GRID, UI_EUT_NUM_USER_TEXTURES } UI_EUserTextures;
+typedef enum
+{
+	UI_EUT_WIREFRAME,
+	UI_EUT_CAMERA,
+	UI_EUT_GRID,
+	UI_EUT_NUM_USER_TEXTURES
+} UI_EUserTextures;

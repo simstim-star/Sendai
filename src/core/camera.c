@@ -41,16 +41,20 @@ R_CameraUpdate(R_Camera *Camera, FLOAT ElapsedSeconds)
 {
 	FLOAT RotateDelta = Camera->TurnSpeed * ElapsedSeconds;
 
-	if (Camera->KeysPressed.LeftArrow) {
+	if (Camera->KeysPressed.LeftArrow)
+	{
 		Camera->Yaw -= RotateDelta;
 	}
-	if (Camera->KeysPressed.RightArrow) {
+	if (Camera->KeysPressed.RightArrow)
+	{
 		Camera->Yaw += RotateDelta;
 	}
-	if (Camera->KeysPressed.UpArrow) {
+	if (Camera->KeysPressed.UpArrow)
+	{
 		Camera->Pitch += RotateDelta;
 	}
-	if (Camera->KeysPressed.DownArrow) {
+	if (Camera->KeysPressed.DownArrow)
+	{
 		Camera->Pitch -= RotateDelta;
 	}
 
@@ -77,18 +81,22 @@ R_CameraUpdate(R_Camera *Camera, FLOAT ElapsedSeconds)
 	// Process input, which can be [-1,0,1] and will be applied to the direction we want to move
 	{
 		FLOAT RightInput = 0.f;
-		if (Camera->KeysPressed.A) {
+		if (Camera->KeysPressed.A)
+		{
 			RightInput += 1.0f;
 		}
-		if (Camera->KeysPressed.D) {
+		if (Camera->KeysPressed.D)
+		{
 			RightInput -= 1.0f;
 		}
 
 		FLOAT ForwardInput = 0.f;
-		if (Camera->KeysPressed.W) {
+		if (Camera->KeysPressed.W)
+		{
 			ForwardInput += 1.0f;
 		}
-		if (Camera->KeysPressed.S) {
+		if (Camera->KeysPressed.S)
+		{
 			ForwardInput -= 1.0f;
 		}
 
@@ -99,7 +107,8 @@ R_CameraUpdate(R_Camera *Camera, FLOAT ElapsedSeconds)
 	}
 
 	XMVECTOR Zero = XMVectorZero();
-	if (!XM_VEC3_EQ(Movement, Zero)) {
+	if (!XM_VEC3_EQ(Movement, Zero))
+	{
 		Movement = XM_VEC3_NORM(Movement);
 		Movement = XM_VEC_SCALE(Movement, Camera->SpeedEnhance * Camera->MoveSpeed * ElapsedSeconds);
 
@@ -130,7 +139,8 @@ R_CameraProjectionMatrix(FLOAT FOV, FLOAT AspectRatio, FLOAT NearPlane, FLOAT Fa
 VOID
 R_CameraOnKeyDown(R_Camera *Camera, WPARAM Key)
 {
-	switch (Key) {
+	switch (Key)
+	{
 	case 'W':
 		Camera->KeysPressed.W = TRUE;
 		break;
@@ -167,7 +177,8 @@ R_CameraOnKeyDown(R_Camera *Camera, WPARAM Key)
 VOID
 R_CameraOnKeyUp(R_Camera *Camera, WPARAM Key)
 {
-	switch (Key) {
+	switch (Key)
+	{
 	case 'W':
 		Camera->KeysPressed.W = FALSE;
 		break;

@@ -2,7 +2,8 @@
 
 #include "DirectXMathC.h"
 
-typedef struct BillboardVertex {
+typedef struct BillboardVertex
+{
 	XMFLOAT3 Position;
 	XMFLOAT2 UV;
 } BillboardVertex;

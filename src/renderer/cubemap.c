@@ -67,8 +67,9 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 	  .Color[2] = CUBEMAP_CLEAR_COLOR[2],
 	  .Color[3] = CUBEMAP_CLEAR_COLOR[3],
 	};
-	HRESULT hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &DefaultHeapProperties, D3D12_HEAP_FLAG_NONE, &TextureDesc,
-													  D3D12_RESOURCE_STATE_COPY_DEST, &OptimizedClear, &IID_ID3D12Resource, &Cubemap->Resource);
+	HRESULT hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &DefaultHeapProperties, D3D12_HEAP_FLAG_NONE,
+													  &TextureDesc, D3D12_RESOURCE_STATE_COPY_DEST, &OptimizedClear,
+													  &IID_ID3D12Resource, &Cubemap->Resource);
 	ExitIfFailed(hr);
 
 	D3D12_DESCRIPTOR_HEAP_DESC RTVHeapDesc = {0};
@@ -77,12 +78,11 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 	hr = ID3D12Device_CreateDescriptorHeap(Renderer->Device, &RTVHeapDesc, &IID_ID3D12DescriptorHeap, &Cubemap->DescriptorHeap);
 	ExitIfFailed(hr);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE RTVHeapHandle;
-	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Cubemap->DescriptorHeap, &RTVHeapHandle);
 	Cubemap->RTVDescriptorSize = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 	/* Create each RTV on the RTV Heap */
-	for (INT Face = 0; Face < N_CUBE_FACES; Face++) {
+	for (INT Face = 0; Face < N_CUBE_FACES; Face++)
+	{
 		D3D12_RENDER_TARGET_VIEW_DESC RTVDesc = {
 		  .Format = TextureDesc.Format,
 		  .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY,
@@ -90,12 +90,14 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 		  .Texture2DArray.FirstArraySlice = Face,
 		  .Texture2DArray.ArraySize = 1,
 		};
+		D3D12_CPU_DESCRIPTOR_HANDLE RTVHeapHandle =
+			M_CpuDescriptorHandle(Cubemap->DescriptorHeap, Face * Cubemap->RTVDescriptorSize);
 		ID3D12Device_CreateRenderTargetView(Renderer->Device, Cubemap->Resource, &RTVDesc, RTVHeapHandle);
-		RTVHeapHandle.ptr += Cubemap->RTVDescriptorSize;
 	}
 
 	XMVECTOR EyePosition = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-	for (INT Face = 0; Face < N_CUBE_FACES; Face++) {
+	for (INT Face = 0; Face < N_CUBE_FACES; Face++)
+	{
 		XMVECTOR TargetDirection = XMLoadFloat3(&LOOK_AT_CUBE_FACES[Face]);
 		XMVECTOR UpDirection = XMLoadFloat3(&UP_DIRECTION_CUBE_FACES[Face]);
 		Cubemap->ViewMatrices[Face] = XM_MAT_LOOK_AT_LH(EyePosition, TargetDirection, UpDirection);
@@ -107,13 +109,15 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 	D3D12_RESOURCE_DESC CBDesc = CD3DX12_RESOURCE_DESC_BUFFER(CBSize, D3D12_RESOURCE_FLAG_NONE, 0);
 
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &CBDesc,
-											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Cubemap->ConstantBufferUploadHeap);
+											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
+											  &Cubemap->ConstantBufferUploadHeap);
 
 	ID3D12Resource_Map(Cubemap->ConstantBufferUploadHeap, 0, NULL, (VOID **)&Cubemap->MappedCBVData);
 	D3D12_HEAP_PROPERTIES UploadHeap = {.Type = D3D12_HEAP_TYPE_UPLOAD};
 	D3D12_RESOURCE_DESC VertexBufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(CUBEMAP_VERTICES), D3D12_RESOURCE_FLAG_NONE, 0);
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeap, D3D12_HEAP_FLAG_NONE, &VertexBufferDesc,
-											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Cubemap->VertexBuffer);
+											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
+											  &Cubemap->VertexBuffer);
 	ExitIfFailed(hr);
 
 	UINT8 *pVertexData;
@@ -122,8 +126,9 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 	ID3D12Resource_Unmap(Cubemap->VertexBuffer, 0, NULL);
 
 	D3D12_RESOURCE_DESC IndexBufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(sizeof(CUBEMAP_INDICES), D3D12_RESOURCE_FLAG_NONE, 0);
-	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeap, D3D12_HEAP_FLAG_NONE, &IndexBufferDesc,
-											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Cubemap->IndexBuffer);
+	hr =
+		ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeap, D3D12_HEAP_FLAG_NONE, &IndexBufferDesc,
+											 D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Cubemap->IndexBuffer);
 
 	UINT8 *pIndexData;
 	ID3D12Resource_Map(Cubemap->IndexBuffer, 0, NULL, (VOID **)&pIndexData);
@@ -145,17 +150,21 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 													  .TextureCube.MostDetailedMip = 0,
 													  .TextureCube.ResourceMinLODClamp = 0.0f};
 	UINT SlotIndex = Renderer->TexturesCount++;
-	D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle;
-	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &CpuHandle);
-	CpuHandle.ptr += (SIZE_T)SlotIndex * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
+	D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle = M_CpuDescriptorHandle(
+		Renderer->TexturesHeap,
+		(SIZE_T)SlotIndex * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]);
 	ID3D12Device_CreateShaderResourceView(Renderer->Device, Cubemap->Resource, &CubemapSrvDesc, CpuHandle);
 	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &Cubemap->GpuSrvHandle);
-	Cubemap->GpuSrvHandle.ptr += (SIZE_T)SlotIndex * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
+	Cubemap->GpuSrvHandle.ptr +=
+		(SIZE_T)SlotIndex * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
 }
 
 VOID
-R_DrawToCubemapFaces(
-	R_Core *Renderer, R_Cubemap *Target, ID3D12PipelineState *PSO, ID3D12RootSignature *RootSign, D3D12_GPU_DESCRIPTOR_HANDLE SourceSRV)
+R_DrawToCubemapFaces(R_Core *Renderer,
+					 R_Cubemap *Target,
+					 ID3D12PipelineState *PSO,
+					 ID3D12RootSignature *RootSign,
+					 D3D12_GPU_DESCRIPTOR_HANDLE SourceSRV)
 {
 	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
 									  .Transition = {
@@ -179,7 +188,8 @@ R_DrawToCubemapFaces(
 	ID3D12GraphicsCommandList_SetDescriptorHeaps(Renderer->CommandList, 1, Heaps);
 	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, SourceSRV);
 
-	struct {
+	struct
+	{
 		XMMATRIX View;
 		XMMATRIX Proj;
 	} CB;
@@ -187,10 +197,9 @@ R_DrawToCubemapFaces(
 	UINT64 Alignment = CB_ALIGN(sizeof(CB));
 	D3D12_GPU_VIRTUAL_ADDRESS CBGpuBase = ID3D12Resource_GetGPUVirtualAddress(Target->ConstantBufferUploadHeap);
 
-	for (int Face = 0; Face < N_CUBE_FACES; Face++) {
-		D3D12_CPU_DESCRIPTOR_HANDLE RtvHandle;
-		ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Target->DescriptorHeap, &RtvHandle);
-		RtvHandle.ptr += (Face * Target->RTVDescriptorSize);
+	for (int Face = 0; Face < N_CUBE_FACES; Face++)
+	{
+		D3D12_CPU_DESCRIPTOR_HANDLE RtvHandle = M_CpuDescriptorHandle(Target->DescriptorHeap, Face * Target->RTVDescriptorSize);
 
 		ID3D12GraphicsCommandList_OMSetRenderTargets(Renderer->CommandList, 1, &RtvHandle, FALSE, NULL);
 		ID3D12GraphicsCommandList_ClearRenderTargetView(Renderer->CommandList, RtvHandle, CUBEMAP_CLEAR_COLOR, 0, NULL);
@@ -210,7 +219,8 @@ R_DrawToCubemapFaces(
 VOID
 R_DrawSkybox(R_Core *Renderer, XMMATRIX View, XMMATRIX Proj)
 {
-	struct {
+	struct
+	{
 		XMMATRIX View;
 		XMMATRIX Proj;
 	} SkyboxCB;

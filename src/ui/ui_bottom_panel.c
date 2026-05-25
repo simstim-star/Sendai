@@ -1,7 +1,7 @@
 #include "core/pch.h"
 
-#include "ui_bottom_panel.h"
 #include "ui.h"
+#include "ui_bottom_panel.h"
 
 #include "core/log.h"
 #include "core/scene.h"
@@ -23,9 +23,15 @@ static const FLOAT TAB_WIDTH = 80.0f;
 	Forward declaration of private functions
 *****************************************************/
 
-static VOID BottomPanelDraggingArea(struct nk_context *Ctx, const FLOAT HandleHeight, UI_Renderer *UI, UI_BottomPanelState *State);
+static VOID BottomPanelDraggingArea(struct nk_context *Ctx,
+									const FLOAT HandleHeight,
+									UI_Renderer *UI,
+									UI_BottomPanelState *State);
 static VOID BottomPanelTabArea(struct nk_context *Ctx, const FLOAT TabBarHeight, UI_BottomPanelState *State);
-static VOID BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const FLOAT HandleHeight, const FLOAT TabBarHeight);
+static VOID BottomPanelContentArea(struct nk_context *Ctx,
+								   UI_BottomPanelState *State,
+								   const FLOAT HandleHeight,
+								   const FLOAT TabBarHeight);
 static VOID BottomBarInfoArea(struct nk_context *Ctx, UI_Renderer *UI, const FLOAT InfoBarHeight, UI_BottomPanelState *State);
 
 /****************************************************
@@ -42,7 +48,8 @@ UI_DrawBottomPanel(UI_Renderer *UI, UI_BottomPanelState *State)
 	FLOAT MaxAvailableHeight = UI->Height - INFO_BAR_HEIGHT;
 	struct nk_rect BarRect = nk_rect(0.0f, MaxAvailableHeight - State->BottomPanelHeight, UI->Width, State->BottomPanelHeight);
 
-	if (nk_begin(Ctx, "BottomBar", BarRect, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
+	if (nk_begin(Ctx, "BottomBar", BarRect, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND))
+	{
 		BottomPanelDraggingArea(Ctx, HANDLE_HEIGHT, UI, State);
 		BottomPanelTabArea(Ctx, TAB_BAR_HEIGHT, State);
 		BottomPanelContentArea(Ctx, State, HANDLE_HEIGHT, TAB_BAR_HEIGHT);
@@ -73,12 +80,17 @@ BottomPanelDraggingArea(struct nk_context *Ctx, const FLOAT HandleHeight, UI_Ren
 	BOOL bIsHoveringHandle = nk_input_is_mouse_hovering_rect(&Ctx->input, Bounds);
 	State->bIsDraggingBottom = bIsMouseDown && (State->bIsDraggingBottom || bIsHoveringHandle);
 
-	if (State->bIsDraggingBottom) {
+	if (State->bIsDraggingBottom)
+	{
 		State->BottomPanelHeight -= Ctx->input.mouse.delta.y;
 		nk_fill_rect(Canvas, Bounds, 0, nk_rgba(150, 150, 255, 255));
-	} else if (bIsHoveringHandle) {
+	}
+	else if (bIsHoveringHandle)
+	{
 		nk_fill_rect(Canvas, Bounds, 0, nk_rgba(100, 100, 120, 200));
-	} else {
+	}
+	else
+	{
 		struct nk_rect line = nk_rect(Bounds.x + Bounds.w / 2 - 20, Bounds.y + 2, 40, 2);
 		nk_fill_rect(Canvas, line, 1.0f, nk_rgba(60, 60, 60, 255));
 	}
@@ -94,17 +106,20 @@ BottomPanelTabArea(struct nk_context *Ctx, const FLOAT TabBarHeight, UI_BottomPa
 		struct nk_style_button TabStyle = Ctx->style.contextual_button;
 
 		TabStyle.normal = State->ActiveTab == EBBS_LOG_TAB ? Ctx->style.button.hover : Ctx->style.button.normal;
-		if (nk_button_label_styled(Ctx, &TabStyle, "Logs")) {
+		if (nk_button_label_styled(Ctx, &TabStyle, "Logs"))
+		{
 			State->ActiveTab = EBBS_LOG_TAB;
 		}
 
 		TabStyle.normal = State->ActiveTab == EBBS_SCENE_TAB ? Ctx->style.button.hover : Ctx->style.button.normal;
-		if (nk_button_label_styled(Ctx, &TabStyle, "Models")) {
+		if (nk_button_label_styled(Ctx, &TabStyle, "Models"))
+		{
 			State->ActiveTab = EBBS_SCENE_TAB;
 		}
 
 		TabStyle.normal = State->ActiveTab == EBBS_LIGHT_TAB ? Ctx->style.button.hover : Ctx->style.button.normal;
-		if (nk_button_label_styled(Ctx, &TabStyle, "Lights")) {
+		if (nk_button_label_styled(Ctx, &TabStyle, "Lights"))
+		{
 			State->ActiveTab = EBBS_LIGHT_TAB;
 		}
 	}
@@ -115,16 +130,20 @@ VOID
 BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const FLOAT HandleHeight, const FLOAT TabBarHeight)
 {
 	FLOAT ContentAreaHeight = State->BottomPanelHeight - (HandleHeight + TabBarHeight + 10.0f);
-	switch (State->ActiveTab) {
+	switch (State->ActiveTab)
+	{
 	case EBBS_LOG_TAB: {
 		nk_layout_row_dynamic(Ctx, fmaxf(10.0f, ContentAreaHeight), 1);
-		const nk_flags LogFlags = NK_EDIT_MULTILINE | NK_EDIT_READ_ONLY | NK_EDIT_ALWAYS_INSERT_MODE | NK_EDIT_GOTO_END_ON_ACTIVATE;
+		const nk_flags LogFlags =
+			NK_EDIT_MULTILINE | NK_EDIT_READ_ONLY | NK_EDIT_ALWAYS_INSERT_MODE | NK_EDIT_GOTO_END_ON_ACTIVATE;
 
-		INT RequiredBytes =
-			WideCharToMultiByte(CP_UTF8, 0, SENDAI_LOG.Buffer, SENDAI_LOG.Len, SENDAI_LOG.UTF8Buffer, sizeof(SENDAI_LOG.UTF8Buffer) - 1, NULL, NULL);
-		if (RequiredBytes >= 0) {
+		INT RequiredBytes = WideCharToMultiByte(CP_UTF8, 0, SENDAI_LOG.Buffer, SENDAI_LOG.Len, SENDAI_LOG.UTF8Buffer,
+												sizeof(SENDAI_LOG.UTF8Buffer) - 1, NULL, NULL);
+		if (RequiredBytes >= 0)
+		{
 			SENDAI_LOG.UTF8Buffer[RequiredBytes] = '\0';
-			nk_edit_string(Ctx, LogFlags, SENDAI_LOG.UTF8Buffer, &RequiredBytes, sizeof(SENDAI_LOG.UTF8Buffer), nk_filter_default);
+			nk_edit_string(Ctx, LogFlags, SENDAI_LOG.UTF8Buffer, &RequiredBytes, sizeof(SENDAI_LOG.UTF8Buffer),
+						   nk_filter_default);
 		}
 		break;
 	}
@@ -137,17 +156,20 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 		nk_layout_row_template_push_variable(Ctx, 100);
 		nk_layout_row_template_end(Ctx);
 
-		if (nk_group_begin(Ctx, "SceneTableGroup", NK_WINDOW_BORDER)) {
+		if (nk_group_begin(Ctx, "SceneTableGroup", NK_WINDOW_BORDER))
+		{
 			nk_layout_row_dynamic(Ctx, 22, 2);
 			nk_label(Ctx, "Name", NK_TEXT_LEFT);
 			nk_label(Ctx, "Visible", NK_TEXT_LEFT);
 
-			for (UINT i = 0; i < State->Scene->ModelsCount; i++) {
+			for (UINT i = 0; i < State->Scene->ModelsCount; i++)
+			{
 				R_Model *Model = &State->Scene->Models[i];
 				BOOL IsSelected = (State->SelectedModelIndex == i);
 
 				nk_layout_row_dynamic(Ctx, 20, 2);
-				if (nk_selectable_label(Ctx, Model->Name, NK_TEXT_LEFT, &IsSelected)) {
+				if (nk_selectable_label(Ctx, Model->Name, NK_TEXT_LEFT, &IsSelected))
+				{
 					State->SelectedModelIndex = i;
 				}
 				nk_checkbox_label(Ctx, "", &Model->Visible);
@@ -155,8 +177,10 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 			nk_group_end(Ctx);
 		}
 
-		if (nk_group_begin(Ctx, "InspectorGroup", NK_WINDOW_BORDER)) {
-			if (State->SelectedModelIndex >= 0 && State->SelectedModelIndex < State->Scene->ModelsCount) {
+		if (nk_group_begin(Ctx, "InspectorGroup", NK_WINDOW_BORDER))
+		{
+			if (State->SelectedModelIndex >= 0 && State->SelectedModelIndex < State->Scene->ModelsCount)
+			{
 				R_Model *SelModel = &State->Scene->Models[State->SelectedModelIndex];
 
 				nk_layout_row_dynamic(Ctx, 20, 3);
@@ -184,7 +208,9 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 				nk_property_float(Ctx, "#X:", 0.01f, &SelModel->Scale.x, 500.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Y:", 0.01f, &SelModel->Scale.y, 500.0f, 0.1f, 0.05f);
 				nk_property_float(Ctx, "#Z:", 0.01f, &SelModel->Scale.z, 500.0f, 0.1f, 0.05f);
-			} else {
+			}
+			else
+			{
 				nk_layout_row_dynamic(Ctx, 20, 1);
 				nk_label(Ctx, "No model selected", NK_TEXT_CENTERED);
 			}
@@ -202,30 +228,40 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 		nk_layout_row_template_push_variable(Ctx, 100);
 		nk_layout_row_template_end(Ctx);
 
-		if (nk_group_begin(Ctx, "LightTableGroup", NK_WINDOW_BORDER)) {
+		if (nk_group_begin(Ctx, "LightTableGroup", NK_WINDOW_BORDER))
+		{
 			nk_layout_row_dynamic(Ctx, 22, 2);
 			nk_label(Ctx, "Name", NK_TEXT_LEFT);
 			nk_label(Ctx, "Active", NK_TEXT_LEFT);
 
-			for (INT i = 0; i < PBR_MAX_LIGHT_NUMBER; i++) {
+			for (INT i = 0; i < PBR_MAX_LIGHT_NUMBER; i++)
+			{
 				BOOL IsSelected = (State->SelectedLightIndex == i);
 				CHAR AsStr[12];
 				sprintf_s(AsStr, sizeof(AsStr), "%d", i);
 				nk_layout_row_dynamic(Ctx, 20, 2);
 				BOOL IsActive = (State->Scene->ActiveLightMask >> i) & 1;
-				if (IsActive) {
-					if (nk_selectable_label(Ctx, AsStr, NK_TEXT_LEFT, &IsSelected)) {
+				if (IsActive)
+				{
+					if (nk_selectable_label(Ctx, AsStr, NK_TEXT_LEFT, &IsSelected))
+					{
 						State->SelectedLightIndex = i;
 					}
-				} else {
+				}
+				else
+				{
 					nk_style_push_color(Ctx, &Ctx->style.text.color, COLOR_DISABLED);
 					nk_label(Ctx, AsStr, NK_TEXT_LEFT);
 					nk_style_pop_color(Ctx);
 				}
-				if (nk_checkbox_label(Ctx, "", &IsActive)) {
-					if (IsActive) {
+				if (nk_checkbox_label(Ctx, "", &IsActive))
+				{
+					if (IsActive)
+					{
 						State->Scene->ActiveLightMask |= (1 << i);
-					} else {
+					}
+					else
+					{
 						State->Scene->ActiveLightMask &= ~(1 << i);
 					}
 				}
@@ -233,8 +269,10 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 			nk_group_end(Ctx);
 		}
 
-		if (nk_group_begin(Ctx, "InspectorGroup", NK_WINDOW_BORDER)) {
-			if (State->SelectedLightIndex >= 0 && State->SelectedLightIndex < PBR_MAX_LIGHT_NUMBER) {
+		if (nk_group_begin(Ctx, "InspectorGroup", NK_WINDOW_BORDER))
+		{
+			if (State->SelectedLightIndex >= 0 && State->SelectedLightIndex < PBR_MAX_LIGHT_NUMBER)
+			{
 				R_Light *SelectedLight = &State->Scene->Data.Lights[State->SelectedLightIndex];
 
 				nk_layout_row_dynamic(Ctx, 20, 1);
@@ -251,8 +289,9 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 				nk_property_float(Ctx, "#R:", 0.0f, &SelectedLight->LightColor.x, 5000.0f, 10.0f, 1.0f);
 				nk_property_float(Ctx, "#G:", 0.0f, &SelectedLight->LightColor.y, 5000.0f, 10.0f, 1.0f);
 				nk_property_float(Ctx, "#B:", 0.0f, &SelectedLight->LightColor.z, 5000.0f, 10.0f, 1.0f);
-
-			} else {
+			}
+			else
+			{
 				nk_layout_row_dynamic(Ctx, 20, 1);
 				nk_label(Ctx, "No model selected", NK_TEXT_CENTERED);
 			}
@@ -277,7 +316,8 @@ BottomBarInfoArea(struct nk_context *Ctx, UI_Renderer *UI, const FLOAT InfoBarHe
 	nk_style_push_color(Ctx, &Ctx->style.text.color, INFO_BAR_TEXT_COLOR);
 	struct nk_rect InfoRect = nk_rect(0, UI->Height - InfoBarHeight, UI->Width, InfoBarHeight);
 
-	if (nk_begin(Ctx, "InfoBar", InfoRect, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
+	if (nk_begin(Ctx, "InfoBar", InfoRect, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND))
+	{
 		nk_layout_row_begin(Ctx, NK_DYNAMIC, InfoBarHeight - 4, 2);
 		nk_layout_row_push(Ctx, 0.85f);
 		nk_label(Ctx, " Sendai Engine v0.1", NK_TEXT_LEFT);

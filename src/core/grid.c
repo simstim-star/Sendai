@@ -1,8 +1,8 @@
 #include "pch.h"
 
+#include "grid.h"
 #include "renderer/render_types.h"
 #include "renderer/renderer.h"
-#include "grid.h"
 
 #include <DirectXMathC.h>
 
@@ -15,7 +15,8 @@ R_CreateGrid(R_Core *const Renderer, const FLOAT HalfSide)
 	const INT LinesPerDirection = (GRID_VERTICES_COUNT / 4);
 	const FLOAT Step = (HalfSide * 2.0f) / (FLOAT)(LinesPerDirection - 1);
 
-	for (INT Line = 0; Line < LinesPerDirection; Line++) {
+	for (INT Line = 0; Line < LinesPerDirection; Line++)
+	{
 		FLOAT Position = -HalfSide + (Line * Step);
 		INT i = Line * 4;
 		GRID_VERTICES[i] = (XMFLOAT3){Position, 0.0f, -HalfSide};
@@ -39,8 +40,8 @@ R_DrawGrid(R_Core *const Renderer, R_MeshConstants *const MeshConstants)
 	MeshConstants->MVP.Model = XMMatrixIdentity();
 	memcpy(Renderer->MeshDataUploadBufferCpuAddress + Renderer->MeshDataOffset, MeshConstants, sizeof(R_MeshConstants));
 
-	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0,
-																M_GpuAddress(Renderer->MeshDataUploadBuffer, Renderer->MeshDataOffset));
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(
+		Renderer->CommandList, 0, M_GpuAddress(Renderer->MeshDataUploadBuffer, Renderer->MeshDataOffset));
 
 	D3D12_VERTEX_BUFFER_VIEW VBV = {
 	  .BufferLocation = Renderer->GridBufferLocation,

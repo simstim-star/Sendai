@@ -53,7 +53,8 @@ S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC Update)
 	StepTimer->QPCLastTime = CurrentTime;
 	StepTimer->QPCSecondCounter += Delta;
 	// Clamp excessively large time deltas (e.g. after paused in the debugger).
-	if (Delta > StepTimer->QPCMaxDelta) {
+	if (Delta > StepTimer->QPCMaxDelta)
+	{
 		Delta = StepTimer->QPCMaxDelta;
 	}
 	// Convert QPC units into a canonical tick format. This cannot overflow due to the previous clamp.
@@ -62,7 +63,8 @@ S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC Update)
 
 	UINT32 LastFrameCount = StepTimer->FrameCount;
 
-	if (StepTimer->bFixedTimeStep) {
+	if (StepTimer->bFixedTimeStep)
+	{
 		// Fixed timestep update logic
 
 		// If the app is running very close to the target elapsed time (within 1/4 of a millisecond) just clamp
@@ -71,7 +73,8 @@ S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC Update)
 		// fixed update, running with vsync enabled on a 59.94 NTSC display, would eventually
 		// accumulate enough tiny errors that it would drop a frame. It is better to just round
 		// small deviations down to zero to leave things running smoothly.
-		if (abs((INT)(Delta - StepTimer->TargetElapsedTicks)) < TICKS_PER_SECOND / 4000) {
+		if (abs((INT)(Delta - StepTimer->TargetElapsedTicks)) < TICKS_PER_SECOND / 4000)
+		{
 			Delta = StepTimer->TargetElapsedTicks;
 		}
 		// Add to the leftover. If the accumulated leftover passes a certain target, we will need to take some actions to
@@ -81,34 +84,42 @@ S_TickWithUpdateFn(S_StepTimer *StepTimer, LPUPDATEFUNC Update)
 		// This will be done every time the leftover reaches the target. In case it has reached the target exaclty, it will do
 		// what is expected: just step with the target. If it surpases, we will still step with target, but we will also register
 		// a leftover that will propagate to the next tick (this leftover will be the difference timeDelta - target)
-		while (StepTimer->LeftoverTicks >= StepTimer->TargetElapsedTicks) {
+		while (StepTimer->LeftoverTicks >= StepTimer->TargetElapsedTicks)
+		{
 			StepTimer->ElapsedTicks = StepTimer->TargetElapsedTicks;
 			StepTimer->TotalTicks += StepTimer->TargetElapsedTicks;
-			StepTimer->LeftoverTicks -= StepTimer->TargetElapsedTicks; // will be zero if st->leftOverTicks == st->targetElapsedTicks
+			StepTimer->LeftoverTicks -=
+				StepTimer->TargetElapsedTicks; // will be zero if st->leftOverTicks == st->targetElapsedTicks
 			StepTimer->FrameCount++;
 
-			if (Update) {
+			if (Update)
+			{
 				Update();
 			}
 		}
-	} else {
+	}
+	else
+	{
 		// Variable timestep update logic.
 		StepTimer->ElapsedTicks = Delta;
 		StepTimer->TotalTicks += Delta;
 		StepTimer->LeftoverTicks = 0;
 		StepTimer->FrameCount++;
 
-		if (Update) {
+		if (Update)
+		{
 			Update();
 		}
 	}
 
 	// Track the current framerate.
-	if (StepTimer->FrameCount != LastFrameCount) {
+	if (StepTimer->FrameCount != LastFrameCount)
+	{
 		StepTimer->FramesThisSecond++;
 	}
 
-	if (StepTimer->QPCSecondCounter >= (UINT64)(StepTimer->QPCFrequency.QuadPart)) {
+	if (StepTimer->QPCSecondCounter >= (UINT64)(StepTimer->QPCFrequency.QuadPart))
+	{
 		StepTimer->FramesPerSecond = StepTimer->FramesThisSecond;
 		StepTimer->FramesThisSecond = 0;
 		StepTimer->QPCSecondCounter %= StepTimer->QPCFrequency.QuadPart;

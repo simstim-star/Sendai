@@ -13,11 +13,13 @@ typedef struct R_Texture R_Texture;
 typedef struct TextureLookup TextureLookup;
 typedef struct R_Cubemap R_Cubemap;
 
-typedef enum EReservedSrvIndex {
+typedef enum EReservedSrvIndex
+{
 	ERSI_BILLBOARD_LAMP = 0,
 } EReservedSrvIndex;
 
-typedef enum ERenderState {
+typedef enum ERenderState
+{
 	ERS_GLTF,
 	ERS_GLTF_BLEND,
 	ERS_WIREFRAME,
@@ -29,14 +31,16 @@ typedef enum ERenderState {
 	ERS_N_RENDER_STATES
 } ERenderState;
 
-typedef struct R_UploadBuffer {
+typedef struct R_UploadBuffer
+{
 	ID3D12Resource *Buffer;
 	UINT8 *BaseMappedPtr;
 	UINT64 Size;
 	UINT64 CurrentOffset;
 } R_UploadBuffer;
 
-typedef struct R_Core {
+typedef struct R_Core
+{
 	HWND hWnd;
 	UINT Width;
 	UINT Height;

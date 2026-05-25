@@ -9,7 +9,8 @@ M_ArenaInit(size_t ReserveSize)
 	M_Arena Arena = {0};
 	Arena.Base = VirtualAlloc(NULL, ReserveSize, MEM_RESERVE, PAGE_READWRITE);
 
-	if (!Arena.Base) {
+	if (!Arena.Base)
+	{
 		ExitWithMessage("[ARENA] Failed to reserve virtual memory");
 	}
 
@@ -23,21 +24,25 @@ M_ArenaInit(size_t ReserveSize)
 VOID *
 M_ArenaAlloc(M_Arena *Arena, size_t Size)
 {
-	if (Size == 0) {
+	if (Size == 0)
+	{
 		return NULL;
 	}
 
 	size_t Position = ROUND_UP_POWER_OF_2(Arena->Offset, 8);
 	size_t End = Position + Size;
 
-	if (End > Arena->SizeReserved) {
+	if (End > Arena->SizeReserved)
+	{
 		ExitWithMessage("[ARENA] Arena overflow: Out of reserved virtual address space");
 		return NULL;
 	}
 
-	if (End > Arena->SizeCommitted) {
+	if (End > Arena->SizeCommitted)
+	{
 		size_t ToCommit = End - Arena->SizeCommitted;
-		if (!VirtualAlloc(Arena->Base + Arena->SizeCommitted, ToCommit, MEM_COMMIT, PAGE_READWRITE)) {
+		if (!VirtualAlloc(Arena->Base + Arena->SizeCommitted, ToCommit, MEM_COMMIT, PAGE_READWRITE))
+		{
 			ExitWithMessage("[ARENA] Failed to commit physical memory");
 			return NULL;
 		}
@@ -51,7 +56,8 @@ VOID
 M_ArenaReset(M_Arena *Arena)
 {
 	Arena->Offset = 0;
-	if (Arena->SizeCommitted > 0) {
+	if (Arena->SizeCommitted > 0)
+	{
 		VirtualAlloc(Arena->Base, Arena->SizeCommitted, MEM_RESET, PAGE_READWRITE);
 	}
 }
@@ -59,7 +65,8 @@ M_ArenaReset(M_Arena *Arena)
 VOID
 M_ArenaRelease(M_Arena *Arena)
 {
-	if (Arena->Base) {
+	if (Arena->Base)
+	{
 		VirtualFree(Arena->Base, 0, MEM_RELEASE);
 	}
 	Arena->Base = NULL;
@@ -70,3 +77,12 @@ M_ArenaRelease(M_Arena *Arena)
 
 D3D12_GPU_VIRTUAL_ADDRESS
 M_GpuAddress(ID3D12Resource *Resource, UINT64 Offset) { return ID3D12Resource_GetGPUVirtualAddress(Resource) + Offset; }
+
+D3D12_CPU_DESCRIPTOR_HANDLE
+M_CpuDescriptorHandle(ID3D12DescriptorHeap *DescHeap, SIZE_T Offset)
+{
+	D3D12_CPU_DESCRIPTOR_HANDLE CpuDescHandle;
+	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(DescHeap, &CpuDescHandle);
+	CpuDescHandle.ptr += Offset;
+	return CpuDescHandle;
+}

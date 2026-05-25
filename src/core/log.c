@@ -7,15 +7,18 @@ S_Log SENDAI_LOG = {.Buffer = {0}, .Len = 0};
 VOID
 S_LogAppend(PCWSTR Text)
 {
-	if (Text == NULL) {
+	if (Text == NULL)
+	{
 		return;
 	}
 
 	HRESULT hr = StringCchCatW(SENDAI_LOG.Buffer, LOG_CAPACITY, Text);
 
-	if (SUCCEEDED(hr) || hr == STRSAFE_E_INSUFFICIENT_BUFFER) {
+	if (SUCCEEDED(hr) || hr == STRSAFE_E_INSUFFICIENT_BUFFER)
+	{
 		size_t NewLen = 0;
-		if (SUCCEEDED(StringCchLengthW(SENDAI_LOG.Buffer, LOG_CAPACITY, &NewLen))) {
+		if (SUCCEEDED(StringCchLengthW(SENDAI_LOG.Buffer, LOG_CAPACITY, &NewLen)))
+		{
 			SENDAI_LOG.Len = (INT)NewLen;
 		}
 	}
@@ -24,7 +27,8 @@ S_LogAppend(PCWSTR Text)
 VOID
 S_LogAppendf(PCWSTR Format, ...)
 {
-	if (Format == NULL) {
+	if (Format == NULL)
+	{
 		return;
 	}
 
@@ -33,9 +37,11 @@ S_LogAppendf(PCWSTR Format, ...)
 	HRESULT hr = StringCchVPrintfW(SENDAI_LOG.Buffer + SENDAI_LOG.Len, LOG_CAPACITY - SENDAI_LOG.Len, Format, Args);
 	va_end(Args);
 
-	if (SUCCEEDED(hr) || hr == STRSAFE_E_INSUFFICIENT_BUFFER) {
+	if (SUCCEEDED(hr) || hr == STRSAFE_E_INSUFFICIENT_BUFFER)
+	{
 		size_t NewLen = 0;
-		if (SUCCEEDED(StringCchLengthW(SENDAI_LOG.Buffer, LOG_CAPACITY, &NewLen))) {
+		if (SUCCEEDED(StringCchLengthW(SENDAI_LOG.Buffer, LOG_CAPACITY, &NewLen)))
+		{
 			SENDAI_LOG.Len = (INT)NewLen;
 		}
 	}

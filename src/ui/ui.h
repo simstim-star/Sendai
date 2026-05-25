@@ -16,19 +16,22 @@ typedef struct ID3D12Resource ID3D12Resource;
 
 extern struct nk_image UI_TEXTURES[UI_EUT_NUM_USER_TEXTURES];
 
-typedef struct UI_Renderer {
+typedef struct UI_Renderer
+{
 	nk_context *Context;
 	UINT Width;
 	UINT Height;
 } UI_Renderer;
 
-typedef struct UI_State {
+typedef struct UI_State
+{
 	UI_TopBarState TopBar;
 	UI_BottomPanelState BottomBar;
 	UI_ToolBarState ToolBar;
 } UI_State;
 
-typedef struct S_UI {
+typedef struct S_UI
+{
 	UI_Renderer Renderer;
 	UI_State State;
 	VOID (*Action[N_UI_ACTIONS])(Sendai *const Engine);

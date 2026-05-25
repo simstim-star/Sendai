@@ -24,7 +24,8 @@
 #ifndef DDS_ALPHA_MODE_DEFINED
 #define DDS_ALPHA_MODE_DEFINED
 
-typedef enum DDS_ALPHA_MODE {
+typedef enum DDS_ALPHA_MODE
+{
 	DDS_ALPHA_MODE_UNKNOWN = 0,
 	DDS_ALPHA_MODE_STRAIGHT = 1,
 	DDS_ALPHA_MODE_PREMULTIPLIED = 2,
@@ -37,7 +38,8 @@ typedef enum DDS_ALPHA_MODE {
 #ifndef DDS_LOADER_FLAGS_DEFINED
 #define DDS_LOADER_FLAGS_DEFINED
 
-typedef enum DDS_LOADER_FLAGS {
+typedef enum DDS_LOADER_FLAGS
+{
 	DDS_LOADER_DEFAULT = 0,
 	DDS_LOADER_FORCE_SRGB = 0x1,
 	DDS_LOADER_IGNORE_SRGB = 0x2,
@@ -57,7 +59,6 @@ HRESULT __cdecl LoadDDSTextureFromMemory(_In_ ID3D12Device *d3dDevice,
 										 size_t maxsize,
 										 _Out_opt_ DDS_ALPHA_MODE *alphaMode,
 										 _Out_opt_ BOOL *isCubeMap);
-
 
 HRESULT __cdecl LoadDDSTextureFromMemoryEx(_In_ ID3D12Device *d3dDevice,
 										   _In_reads_bytes_(ddsDataSize) const UINT8 *ddsData,

@@ -2,7 +2,8 @@
 
 #define LOG_CAPACITY 100000
 
-typedef struct S_Log {
+typedef struct S_Log
+{
 	WCHAR Buffer[LOG_CAPACITY];
 	CHAR UTF8Buffer[LOG_CAPACITY * 3];
 	INT Len;

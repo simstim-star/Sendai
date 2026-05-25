@@ -31,8 +31,10 @@ R_LightsInit(S_Scene *const Scene, const R_Camera *const Camera)
 VOID
 R_UpdateLights(BYTE ActiveLightMask, const R_Light *const InLights, R_Light *const OutLights, UINT NumLights)
 {
-	for (UINT i = 0; i < NumLights; i++) {
-		if (IS_LIGHT_ACTIVE(ActiveLightMask, i)) {
+	for (UINT i = 0; i < NumLights; i++)
+	{
+		if (IS_LIGHT_ACTIVE(ActiveLightMask, i))
+		{
 			OutLights[i].LightColor = InLights[i].LightColor;
 			OutLights[i].LightPosition = InLights[i].LightPosition;
 		}
@@ -40,7 +42,10 @@ R_UpdateLights(BYTE ActiveLightMask, const R_Light *const InLights, R_Light *con
 }
 
 VOID
-R_DrawLightBillboards(R_Core *const Renderer, const R_Light *const Lights, BYTE ActiveLightMask, R_MeshConstants *const MeshConstants)
+R_DrawLightBillboards(R_Core *const Renderer,
+					  const R_Light *const Lights,
+					  BYTE ActiveLightMask,
+					  R_MeshConstants *const MeshConstants)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignBillboard);
 	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[ERS_BILLBOARD]);
@@ -48,11 +53,14 @@ R_DrawLightBillboards(R_Core *const Renderer, const R_Light *const Lights, BYTE 
 
 	D3D12_GPU_DESCRIPTOR_HANDLE LampTextureHandle;
 	ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(Renderer->TexturesHeap, &LampTextureHandle);
-	LampTextureHandle.ptr += (UINT64)ERSI_BILLBOARD_LAMP * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
+	LampTextureHandle.ptr +=
+		(UINT64)ERSI_BILLBOARD_LAMP * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
 	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 1, LampTextureHandle);
 
-	for (INT i = 0; i < PBR_MAX_LIGHT_NUMBER; ++i) {
-		if (ActiveLightMask & (1 << i)) {
+	for (INT i = 0; i < PBR_MAX_LIGHT_NUMBER; ++i)
+	{
+		if (ActiveLightMask & (1 << i))
+		{
 			XMVECTOR LightPos = XMLoadFloat3(&Lights[i].LightPosition);
 			MeshConstants->MVP.Model = XM_MAT_TRANSLATION_FROM_VEC(LightPos);
 			RenderLightBillboard(MeshConstants, Renderer, Lights[i].LightColor);
@@ -66,8 +74,8 @@ RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const R
 	const R_LightBillboardConstants CB = {.MVP = MeshConstants->MVP, .Tint = Tint};
 	memcpy(Renderer->MeshDataUploadBufferCpuAddress + Renderer->MeshDataOffset, &CB, sizeof(R_LightBillboardConstants));
 
-	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0,
-																M_GpuAddress(Renderer->MeshDataUploadBuffer, Renderer->MeshDataOffset));
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(
+		Renderer->CommandList, 0, M_GpuAddress(Renderer->MeshDataUploadBuffer, Renderer->MeshDataOffset));
 
 	D3D12_VERTEX_BUFFER_VIEW VBV = {
 	  .BufferLocation = Renderer->BillboardBufferLocation,

@@ -21,17 +21,20 @@ UI_DrawToolbar(UI_Renderer *UI, UI_ToolBarState *State)
 
 	nk_style_push_vec2(Ctx, &Ctx->style.window.padding, nk_vec2(5, 5));
 
-	if (nk_begin(Ctx, "Toolbar", WindowRect, NK_WINDOW_NO_SCROLLBAR)) {
+	if (nk_begin(Ctx, "Toolbar", WindowRect, NK_WINDOW_NO_SCROLLBAR))
+	{
 		nk_layout_row_begin(Ctx, NK_STATIC, BUTTON_SIZE - 10, TAB_COLS);
 		{
 			nk_layout_row_push(Ctx, BUTTON_SIZE - 10);
-			if (nk_button_image(Ctx, UI_TEXTURES[UI_EUT_WIREFRAME])) {
+			if (nk_button_image(Ctx, UI_TEXTURES[UI_EUT_WIREFRAME]))
+			{
 				Action = UI_ACTION_WIREFRAME_BUTTON_CLICKED;
 				State->Wireframe = !State->Wireframe;
 			}
 
 			nk_layout_row_push(Ctx, BUTTON_SIZE - 10);
-			if (nk_button_image(Ctx, UI_TEXTURES[UI_EUT_GRID])) {
+			if (nk_button_image(Ctx, UI_TEXTURES[UI_EUT_GRID]))
+			{
 				Action = UI_ACTION_GRID_BUTTON_CLICKED;
 				State->Grid = !State->Grid;
 			}

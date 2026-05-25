@@ -2,10 +2,11 @@
 
 #include "DirectXMathC.h"
 
-typedef struct R_Camera {
+typedef struct R_Camera
+{
 	XMFLOAT3 InitialPosition;
 	XMFLOAT3 Position;
-	FLOAT Yaw; 
+	FLOAT Yaw;
 	FLOAT Pitch;
 	XMFLOAT3 LookDirection;
 	XMFLOAT3 UpDirection;
@@ -13,7 +14,8 @@ typedef struct R_Camera {
 	FLOAT TurnSpeed; // radians per second
 	FLOAT SpeedEnhance;
 
-	struct {
+	struct
+	{
 		bool W;
 		bool A;
 		bool S;

@@ -1,12 +1,13 @@
 #pragma once
 
-#include "renderer/renderer.h"
-#include "ui/ui.h"
 #include "camera.h"
+#include "renderer/renderer.h"
 #include "scene.h"
 #include "timer.h"
+#include "ui/ui.h"
 
-typedef struct Sendai {
+typedef struct Sendai
+{
 	PWSTR Title;
 	PWSTR Window;
 	HINSTANCE hInstance;
@@ -14,7 +15,7 @@ typedef struct Sendai {
 	BOOL bRunning;
 
 	R_Core RendererCore;
-	
+
 	S_UI UI;
 	R_Camera Camera;
 	S_StepTimer Timer;

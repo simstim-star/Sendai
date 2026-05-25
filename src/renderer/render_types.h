@@ -2,7 +2,8 @@
 
 #include "DirectXMathC.h"
 
-typedef struct R_Vertex {
+typedef struct R_Vertex
+{
 	XMFLOAT3 Position;
 	XMFLOAT3 Normal;
 	XMFLOAT4 Tangent;
@@ -10,7 +11,8 @@ typedef struct R_Vertex {
 	XMFLOAT2 UV1;
 } R_Vertex;
 
-typedef struct R_PBRConstantBuffer {
+typedef struct R_PBRConstantBuffer
+{
 	XMFLOAT4 BaseColorFactor;
 
 	FLOAT MetallicFactor;
@@ -34,37 +36,43 @@ typedef struct R_PBRConstantBuffer {
 
 #define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 4
 
-typedef struct R_Light {
+typedef struct R_Light
+{
 	XMFLOAT3 LightPosition;
 	FLOAT Padding0;
 	XMFLOAT3 LightColor;
 	FLOAT Padding1;
 } R_Light;
 
-typedef struct R_SceneData {
+typedef struct R_SceneData
+{
 	R_Light Lights[7];
 
 	XMFLOAT3 CameraPosition;
 	FLOAT Padding0;
 } R_SceneData;
 
-typedef struct R_MVP {
+typedef struct R_MVP
+{
 	XMMATRIX Model;
 	XMMATRIX View;
 	XMMATRIX Proj;
 } R_MVP;
 
-typedef struct R_MeshConstants {
+typedef struct R_MeshConstants
+{
 	R_MVP MVP;
 	XMMATRIX Normal;
 } R_MeshConstants;
 
-typedef struct R_LightBillboardConstants {
+typedef struct R_LightBillboardConstants
+{
 	R_MVP MVP;
 	XMFLOAT3 Tint;
 } R_LightBillboardConstants;
 
-typedef struct R_Texture {
+typedef struct R_Texture
+{
 	INT Width;
 	INT Height;
 	INT Channels;
@@ -77,7 +85,8 @@ typedef struct R_Texture {
 	DXGI_FORMAT Format;
 } R_Texture;
 
-typedef struct R_Primitive {
+typedef struct R_Primitive
+{
 	D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
 
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView;
@@ -86,7 +95,8 @@ typedef struct R_Primitive {
 	R_PBRConstantBuffer ConstantBuffer;
 } R_Primitive;
 
-typedef struct R_Mesh {
+typedef struct R_Mesh
+{
 	R_Primitive *OpaquePrimitives;
 	size_t OpaquePrimitivesCount;
 
@@ -94,14 +104,16 @@ typedef struct R_Mesh {
 	size_t BlendedPrimitivesCount;
 } R_Mesh;
 
-typedef struct R_Node {
+typedef struct R_Node
+{
 	R_Mesh *Mesh;
 
 	// RH and Row-Major
 	XMFLOAT4X4 ModelMatrix;
 } R_Node;
 
-typedef struct R_Model {
+typedef struct R_Model
+{
 	PSTR Name;
 
 	R_Node *Nodes;

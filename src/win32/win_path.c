@@ -6,18 +6,21 @@
 VOID
 Win32CurrPath(_Out_writes_(PathSize) PWSTR const Path, UINT PathSize)
 {
-	if (Path == NULL) {
+	if (Path == NULL)
+	{
 		OutputDebugString(L"Assets path is NULL \n");
 		exit(EXIT_FAILURE);
 	}
 
 	DWORD Size = GetModuleFileNameW(NULL, Path, PathSize);
-	if (Size == 0 || Size == PathSize) {
+	if (Size == 0 || Size == PathSize)
+	{
 		exit(EXIT_FAILURE);
 	}
 
 	PWSTR LastSlash = wcsrchr(Path, L'\\');
-	if (LastSlash) {
+	if (LastSlash)
+	{
 		*(LastSlash + 1) = L'\0';
 	}
 }
@@ -27,7 +30,8 @@ Win32FullPath(PCWSTR SubPath, _Out_writes_(PathSize) PWSTR const Path, UINT Path
 {
 	Win32CurrPath(Path, PathSize);
 	HRESULT hr = StringCchCatW(Path, PathSize, SubPath);
-	if (FAILED(hr)) {
+	if (FAILED(hr))
+	{
 		exit(EXIT_FAILURE);
 	}
 }
@@ -35,7 +39,8 @@ Win32FullPath(PCWSTR SubPath, _Out_writes_(PathSize) PWSTR const Path, UINT Path
 VOID
 Win32GetFileNameOnly(PCWSTR FullPath, _Out_writes_(BufferSize) PWSTR const OutBuffer, UINT BufferSize)
 {
-	if (!FullPath || !OutBuffer || BufferSize == 0) {
+	if (!FullPath || !OutBuffer || BufferSize == 0)
+	{
 		return;
 	}
 
@@ -43,7 +48,8 @@ Win32GetFileNameOnly(PCWSTR FullPath, _Out_writes_(BufferSize) PWSTR const OutBu
 	PCWSTR FileNameStart = (LastSlash) ? (LastSlash + 1) : FullPath;
 	StringCchCopyW(OutBuffer, BufferSize, FileNameStart);
 	PWSTR LastDot = wcsrchr(OutBuffer, L'.');
-	if (LastDot) {
+	if (LastDot)
+	{
 		*LastDot = L'\0';
 	}
 }
@@ -56,7 +62,8 @@ Win32AppendFileNameToPath(_In_z_ PWSTR BasePathW, _In_z_ char *FileName, _Out_wr
 	strcpy_s(FullPath, MAX_PATH, BasePart);
 
 	size_t len = strlen(FullPath);
-	if (len > 0 && FullPath[len - 1] != '\\' && FullPath[len - 1] != '/') {
+	if (len > 0 && FullPath[len - 1] != '\\' && FullPath[len - 1] != '/')
+	{
 		strcat_s(FullPath, MAX_PATH, "\\");
 	}
 
@@ -70,9 +77,12 @@ Win32RemoveAllAfterLastSlash(_Inout_updates_z_(MAX_PATH) WCHAR FullPathBuffer[MA
 	PWSTR LastSlash = wcsrchr(FullPathBuffer, L'/');
 	PWSTR Separator = (LastDoubleSlash > LastSlash) ? LastDoubleSlash : LastSlash;
 
-	if (Separator) {
+	if (Separator)
+	{
 		*(Separator + 1) = L'\0'; // Null-terminate after the slash to keep the directory
-	} else {
+	}
+	else
+	{
 		FullPathBuffer[0] = L'\0'; // No slash found, file is in current working directory
 	}
 }

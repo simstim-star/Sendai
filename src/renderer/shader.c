@@ -5,11 +5,11 @@
 #include "core/log.h"
 #include "dx_helpers/desc_helpers.h"
 #include "error/error.h"
-#include "win32/win_path.h"
 #include "render_types.h"
 #include "renderer.h"
 #include "shader.h"
 #include "shaders/sendai/shader_defs.h"
+#include "win32/win_path.h"
 
 HRESULT
 R_CompileShader(PCWSTR FilePath, ID3DBlob **Blob, EShaderType ShaderType)
@@ -22,16 +22,20 @@ R_CompileShader(PCWSTR FilePath, ID3DBlob **Blob, EShaderType ShaderType)
 	ID3DBlob *ErrorBlob = NULL;
 	HRESULT hr = S_OK;
 
-	switch (ShaderType) {
+	switch (ShaderType)
+	{
 	case EST_VERTEX_SHADER:
-		hr = D3DCompileFromFile(FilePath, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_1", CompileFlags, 0, Blob, &ErrorBlob);
+		hr = D3DCompileFromFile(FilePath, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_1", CompileFlags, 0, Blob,
+								&ErrorBlob);
 		break;
 	case EST_PIXEL_SHADER:
-		hr = D3DCompileFromFile(FilePath, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_1", CompileFlags, 0, Blob, &ErrorBlob);
+		hr = D3DCompileFromFile(FilePath, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_1", CompileFlags, 0, Blob,
+								&ErrorBlob);
 		break;
 	}
 
-	if (ErrorBlob) {
+	if (ErrorBlob)
+	{
 		OutputDebugStringA(ID3D10Blob_GetBufferPointer(ErrorBlob));
 	}
 
@@ -83,7 +87,7 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	RootParameters[4].DescriptorTable.NumDescriptorRanges = 1;
 	RootParameters[4].DescriptorTable.pDescriptorRanges = &IrradianceRange;
 	RootParameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	
+
 	D3D12_STATIC_SAMPLER_DESC Sampler = {
 	  .Filter = D3D12_FILTER_ANISOTROPIC,
 	  .AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
@@ -93,7 +97,7 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	  .MaxAnisotropy = 16,
 	  .ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
 	  .BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK,
-	  .MinLOD = 0.0f,			   
+	  .MinLOD = 0.0f,
 	  .MaxLOD = D3D12_FLOAT32_MAX,
 	  .ShaderRegister = 0,
 	  .ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
@@ -111,15 +115,17 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	ID3DBlob *Error = NULL;
 	HRESULT hr = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &Error);
 
-	if (FAILED(hr)) {
-		if (Error) {
+	if (FAILED(hr))
+	{
+		if (Error)
+		{
 			S_LogAppend((PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}
 
-	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature),
-										  &IID_ID3D12RootSignature, &Renderer->RootSignPBR);
+	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature),
+										  ID3D10Blob_GetBufferSize(Signature), &IID_ID3D12RootSignature, &Renderer->RootSignPBR);
 	ExitIfFailed(hr);
 
 	WCHAR GLTFShadersPath[512];
@@ -132,15 +138,18 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	ExitIfFailed(hr);
 
 	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
-	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+	   0},
 	  {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-	  {"TANGENT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	  {"TANGENT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+	   0},
 	  {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 	  {"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
 	  .pRootSignature = Renderer->RootSignPBR,
-	  .InputLayout = (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
+	  .InputLayout =
+		  (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
 	  .VS =
 		  (D3D12_SHADER_BYTECODE){
 			.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS),
@@ -162,11 +171,13 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	  .SampleDesc.Count = 1,
 	};
 
-	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_GLTF]);
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState,
+												  &Renderer->PipelineState[ERS_GLTF]);
 	ExitIfFailed(hr);
 
 	PSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
-	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_WIREFRAME]);
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState,
+												  &Renderer->PipelineState[ERS_WIREFRAME]);
 	ExitIfFailed(hr);
 
 	D3D12_BLEND_DESC BlendDesc = CD3DX12_DEFAULT_BLEND_DESC();
@@ -185,8 +196,8 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	PSODesc.BlendState = BlendDesc;
 	PSODesc.DepthStencilState = DepthDesc;
 
-	hr =
-		ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_GLTF_BLEND]);
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState,
+												  &Renderer->PipelineState[ERS_GLTF_BLEND]);
 	ExitIfFailed(hr);
 }
 
@@ -238,25 +249,32 @@ R_CreateBillboardPipelineState(R_Core *Renderer)
 	ID3DBlob *Error = NULL;
 	hr = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &Error);
 
-	if (FAILED(hr)) {
-		if (Error) {
+	if (FAILED(hr))
+	{
+		if (Error)
+		{
 			S_LogAppend((PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}
 
-	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature),
-										  &IID_ID3D12RootSignature, &Renderer->RootSignBillboard);
+	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature),
+										  ID3D10Blob_GetBufferSize(Signature), &IID_ID3D12RootSignature,
+										  &Renderer->RootSignBillboard);
 
 	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
-	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+	   0},
 	  {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
 	  .pRootSignature = Renderer->RootSignBillboard,
-	  .InputLayout = (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
-	  .VS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS), .BytecodeLength = ID3D10Blob_GetBufferSize(VS)},
-	  .PS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(PS), .BytecodeLength = ID3D10Blob_GetBufferSize(PS)},
+	  .InputLayout =
+		  (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
+	  .VS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS),
+									.BytecodeLength = ID3D10Blob_GetBufferSize(VS)},
+	  .PS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(PS),
+									.BytecodeLength = ID3D10Blob_GetBufferSize(PS)},
 	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
 	  .DSVFormat = DXGI_FORMAT_D32_FLOAT,
 	  .SampleMask = UINT_MAX,
@@ -287,7 +305,8 @@ R_CreateBillboardPipelineState(R_Core *Renderer)
 	  .StencilEnable = FALSE,
 	};
 
-	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_BILLBOARD]);
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState,
+												  &Renderer->PipelineState[ERS_BILLBOARD]);
 	ExitIfFailed(hr);
 }
 
@@ -323,24 +342,30 @@ R_CreateGridPipelineState(R_Core *Renderer)
 	ID3DBlob *Error = NULL;
 	hr = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &Error);
 
-	if (FAILED(hr)) {
-		if (Error) {
+	if (FAILED(hr))
+	{
+		if (Error)
+		{
 			S_LogAppend((PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}
 
-	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature),
-										  &IID_ID3D12RootSignature, &Renderer->RootSignGrid);
+	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature),
+										  ID3D10Blob_GetBufferSize(Signature), &IID_ID3D12RootSignature, &Renderer->RootSignGrid);
 
-	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
-	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+														   D3D12_APPEND_ALIGNED_ELEMENT,
+														   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
 	  .pRootSignature = Renderer->RootSignGrid,
-	  .InputLayout = (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
-	  .VS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS), .BytecodeLength = ID3D10Blob_GetBufferSize(VS)},
-	  .PS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(PS), .BytecodeLength = ID3D10Blob_GetBufferSize(PS)},
+	  .InputLayout =
+		  (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
+	  .VS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS),
+									.BytecodeLength = ID3D10Blob_GetBufferSize(VS)},
+	  .PS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(PS),
+									.BytecodeLength = ID3D10Blob_GetBufferSize(PS)},
 	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
 	  .DSVFormat = DXGI_FORMAT_D32_FLOAT,
 	  .SampleMask = UINT_MAX,
@@ -371,7 +396,8 @@ R_CreateGridPipelineState(R_Core *Renderer)
 	  .StencilEnable = FALSE,
 	};
 
-	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_GRID]);
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState,
+												  &Renderer->PipelineState[ERS_GRID]);
 	ExitIfFailed(hr);
 }
 
@@ -417,15 +443,18 @@ R_CreateCubemapPipelineState(R_Core *Renderer)
 	ID3DBlob *Signature = NULL;
 	ID3DBlob *Error = NULL;
 	HRESULT hr = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &Error);
-	if (FAILED(hr)) {
-		if (Error) {
+	if (FAILED(hr))
+	{
+		if (Error)
+		{
 			S_LogAppend((PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}
 
-	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature),
-										  &IID_ID3D12RootSignature, &Renderer->RootSignCubemap);
+	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature),
+										  ID3D10Blob_GetBufferSize(Signature), &IID_ID3D12RootSignature,
+										  &Renderer->RootSignCubemap);
 	ExitIfFailed(hr);
 
 	WCHAR ShaderPath[MAX_PATH];
@@ -458,7 +487,8 @@ R_CreateCubemapPipelineState(R_Core *Renderer)
 	};
 
 	PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_CUBEMAP]);
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState,
+												  &Renderer->PipelineState[ERS_CUBEMAP]);
 	ExitIfFailed(hr);
 }
 
@@ -504,15 +534,18 @@ R_CreateIrradiancePipelineState(R_Core *Renderer)
 	ID3DBlob *Signature = NULL;
 	ID3DBlob *Error = NULL;
 	HRESULT hr = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &Error);
-	if (FAILED(hr)) {
-		if (Error) {
+	if (FAILED(hr))
+	{
+		if (Error)
+		{
 			S_LogAppend((PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}
 
-	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature),
-										  &IID_ID3D12RootSignature, &Renderer->RootSignIrradiance);
+	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature),
+										  ID3D10Blob_GetBufferSize(Signature), &IID_ID3D12RootSignature,
+										  &Renderer->RootSignIrradiance);
 	ExitIfFailed(hr);
 
 	WCHAR ShaderPath[MAX_PATH];
@@ -545,8 +578,8 @@ R_CreateIrradiancePipelineState(R_Core *Renderer)
 	};
 
 	PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-	hr =
-		ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_IRRADIANCE]);
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState,
+												  &Renderer->PipelineState[ERS_IRRADIANCE]);
 	ExitIfFailed(hr);
 }
 
@@ -592,15 +625,18 @@ R_CreateSkyboxPipelineState(R_Core *Renderer)
 	ID3DBlob *Signature = NULL;
 	ID3DBlob *Error = NULL;
 	HRESULT hr = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &Error);
-	if (FAILED(hr)) {
-		if (Error) {
+	if (FAILED(hr))
+	{
+		if (Error)
+		{
 			S_LogAppend((PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}
 
-	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature), ID3D10Blob_GetBufferSize(Signature),
-										  &IID_ID3D12RootSignature, &Renderer->RootSignSkybox);
+	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature),
+										  ID3D10Blob_GetBufferSize(Signature), &IID_ID3D12RootSignature,
+										  &Renderer->RootSignSkybox);
 	ExitIfFailed(hr);
 
 	WCHAR ShaderPath[MAX_PATH];
@@ -637,7 +673,8 @@ R_CreateSkyboxPipelineState(R_Core *Renderer)
 	PSODesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 	PSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 
-	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState, &Renderer->PipelineState[ERS_SKYBOX]);
+	hr = ID3D12Device_CreateGraphicsPipelineState(Renderer->Device, &PSODesc, &IID_ID3D12PipelineState,
+												  &Renderer->PipelineState[ERS_SKYBOX]);
 	ExitIfFailed(hr);
 }
 

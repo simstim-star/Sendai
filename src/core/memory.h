@@ -12,7 +12,8 @@
 
 typedef struct ID3D12Resource ID3D12Resource;
 
-typedef struct M_Arena {
+typedef struct M_Arena
+{
 	UINT8 *Base;
 	size_t SizeReserved;
 	size_t SizeCommitted;
@@ -24,5 +25,7 @@ VOID *M_ArenaAlloc(M_Arena *Arena, size_t Size);
 VOID M_ArenaReset(M_Arena *Arena);
 VOID M_ArenaRelease(M_Arena *Arena);
 
-
 D3D12_GPU_VIRTUAL_ADDRESS M_GpuAddress(ID3D12Resource *Resource, UINT64 Offset);
+
+D3D12_CPU_DESCRIPTOR_HANDLE
+M_CpuDescriptorHandle(ID3D12DescriptorHeap *DescHeap, SIZE_T Offset);

@@ -5,7 +5,8 @@
 typedef struct UI_Renderer UI_Renderer;
 typedef struct R_Camera R_Camera;
 
-typedef struct UI_ToolBarState {
+typedef struct UI_ToolBarState
+{
 	BOOL Wireframe;
 	BOOL Grid;
 	R_Camera *Camera;

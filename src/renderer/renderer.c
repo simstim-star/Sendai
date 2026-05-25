@@ -18,7 +18,11 @@
 #include "billboard.h"
 #include "stb_ds.h"
 
-typedef enum { ERPT_PASS_OPAQUE, ERPT_PASS_BLEND } ERenderPassType;
+typedef enum
+{
+	ERPT_PASS_OPAQUE,
+	ERPT_PASS_BLEND
+} ERenderPassType;
 
 static const FLOAT CUBEMAP_CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
@@ -37,7 +41,10 @@ static VOID CreateShaders(R_Core *const Renderer);
 
 static R_SceneData PreprocessSceneData(const S_Scene *const Scene);
 
-static VOID RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants, const ERenderPassType Pass);
+static VOID RenderScenePass(const S_Scene *Scene,
+							R_Core *const Renderer,
+							R_MeshConstants *const MeshConstants,
+							const ERenderPassType Pass);
 static VOID DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
 
 /****************************************************
@@ -64,7 +71,8 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	INT bIsDebugFactory = 0;
 #if defined(_DEBUG)
 	ID3D12Debug1 *DebugController = NULL;
-	if (SUCCEEDED(D3D12GetDebugInterface(&IID_ID3D12Debug, (VOID **)&DebugController))) {
+	if (SUCCEEDED(D3D12GetDebugInterface(&IID_ID3D12Debug, (VOID **)&DebugController)))
+	{
 		ID3D12Debug1_EnableDebugLayer(DebugController);
 		// ID3D12Debug1_SetEnableGPUBasedValidation(debug_controller, 1);
 		bIsDebugFactory |= DXGI_CREATE_FACTORY_DEBUG;
@@ -93,7 +101,8 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	ExitIfFailed(hr);
 
 	Renderer->FenceValue = 0;
-	hr = ID3D12Device_CreateFence(Renderer->Device, Renderer->FenceValue, D3D12_FENCE_FLAG_NONE, &IID_ID3D12Fence, &Renderer->Fence);
+	hr = ID3D12Device_CreateFence(Renderer->Device, Renderer->FenceValue, D3D12_FENCE_FLAG_NONE, &IID_ID3D12Fence,
+								  &Renderer->Fence);
 	ExitIfFailed(hr);
 
 	hr = ID3D12Device_CreateCommandAllocator(Renderer->Device, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator,
@@ -101,18 +110,21 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	ExitIfFailed(hr);
 
 	hr = ID3D12Device_CreateCommandList(Renderer->Device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, Renderer->CommandAllocator,
-										Renderer->PipelineState[Renderer->State], &IID_ID3D12GraphicsCommandList1, &Renderer->CommandList);
+										Renderer->PipelineState[Renderer->State], &IID_ID3D12GraphicsCommandList1,
+										&Renderer->CommandList);
 	ExitIfFailed(hr);
 
 	hr = ID3D12Device_CreateCommandAllocator(Renderer->Device, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator,
 											 &Renderer->UploadCommandAllocator);
 	ExitIfFailed(hr);
 	hr = ID3D12Device_CreateCommandList(Renderer->Device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, Renderer->UploadCommandAllocator,
-										Renderer->PipelineState[Renderer->State], &IID_ID3D12GraphicsCommandList1, &Renderer->UploadCommandList);
+										Renderer->PipelineState[Renderer->State], &IID_ID3D12GraphicsCommandList1,
+										&Renderer->UploadCommandList);
 	ExitIfFailed(hr);
 
 	Renderer->FenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	if (Renderer->FenceEvent == NULL) {
+	if (Renderer->FenceEvent == NULL)
+	{
 		hr = HRESULT_FROM_WIN32(GetLastError());
 		ExitIfFailed(hr);
 	}
@@ -132,10 +144,12 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	  .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
 	  .NodeMask = 0,
 	};
-	hr = ID3D12Device_CreateDescriptorHeap(Renderer->Device, &RtvDescHeapDesc, &IID_ID3D12DescriptorHeap, &Renderer->RtvDescriptorHeap);
+	hr = ID3D12Device_CreateDescriptorHeap(Renderer->Device, &RtvDescHeapDesc, &IID_ID3D12DescriptorHeap,
+										   &Renderer->RtvDescriptorHeap);
 	ExitIfFailed(hr);
 
-	for (D3D12_DESCRIPTOR_HEAP_TYPE Type = 0; Type < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++Type) {
+	for (D3D12_DESCRIPTOR_HEAP_TYPE Type = 0; Type < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++Type)
+	{
 		Renderer->DescriptorHandleIncrementSize[Type] = ID3D12Device_GetDescriptorHandleIncrementSize(Renderer->Device, Type);
 	}
 
@@ -153,8 +167,8 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	  .AlphaMode = DXGI_ALPHA_MODE_IGNORE,
 	  .Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH,
 	};
-	hr = IDXGIFactory2_CreateSwapChainForHwnd(Factory, (IUnknown *)Renderer->CommandQueue, Renderer->hWnd, &SwapChainDesc, NULL, NULL,
-											  &Renderer->SwapChain);
+	hr = IDXGIFactory2_CreateSwapChainForHwnd(Factory, (IUnknown *)Renderer->CommandQueue, Renderer->hWnd, &SwapChainDesc, NULL,
+											  NULL, &Renderer->SwapChain);
 	ExitIfFailed(hr);
 
 	SetRtvBuffers(Renderer, FRAME_COUNT);
@@ -185,9 +199,10 @@ R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const
 	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->DepthStencilHeap, &DepthStencilCPUHandle);
 	ID3D12GraphicsCommandList_OMSetRenderTargets(Renderer->CommandList, 1, &Renderer->RtvHandles[Renderer->RtvIndex], FALSE,
 												 &DepthStencilCPUHandle);
-	ID3D12GraphicsCommandList_ClearRenderTargetView(Renderer->CommandList, Renderer->RtvHandles[Renderer->RtvIndex], CUBEMAP_CLEAR_COLOR, 0,
-													NULL);
-	ID3D12GraphicsCommandList_ClearDepthStencilView(Renderer->CommandList, DepthStencilCPUHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, NULL);
+	ID3D12GraphicsCommandList_ClearRenderTargetView(Renderer->CommandList, Renderer->RtvHandles[Renderer->RtvIndex],
+													CUBEMAP_CLEAR_COLOR, 0, NULL);
+	ID3D12GraphicsCommandList_ClearDepthStencilView(Renderer->CommandList, DepthStencilCPUHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0,
+													0, NULL);
 	ID3D12GraphicsCommandList_IASetPrimitiveTopology(Renderer->CommandList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	ID3D12DescriptorHeap *Heaps[] = {Renderer->TexturesHeap};
 	ID3D12GraphicsCommandList_SetDescriptorHeaps(Renderer->CommandList, 1, Heaps);
@@ -224,36 +239,39 @@ R_ExecuteCommands(R_Core *const Renderer, ID3D12GraphicsCommandList *CommandList
 VOID
 R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height)
 {
-	for (INT i = 0; i < FRAME_COUNT; ++i) {
+	for (UINT i = 0; i < FRAME_COUNT; ++i)
+	{
 		SignalAndWait(Renderer);
 		ID3D12Resource_Release(Renderer->RtvBuffers[i]);
 	}
 
-	HRESULT hr =
-		IDXGISwapChain1_ResizeBuffers(Renderer->SwapChain, 2, Width, Height, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+	HRESULT hr = IDXGISwapChain1_ResizeBuffers(Renderer->SwapChain, 2, Width, Height, DXGI_FORMAT_UNKNOWN,
+											   DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
 	ExitIfFailed(hr);
 	hr = IDXGISwapChain1_GetBuffer(Renderer->SwapChain, 0, &IID_ID3D12Resource, &Renderer->RtvBuffers[0]);
 	ExitIfFailed(hr);
 	hr = IDXGISwapChain1_GetBuffer(Renderer->SwapChain, 1, &IID_ID3D12Resource, &Renderer->RtvBuffers[1]);
 	ExitIfFailed(hr);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHandle;
-	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->RtvDescriptorHeap, &DescriptorHandle);
-	ID3D12Device_CreateRenderTargetView(Renderer->Device, Renderer->RtvBuffers[0], NULL, DescriptorHandle);
-	Renderer->RtvHandles[0] = DescriptorHandle;
-	DescriptorHandle.ptr += Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_RTV];
-	ID3D12Device_CreateRenderTargetView(Renderer->Device, Renderer->RtvBuffers[1], NULL, DescriptorHandle);
-	Renderer->RtvHandles[1] = DescriptorHandle;
+	for (UINT i = 0; i < FRAME_COUNT; ++i)
+	{
+		D3D12_CPU_DESCRIPTOR_HANDLE RtvDescriptorHandle = M_CpuDescriptorHandle(
+			Renderer->RtvDescriptorHeap, (SIZE_T)i * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]);
+		ID3D12Device_CreateRenderTargetView(Renderer->Device, Renderer->RtvBuffers[i], NULL, RtvDescriptorHandle);
+		Renderer->RtvHandles[i] = RtvDescriptorHandle;
+	}
+
 	Renderer->RtvIndex = 0;
 
 	Renderer->Width = Width;
 	Renderer->Height = Height;
 	Renderer->AspectRatio = (FLOAT)Width / (FLOAT)Height;
-	Renderer->Viewport =
-		(D3D12_VIEWPORT){.TopLeftX = 0.0f, .TopLeftY = 0.0f, .Width = (FLOAT)Width, .Height = (FLOAT)Height, .MinDepth = 0.0f, .MaxDepth = 1.0f};
+	Renderer->Viewport = (D3D12_VIEWPORT){
+	  .TopLeftX = 0.0f, .TopLeftY = 0.0f, .Width = (FLOAT)Width, .Height = (FLOAT)Height, .MinDepth = 0.0f, .MaxDepth = 1.0f};
 	Renderer->ScissorRect = (D3D12_RECT){0, 0, (LONG)Width, (LONG)Height};
 
-	if (Renderer->DepthStencil) {
+	if (Renderer->DepthStencil)
+	{
 		ID3D12Resource_Release(Renderer->DepthStencil);
 		ID3D12DescriptorHeap_Release(Renderer->DepthStencilHeap);
 	}
@@ -266,7 +284,8 @@ R_Destroy(R_Core *Renderer)
 {
 	UI_Destroy();
 
-	for (ERenderState State = ERS_GLTF; State < ERS_N_RENDER_STATES; ++State) {
+	for (ERenderState State = ERS_GLTF; State < ERS_N_RENDER_STATES; ++State)
+	{
 		ID3D12PipelineState_Release(Renderer->PipelineState[State]);
 	}
 
@@ -277,11 +296,13 @@ R_Destroy(R_Core *Renderer)
 	ID3D12Resource_Release(Renderer->SceneDataUploadBuffer);
 	IDXGIAdapter3_Release(Renderer->Adapter);
 
-	for (INT i = 0; i < hmlen(Renderer->Textures); ++i) {
+	for (INT i = 0; i < hmlen(Renderer->Textures); ++i)
+	{
 		ID3D12Resource_Release(Renderer->Textures[i].Texture.GpuTexture);
 	}
 
-	for (INT i = 0; i < FRAME_COUNT; ++i) {
+	for (INT i = 0; i < FRAME_COUNT; ++i)
+	{
 		SignalAndWait(Renderer);
 		ID3D12Resource_Release(Renderer->RtvBuffers[i]);
 	}
@@ -336,9 +357,11 @@ RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *c
 	const ERenderState PSO = (Pass == ERPT_PASS_OPAQUE) ? ERS_GLTF : ERS_GLTF_BLEND;
 	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[PSO]);
 
-	for (size_t ModelIndex = 0; ModelIndex < Scene->ModelsCount; ++ModelIndex) {
+	for (size_t ModelIndex = 0; ModelIndex < Scene->ModelsCount; ++ModelIndex)
+	{
 		R_Model *Model = &Scene->Models[ModelIndex];
-		if (!Model->Visible) {
+		if (!Model->Visible)
+		{
 			continue;
 		}
 
@@ -348,10 +371,12 @@ RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *c
 		XMMATRIX M = XM_MAT_MULT(S, R);
 		M = XM_MAT_MULT(M, T);
 
-		for (size_t NodeIndex = 0; NodeIndex < Model->NodesCount; ++NodeIndex) {
+		for (size_t NodeIndex = 0; NodeIndex < Model->NodesCount; ++NodeIndex)
+		{
 			R_Node *Node = &Model->Nodes[NodeIndex];
 
-			if (Pass == ERPT_PASS_OPAQUE) {
+			if (Pass == ERPT_PASS_OPAQUE)
+			{
 				MeshConstants->MVP.Model = XMLoadFloat4x4(&Node->ModelMatrix);
 				MeshConstants->MVP.Model = XM_MAT_MULT(MeshConstants->MVP.Model, M);
 
@@ -359,17 +384,22 @@ RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *c
 				XM_STORE_FLOAT4X4(&ModelFloat, MeshConstants->MVP.Model);
 				MeshConstants->Normal = R_NormalMatrix(&ModelFloat);
 
-				memcpy(Renderer->MeshDataUploadBufferCpuAddress + Renderer->MeshDataOffset, MeshConstants, sizeof(R_MeshConstants));
+				memcpy(Renderer->MeshDataUploadBufferCpuAddress + Renderer->MeshDataOffset, MeshConstants,
+					   sizeof(R_MeshConstants));
 			}
 
-			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 0,
-																		M_GpuAddress(Renderer->MeshDataUploadBuffer, Renderer->MeshDataOffset));
+			ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(
+				Renderer->CommandList, 0, M_GpuAddress(Renderer->MeshDataUploadBuffer, Renderer->MeshDataOffset));
 			Renderer->MeshDataOffset += CB_ALIGN(R_MeshConstants);
 
-			if (Node->Mesh) {
-				UINT64 PrimitiveCount = (Pass == ERPT_PASS_OPAQUE) ? Node->Mesh->OpaquePrimitivesCount : Node->Mesh->BlendedPrimitivesCount;
-				R_Primitive *Primitives = (Pass == ERPT_PASS_OPAQUE) ? Node->Mesh->OpaquePrimitives : Node->Mesh->BlendedPrimitives;
-				for (INT PrimitiveIndex = 0; PrimitiveIndex < PrimitiveCount; ++PrimitiveIndex) {
+			if (Node->Mesh)
+			{
+				UINT64 PrimitiveCount =
+					(Pass == ERPT_PASS_OPAQUE) ? Node->Mesh->OpaquePrimitivesCount : Node->Mesh->BlendedPrimitivesCount;
+				R_Primitive *Primitives =
+					(Pass == ERPT_PASS_OPAQUE) ? Node->Mesh->OpaquePrimitives : Node->Mesh->BlendedPrimitives;
+				for (INT PrimitiveIndex = 0; PrimitiveIndex < PrimitiveCount; ++PrimitiveIndex)
+				{
 					R_Primitive *Primitive = &Primitives[PrimitiveIndex];
 					ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(Renderer->CommandList, 1, NUM_32BITS_PBR_VALUES,
 																			&Primitive->ConstantBuffer, 0);
@@ -389,8 +419,8 @@ DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstan
 
 	R_SceneData SceneData = PreprocessSceneData(Scene);
 	memcpy(Renderer->SceneDataUploadBufferCpuAddress + Renderer->SceneDataOffset, &SceneData, sizeof(R_SceneData));
-	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(Renderer->CommandList, 2,
-																M_GpuAddress(Renderer->SceneDataUploadBuffer, Renderer->SceneDataOffset));
+	ID3D12GraphicsCommandList_SetGraphicsRootConstantBufferView(
+		Renderer->CommandList, 2, M_GpuAddress(Renderer->SceneDataUploadBuffer, Renderer->SceneDataOffset));
 	Renderer->SceneDataOffset += CB_ALIGN(R_SceneData);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE TexturesHeapStart;
@@ -409,8 +439,8 @@ CreateDepthStencilBuffer(R_Core *const Renderer)
 {
 	D3D12_DESCRIPTOR_HEAP_DESC DepthStencilHeapDesc = {
 	  .NumDescriptors = 1, .Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE};
-	HRESULT hr =
-		ID3D12Device_CreateDescriptorHeap(Renderer->Device, &DepthStencilHeapDesc, &IID_ID3D12DescriptorHeap, &Renderer->DepthStencilHeap);
+	HRESULT hr = ID3D12Device_CreateDescriptorHeap(Renderer->Device, &DepthStencilHeapDesc, &IID_ID3D12DescriptorHeap,
+												   &Renderer->DepthStencilHeap);
 	ExitIfFailed(hr);
 
 	D3D12_RESOURCE_DESC TextureDesc = CD3DX12_TEX2D(DXGI_FORMAT_D32_FLOAT, Renderer->Width, Renderer->Height, 1, 0, 1, 0,
@@ -418,8 +448,9 @@ CreateDepthStencilBuffer(R_Core *const Renderer)
 	D3D12_CLEAR_VALUE DepthOptimizedClearValue = {.Format = DXGI_FORMAT_D32_FLOAT, .DepthStencil.Depth = 1.0f};
 	D3D12_HEAP_PROPERTIES DefaultHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 
-	ID3D12Device_CreateCommittedResource(Renderer->Device, &DefaultHeap, D3D12_HEAP_FLAG_NONE, &TextureDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE,
-										 &DepthOptimizedClearValue, &IID_ID3D12Resource, &Renderer->DepthStencil);
+	ID3D12Device_CreateCommittedResource(Renderer->Device, &DefaultHeap, D3D12_HEAP_FLAG_NONE, &TextureDesc,
+										 D3D12_RESOURCE_STATE_DEPTH_WRITE, &DepthOptimizedClearValue, &IID_ID3D12Resource,
+										 &Renderer->DepthStencil);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilHandle;
 	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->DepthStencilHeap, &DepthStencilHandle);
@@ -429,14 +460,14 @@ CreateDepthStencilBuffer(R_Core *const Renderer)
 VOID
 SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers)
 {
-	D3D12_CPU_DESCRIPTOR_HANDLE RtvDescriptorHandle;
-	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->RtvDescriptorHeap, &RtvDescriptorHandle);
-	for (UINT i = 0; i < NumBuffers; ++i) {
+	for (UINT i = 0; i < NumBuffers; ++i)
+	{
 		HRESULT hr = IDXGISwapChain1_GetBuffer(Renderer->SwapChain, i, &IID_ID3D12Resource, &Renderer->RtvBuffers[i]);
 		ExitIfFailed(hr);
+		D3D12_CPU_DESCRIPTOR_HANDLE RtvDescriptorHandle = M_CpuDescriptorHandle(
+			Renderer->RtvDescriptorHeap, i * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]);
 		ID3D12Device_CreateRenderTargetView(Renderer->Device, Renderer->RtvBuffers[i], NULL, RtvDescriptorHandle);
 		Renderer->RtvHandles[i] = RtvDescriptorHandle;
-		RtvDescriptorHandle.ptr += Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_RTV];
 	}
 }
 
@@ -448,29 +479,35 @@ CreateSceneResources(R_Core *const Renderer)
 	D3D12_HEAP_PROPERTIES UploadHeapProps = {.Type = D3D12_HEAP_TYPE_UPLOAD};
 	D3D12_HEAP_PROPERTIES DefaultHeapProps = {.Type = D3D12_HEAP_TYPE_DEFAULT};
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc,
-											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Renderer->UploadBuffer);
+											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
+											  &Renderer->UploadBuffer);
 	ExitIfFailed(hr);
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &DefaultHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc,
-											  D3D12_RESOURCE_STATE_COMMON, NULL, &IID_ID3D12Resource, &Renderer->VertexBufferDefault);
+											  D3D12_RESOURCE_STATE_COMMON, NULL, &IID_ID3D12Resource,
+											  &Renderer->VertexBufferDefault);
 	ExitIfFailed(hr);
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &DefaultHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc,
-											  D3D12_RESOURCE_STATE_COMMON, NULL, &IID_ID3D12Resource, &Renderer->IndexBufferDefault);
+											  D3D12_RESOURCE_STATE_COMMON, NULL, &IID_ID3D12Resource,
+											  &Renderer->IndexBufferDefault);
 	ExitIfFailed(hr);
 
 	BufferDesc.Width = MEGABYTES(8);
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc,
-											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Renderer->MeshDataUploadBuffer);
+											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
+											  &Renderer->MeshDataUploadBuffer);
 	ExitIfFailed(hr);
 
 	BufferDesc.Width = MEGABYTES(1);
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc,
-											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &Renderer->SceneDataUploadBuffer);
+											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
+											  &Renderer->SceneDataUploadBuffer);
 	ExitIfFailed(hr);
 
 	D3D12_HEAP_PROPERTIES HeapProps = {.Type = D3D12_HEAP_TYPE_UPLOAD};
 	Renderer->TextureUploadBuffer.Size = MEGABYTES(256);
 	Renderer->TextureUploadBuffer.CurrentOffset = 0;
-	D3D12_RESOURCE_DESC TextureBufferDesc = CD3DX12_RESOURCE_DESC_BUFFER(Renderer->TextureUploadBuffer.Size, D3D12_RESOURCE_FLAG_NONE, 0);
+	D3D12_RESOURCE_DESC TextureBufferDesc =
+		CD3DX12_RESOURCE_DESC_BUFFER(Renderer->TextureUploadBuffer.Size, D3D12_RESOURCE_FLAG_NONE, 0);
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &HeapProps, D3D12_HEAP_FLAG_NONE, &TextureBufferDesc,
 											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
 											  &Renderer->TextureUploadBuffer.Buffer);
@@ -533,7 +570,8 @@ DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *cons
 									 }};
 	DrawPrimitives(Scene, Renderer, &MeshConstants);
 	R_DrawSkybox(Renderer, MeshConstants.MVP.View, MeshConstants.MVP.Proj);
-	if (Renderer->bDrawGrid) {
+	if (Renderer->bDrawGrid)
+	{
 		R_DrawGrid(Renderer, &MeshConstants);
 	}
 	R_DrawLightBillboards(Renderer, Scene->Data.Lights, Scene->ActiveLightMask, &MeshConstants);
@@ -546,10 +584,12 @@ DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *cons
 VOID
 GetAdapter(IDXGIFactory2 *Factory, R_Core *Renderer)
 {
-	for (UINT i = 0; SUCCEEDED(IDXGIFactory2_EnumAdapters1(Factory, i, &Renderer->Adapter)); ++i) {
+	for (UINT i = 0; SUCCEEDED(IDXGIFactory2_EnumAdapters1(Factory, i, &Renderer->Adapter)); ++i)
+	{
 		DXGI_ADAPTER_DESC1 Desc = {0};
 		HRESULT hr = IDXGIAdapter3_GetDesc1(Renderer->Adapter, &Desc);
-		if (FAILED(hr) || Desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
+		if (FAILED(hr) || Desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+		{
 			IDXGIAdapter3_Release(Renderer->Adapter);
 			continue;
 		}
