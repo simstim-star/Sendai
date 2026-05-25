@@ -1,8 +1,8 @@
-BasedOnStyle: LLVM
+BasedOnStyle: Microsoft
 IndentWidth: 4
 TabWidth: 4
 UseTab: Always
-ColumnLimit: 120
+ColumnLimit: 130
 
 BreakAfterReturnType: AllDefinitions
 
