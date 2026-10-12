@@ -165,7 +165,7 @@ SendaiGLTF_LoadModel(R_Core *Renderer, PCWSTR Path, S_Scene *Scene)
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &IBBarrier);
 
 	Scene->ModelsCount++;
-	S_LogAppendf(L"Successfully loaded %s\n", Path);
+	S_Logf(ELC_Info, L"Successfully loaded %s", Path);
 	return TRUE;
 }
 
@@ -275,7 +275,7 @@ GetData(PCWSTR Path, M_Arena *UploadArena)
 	LONG Size = LoadGLTFFile(Path, UploadArena, &FileData);
 	if (Size <= 0)
 	{
-		S_LogAppendf(L"Failed to load %s\n", Path);
+		S_Logf(ELC_Warning, L"Failed to load %s", Path);
 		return NULL;
 	}
 
@@ -291,7 +291,7 @@ GetData(PCWSTR Path, M_Arena *UploadArena)
 		{
 			cgltf_free(Data);
 		}
-		S_LogAppendf(L"Failed to parse %s\n", Path);
+		S_Logf(ELC_Warning, L"Failed to parse %s", Path);
 		return NULL;
 	}
 
@@ -301,7 +301,7 @@ GetData(PCWSTR Path, M_Arena *UploadArena)
 		{
 			cgltf_free(Data);
 		}
-		S_LogAppendf(L"Failed to load GLTF buffers from %s\n", Path);
+		S_Logf(ELC_Warning, L"Failed to load GLTF buffers from %s", Path);
 		return NULL;
 	}
 	return Data;
@@ -353,7 +353,7 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 {
 	if (!PositionAccessor)
 	{
-		S_LogAppend(L"Mesh has no POSITION attribute\n");
+		S_Log(ELC_Warning, L"Mesh has no POSITION attribute");
 		return;
 	}
 

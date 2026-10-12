@@ -133,17 +133,17 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 	switch (State->ActiveTab)
 	{
 	case EBBS_LOG_TAB: {
-		nk_layout_row_dynamic(Ctx, fmaxf(10.0f, ContentAreaHeight), 1);
-		const nk_flags LogFlags =
-			NK_EDIT_MULTILINE | NK_EDIT_READ_ONLY | NK_EDIT_ALWAYS_INSERT_MODE | NK_EDIT_GOTO_END_ON_ACTIVATE;
-
-		INT RequiredBytes = WideCharToMultiByte(CP_UTF8, 0, SENDAI_LOG.Buffer, SENDAI_LOG.Len, SENDAI_LOG.UTF8Buffer,
-												sizeof(SENDAI_LOG.UTF8Buffer) - 1, NULL, NULL);
-		if (RequiredBytes >= 0)
+		nk_layout_row_dynamic(Ctx, ContentAreaHeight, 1);
+		if (nk_group_begin(Ctx, "LogWindow", 0))
 		{
-			SENDAI_LOG.UTF8Buffer[RequiredBytes] = '\0';
-			nk_edit_string(Ctx, LogFlags, SENDAI_LOG.UTF8Buffer, &RequiredBytes, sizeof(SENDAI_LOG.UTF8Buffer),
-						   nk_filter_default);
+			nk_layout_row_dynamic(Ctx, 20.f, 1);
+			for (int i = 0; i < S_NumLogEntries(); ++i)
+			{
+				S_LogEntry Log = S_GetLogEntry(i);
+				nk_text_colored(Ctx, Log.UTF8Buffer, (int)strlen(Log.UTF8Buffer), NK_TEXT_ALIGN_LEFT,
+								LogCategoryToNkColor(Log.Category));
+			}
+			nk_group_end(Ctx);
 		}
 		break;
 	}

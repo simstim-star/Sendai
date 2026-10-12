@@ -51,36 +51,6 @@ VOID (*UI_GetAction(S_UI *const UI))(Sendai *const Engine)
 	return UI->Action[Action];
 }
 
-UI_EAction
-UI_LogWindow(UI_Renderer *const UI)
-{
-	struct nk_context *Context = UI->Context;
-	const float WindowX = 900.0f;
-	const float WindowY = 50.0f;
-	const float WindowW = 600.0f;
-	const float WindowH = 700.0f;
-	const nk_flags WindowFlags = NK_WINDOW_BORDER | NK_WINDOW_SCALABLE | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE;
-	if (nk_begin(Context, "System Log", nk_rect(WindowX, WindowY, WindowW, WindowH), WindowFlags))
-	{
-		nk_layout_row_dynamic(Context, WindowW * 2, 1);
-		const nk_flags LogFlags =
-			NK_EDIT_MULTILINE | NK_EDIT_READ_ONLY | NK_EDIT_ALWAYS_INSERT_MODE | NK_EDIT_GOTO_END_ON_ACTIVATE;
-
-		INT RequiredBytes = WideCharToMultiByte(CP_UTF8, 0, SENDAI_LOG.Buffer, SENDAI_LOG.Len, SENDAI_LOG.UTF8Buffer,
-												sizeof(SENDAI_LOG.UTF8Buffer) - 1, NULL, NULL);
-
-		if (RequiredBytes >= 0)
-		{
-			SENDAI_LOG.UTF8Buffer[RequiredBytes] = '\0';
-			nk_edit_string(Context, LogFlags, SENDAI_LOG.UTF8Buffer, &RequiredBytes, sizeof(SENDAI_LOG.UTF8Buffer),
-						   nk_filter_default);
-		}
-	}
-	nk_end(Context);
-
-	return UI_ACTION_NONE;
-}
-
 VOID
 UI_InputBegin(const UI_Renderer *UI)
 {
@@ -152,4 +122,18 @@ LoadCustomTextures(R_Core *Renderer)
 
 	Win32FullPath(L"/assets/images/grid.png", Path, _countof(Path));
 	R_CreateUITexture(Path, Renderer, UI_EUT_GRID);
+}
+
+struct nk_color
+LogCategoryToNkColor(ELogCategory Category)
+{
+	switch (Category)
+	{
+	case ELC_Info:
+		return nk_rgb(LOG_INFO_RGB);
+	case ELC_Warning:
+		return nk_rgb(LOG_WARNING_RGB);
+	case ELC_Error:
+		return nk_rgb(LOG_ERROR_RGB);
+	}
 }

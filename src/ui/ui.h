@@ -5,6 +5,7 @@
 #include "ui_bottom_panel.h"
 #include "ui_tool_bar.h"
 #include "ui_top_bar.h"
+#include <core/log.h>
 
 typedef struct nk_context nk_context;
 typedef struct S_Scene S_Scene;
@@ -45,8 +46,6 @@ VOID UI_InputBegin(const UI_Renderer *UI);
 
 VOID UI_InputEnd(const UI_Renderer *UI);
 
-UI_EAction UI_LogWindow(UI_Renderer *const UI);
-
 VOID UI_Draw(ID3D12GraphicsCommandList *CommandList);
 
 VOID UI_Resize(UI_Renderer *UI, const INT Width, const INT Height);
@@ -56,3 +55,5 @@ INT UI_HandleEvent(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lParam);
 VOID UI_Destroy();
 
 VOID UI_SetTextureInNkHeap(UINT nkSrvIndex, ID3D12Resource *OutTexture);
+
+struct nk_color LogCategoryToNkColor(ELogCategory Category);
