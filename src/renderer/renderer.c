@@ -320,7 +320,6 @@ R_Destroy(R_Core *Renderer)
 
 	ID3D12RootSignature_Release(Renderer->RootSignPBR);
 	ID3D12RootSignature_Release(Renderer->RootSignBillboard);
-	ID3D12RootSignature_Release(Renderer->RootSignGrid);
 	ID3D12RootSignature_Release(Renderer->RootSignCubemap);
 	ID3D12RootSignature_Release(Renderer->RootSignIrradiance);
 	ID3D12RootSignature_Release(Renderer->RootSignSkybox);

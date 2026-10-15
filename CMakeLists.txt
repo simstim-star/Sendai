@@ -10,7 +10,8 @@ set(RENDERER_SOURCES "src/renderer/renderer.c" "src/renderer/shader.c" "src/rend
 set(WIN32_SOURCES "src/win32/win_main.c" "src/win32/win_path.c" "src/win32/file_dialog.c")
 set(UI_SOURCES "src/ui/sendai_nk.c" "src/ui/ui.c" "src/ui/ui_bottom_panel.c" "src/ui/ui_top_bar.c" "src/ui/ui_tool_bar.c")
 set(GLTF_SOURCES "src/assets/gltf.c" "src/assets/dds_loader.c")
-set(SOURCE_FILES ${CORE_SOURCES} ${WIN32_SOURCES} ${RENDERER_SOURCES} ${UI_SOURCES} ${GLTF_SOURCES})
+set(PIX_SOURCES "src/pix/pix.c")
+set(SOURCE_FILES ${CORE_SOURCES} ${WIN32_SOURCES} ${RENDERER_SOURCES} ${UI_SOURCES} ${GLTF_SOURCES} ${PIX_SOURCES})
 
 set(CORE_HEADERS "src/core/camera.h" "src/core/memory.h" "src/core/timer.h" "src/core/engine.h" "src/core/log.h" 
 "src/core/scene.h" "src/error/error.h" "src/core/grid.h")
