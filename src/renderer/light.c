@@ -18,7 +18,7 @@ R_LightsInit(S_Scene *const Scene, const R_Camera *const Camera)
 	Scene->ActiveLightMask |= (1 << 0);
 	Scene->Data = (R_SceneData){.CameraPosition = Camera->Position,
 								.Lights = {
-								  {.LightPosition = {0.0f, 10.0f, 0.0f}, .LightColor = {300.0f, 100.0f, 100.0f}},
+								  {.LightPosition = {0.0f, 10.0f, 0.0f},.LightColor = {300.0f, 100.0f, 100.0f}},
 								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
 								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
 								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
@@ -26,19 +26,6 @@ R_LightsInit(S_Scene *const Scene, const R_Camera *const Camera)
 								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
 								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
 								}};
-}
-
-VOID
-R_UpdateLights(BYTE ActiveLightMask, const R_Light *const InLights, R_Light *const OutLights, UINT NumLights)
-{
-	for (UINT i = 0; i < NumLights; i++)
-	{
-		if (IS_LIGHT_ACTIVE(ActiveLightMask, i))
-		{
-			OutLights[i].LightColor = InLights[i].LightColor;
-			OutLights[i].LightPosition = InLights[i].LightPosition;
-		}
-	}
 }
 
 VOID

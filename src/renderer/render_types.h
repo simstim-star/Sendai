@@ -49,7 +49,7 @@ typedef struct R_SceneData
 	R_Light Lights[7];
 
 	XMFLOAT3 CameraPosition;
-	FLOAT Padding0;
+	UINT NumActiveLights;
 } R_SceneData;
 
 typedef struct R_MVP

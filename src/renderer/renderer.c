@@ -553,7 +553,18 @@ PreprocessSceneData(const S_Scene *const Scene)
 {
 	R_SceneData Result = {0};
 	Result.CameraPosition = Scene->Data.CameraPosition;
-	R_UpdateLights(Scene->ActiveLightMask, Scene->Data.Lights, Result.Lights, PBR_MAX_LIGHT_NUMBER);
+	UINT ResultIndex = 0;
+	for (UINT DataIndex = 0; DataIndex < PBR_MAX_LIGHT_NUMBER; DataIndex++)
+	{
+		if (IS_LIGHT_ACTIVE(Scene->ActiveLightMask, DataIndex))
+		{
+			Result.Lights[ResultIndex].LightColor = Scene->Data.Lights[DataIndex].LightColor;
+			Result.Lights[ResultIndex].LightPosition = Scene->Data.Lights[DataIndex].LightPosition;
+			Result.NumActiveLights++;
+			ResultIndex++;
+		}
+	}
+
 	return Result;
 }
 

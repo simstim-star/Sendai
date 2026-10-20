@@ -3,6 +3,7 @@
 #include "error/error.h"
 #include "renderer.h"
 #include "texture.h"
+#include "block_compression.h"
 #include "ui/ui.h"
 #include "win32/str_helper.h"
 
@@ -14,6 +15,7 @@
 #include "stb_image_resize2.h"
 
 #include "assets/dds_loader.h"
+
 
 static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
 
@@ -60,16 +62,32 @@ R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
 GPUTexture
 R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source)
 {
-	ptrdiff_t Index = shgeti(Renderer->Textures, Source->Name);
-	if (Index != -1)
+	ptrdiff_t TextureIndex = shgeti(Renderer->Textures, Source->Name);
+	if (TextureIndex != -1)
 	{
-		return Renderer->Textures[Index].Texture;
+		return Renderer->Textures[TextureIndex].Texture;
+	}
+
+	ID3D12Resource *UploadedTexture = NULL;
+	R_Texture *TextureToUpload = NULL;
+	R_Texture Compressed;
+	UINT8 *CompressedBlob = NULL;
+	if (R_TryBlockCompressRGBA8(Source, &Compressed, &CompressedBlob))
+	{
+		TextureToUpload = &Compressed;
+		UploadedTexture = R_CommandCreateTextureGPU(Renderer, TextureToUpload);
+		free(CompressedBlob);
+	}
+	else
+	{
+		TextureToUpload = Source;
+		UploadedTexture = R_CommandCreateTextureGPU(Renderer, TextureToUpload);
 	}
 
 	UINT32 SlotIndex = Renderer->TexturesCount++;
-	GPUTexture NewTex = {
-	  .GpuTexture = R_CommandCreateTextureGPU(Renderer, Source),
+	GPUTexture NewGPUTexture = {
 	  .HeapIndex = SlotIndex,
+	  .GpuTexture = UploadedTexture,
 	};
 
 	D3D12_CPU_DESCRIPTOR_HANDLE CpuDescHandle = M_CpuDescriptorHandle(
@@ -77,18 +95,19 @@ R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source)
 		(SIZE_T)SlotIndex * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC SrvDesc = {
-	  .Format = Source->Format,
+	  .Format = TextureToUpload->Format,
 	  .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
 	  .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-	  .Texture2D.MipLevels = Source->MipLevels,
+	  .Texture2D.MipLevels = TextureToUpload->MipLevels,
 	};
 
-	ID3D12Device_CreateShaderResourceView(Renderer->Device, NewTex.GpuTexture, &SrvDesc, CpuDescHandle);
+	ID3D12Device_CreateShaderResourceView(Renderer->Device, NewGPUTexture.GpuTexture, &SrvDesc, CpuDescHandle);
 
-	TextureLookup Lookup = {.key = Source->Name, .Texture = NewTex};
+	TextureLookup Lookup = {.key = Source->Name, .Texture = NewGPUTexture};
 	shputs(Renderer->Textures, Lookup);
+
 	R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
-	return NewTex;
+	return NewGPUTexture;
 }
 
 VOID

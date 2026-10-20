@@ -5,10 +5,10 @@
 
 static const float PI = 3.14159265359;
 
-float3 getNormalFromMap(float2 texCoords, float3 normal, float4 tangent, uint mapIndex);
+float3 GetNormalFromMap(float2 texCoords, float3 normal, float4 tangent, uint mapIndex);
 float DistributionGGX(float3 N, float3 H, float roughness);
 float GeometrySmith(float3 N, float3 V, float3 L, float roughness);
-float3 fresnelSchlick(float cosTheta, float3 F0);
+float3 FresnelSchlick(float cosTheta, float3 F0);
 
 cbuffer MeshData : register(b0)
 {
@@ -48,6 +48,7 @@ cbuffer SceneData : register(b2)
 {
     Light lights[PBR_MAX_LIGHT_NUMBER];
     float3 camPos;
+    uint numActiveLights;
 };
 
 Texture2D pbrTextures[PBR_N_TEXTURES_DESCRIPTORS] : register(t0, TextureSpace);
@@ -77,19 +78,17 @@ PSIn VSMain(VSIn v)
     o.pos = mul(float4(v.pos, 1.0), mul(model, mul(view, proj)));
     o.fragPos = mul(float4(v.pos, 1.0), model).xyz;
     o.norm = normalize(mul(float4(v.norm, 0.0), normalMatrix).xyz);
+    o.tangent = float4(mul(v.tangent.xyz, (float3x3) normalMatrix), v.tangent.w);
     
     // KHR_texture_transform
-    float s = sin(uvRotation);
-    float c = cos(uvRotation);
+    float s, c;
+    sincos(uvRotation, s, c);
     float3x3 uvMatrix = float3x3(
         c * uvScale.x, s * uvScale.x, 0.0,
        -s * uvScale.y, c * uvScale.y, 0.0,
         uvOffset.x, uvOffset.y, 1.0
     );
     o.uv = mul(float3(v.uv, 1.0), uvMatrix).xy;
-    
-    o.tangent.xyz = normalize(mul(float4(v.tangent.xyz, 0.0), normalMatrix).xyz);
-    o.tangent.w = v.tangent.w;
     
     return o;
 }
@@ -112,12 +111,12 @@ float4 PSMain(PSIn input) : SV_TARGET
     float3 F0 = float3(0.04, 0.04, 0.04);
     F0 = lerp(F0, albedo, metallic);
 
-    float3 N = getNormalFromMap(input.uv, input.norm, input.tangent, normalTextureIndex);
+    float3 N = GetNormalFromMap(input.uv, input.norm, input.tangent, normalTextureIndex);
     float3 V = normalize(camPos - input.fragPos);
     float NdotV = max(dot(N, V), 0.0);
 
     float3 Lo = float3(0.0, 0.0, 0.0);
-    for (int i = 0; i < PBR_MAX_LIGHT_NUMBER; ++i)
+    for (int i = 0; i < numActiveLights; ++i)
     {
         float3 L = normalize(lights[i].position - input.fragPos);
         float3 H = normalize(V + L);
@@ -129,7 +128,7 @@ float4 PSMain(PSIn input) : SV_TARGET
 
         float NDF = DistributionGGX(N, H, roughness);
         float G = GeometrySmith(N, V, L, roughness);
-        float3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+        float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
             
         float3 numerator = NDF * G * F;
         float denominator = 4.0 * NdotV * NdotL + 0.0001;
@@ -144,7 +143,7 @@ float4 PSMain(PSIn input) : SV_TARGET
 
     float ao = pbrTextures[aoTextureIndex].Sample(defaultSampler, input.uv).r;
     
-    float3 F_ambient = fresnelSchlick(NdotV, F0);
+    float3 F_ambient = FresnelSchlick(NdotV, F0);
     float3 kS_ambient = F_ambient;
     float3 kD_ambient = (float3(1.0, 1.0, 1.0) - kS_ambient);
     kD_ambient *= (1.0 - metallic);
@@ -162,7 +161,7 @@ float4 PSMain(PSIn input) : SV_TARGET
     return float4(color, albedoSample.a * albedoFactor.a);
 }
 
-float3 getNormalFromMap(float2 texCoords, float3 normal, float4 tangent, uint mapIndex)
+float3 GetNormalFromMap(float2 texCoords, float3 normal, float4 tangent, uint mapIndex)
 {
     float3 tangentNormal = pbrTextures[mapIndex].Sample(defaultSampler, texCoords).xyz * 2.0 - 1.0;
     float3 N = normalize(normal);
@@ -202,7 +201,7 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-float3 fresnelSchlick(float cosTheta, float3 F0)
+float3 FresnelSchlick(float cosTheta, float3 F0)
 {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
