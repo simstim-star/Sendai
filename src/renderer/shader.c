@@ -1,5 +1,3 @@
-#pragma once
-
 #include "core/pch.h"
 
 #include "core/log.h"
@@ -261,6 +259,7 @@ R_CreateBillboardPipelineState(R_Core *Renderer)
 	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature),
 										  ID3D10Blob_GetBufferSize(Signature), &IID_ID3D12RootSignature,
 										  &Renderer->RootSignBillboard);
+	ExitIfFailed(hr);
 
 	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
 	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
@@ -353,6 +352,7 @@ R_CreateGridPipelineState(R_Core *Renderer)
 
 	hr = ID3D12Device_CreateRootSignature(Renderer->Device, 0, ID3D10Blob_GetBufferPointer(Signature),
 										  ID3D10Blob_GetBufferSize(Signature), &IID_ID3D12RootSignature, &Renderer->RootSignGrid);
+	ExitIfFailed(hr);
 
 	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
 														   D3D12_APPEND_ALIGNED_ELEMENT,
