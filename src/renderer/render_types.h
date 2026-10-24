@@ -34,7 +34,7 @@ typedef struct R_PBRConstantBuffer
 	FLOAT AlphaCutoff;
 } R_PBRConstantBuffer;
 
-#define NUM_32BITS_PBR_VALUES sizeof(R_PBRConstantBuffer) / 4
+#define NUM_32BITS_PBR_VALUES (sizeof(R_PBRConstantBuffer) / 4)
 
 typedef struct R_Light
 {

@@ -126,6 +126,5 @@ typedef struct R_Core
 VOID R_Init(R_Core *const Renderer, HWND hWnd);
 VOID R_Destroy(R_Core *Renderer);
 VOID R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const Camera);
-VOID DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
 VOID R_ExecuteCommands(R_Core *const Renderer, ID3D12GraphicsCommandList *CommandList, ID3D12CommandAllocator *CommandAllocator);
 VOID R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height);

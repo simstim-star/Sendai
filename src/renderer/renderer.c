@@ -45,6 +45,7 @@ static VOID RenderScenePass(const S_Scene *Scene,
 							R_Core *const Renderer,
 							R_MeshConstants *const MeshConstants,
 							const ERenderPassType Pass);
+static VOID DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
 static VOID DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
 
 /****************************************************
@@ -522,7 +523,7 @@ CreateSceneResources(R_Core *const Renderer)
 	CreateBaseEngineTextures(Renderer);
 	R_CreateGrid(Renderer, 100.f);
 
-	R_SetupCubemapResources(Renderer, &Renderer->Cubemap, 2056, 2056);
+	R_SetupCubemapResources(Renderer, &Renderer->Cubemap, 2048, 2048);
 	R_SetupCubemapResources(Renderer, &Renderer->IrradianceMap, 32, 32);
 }
 
