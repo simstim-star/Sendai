@@ -27,19 +27,18 @@ source_group("GLTF" FILES ${GLTF_SOURCES} ${GLTF_HEADERS})
 source_group("DX Helpers" FILES ${DX_HELPERS})
 source_group("Libs" FILES ${DEPS_FILES})
 
-set(ALL_PROJECT_FILES ${SOURCE_FILES} ${HEADER_FILES} ${DEPS_FILES})
-
 # You need to add all files on the executable for them to be visible on
 # the source_group in Visual Studio
 # https://stackoverflow.com/a/31653555/14815076
-add_executable(${PROJECT_NAME} WIN32 ${ALL_PROJECT_FILES})
+add_executable(${PROJECT_NAME} WIN32 ${SOURCE_FILES} ${HEADER_FILES} ${DEPS_FILES})
 
 target_precompile_headers(${PROJECT_NAME} PRIVATE "core/pch.h")
 target_compile_options(${PROJECT_NAME} PRIVATE /W4)
 target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
-set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
+set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS" COMPILE_WARNING_AS_ERROR ON)
 
-target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/deps")
+set_source_files_properties("ui/sendai_nk.c" PROPERTIES COMPILE_OPTIONS "/W0")
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/deps")
 
 target_link_libraries(${PROJECT_NAME} PUBLIC d3d12.lib dxguid.lib dxgi.lib D3DCompiler.lib XMathC)
 target_link_options(${PROJECT_NAME} PRIVATE /INCREMENTAL:NO)

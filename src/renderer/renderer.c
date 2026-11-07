@@ -595,15 +595,24 @@ DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *cons
 VOID
 GetAdapter(IDXGIFactory2 *Factory, R_Core *Renderer)
 {
-	for (UINT i = 0; SUCCEEDED(IDXGIFactory2_EnumAdapters1(Factory, i, &Renderer->Adapter)); ++i)
+	IDXGIAdapter1 *Adapter1 = NULL;
+	HRESULT hr;
+	for (UINT i = 0; SUCCEEDED(IDXGIFactory2_EnumAdapters1(Factory, i, &Adapter1)); ++i)
 	{
 		DXGI_ADAPTER_DESC1 Desc = {0};
-		HRESULT hr = IDXGIAdapter3_GetDesc1(Renderer->Adapter, &Desc);
+		hr = IDXGIAdapter1_GetDesc1(Adapter1, &Desc);
 		if (FAILED(hr) || Desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
 		{
-			IDXGIAdapter3_Release(Renderer->Adapter);
+			IDXGIAdapter1_Release(Adapter1);
 			continue;
 		}
-		break;
+
+		hr = IDXGIAdapter1_QueryInterface(Adapter1, &IID_IDXGIAdapter3, &Renderer->Adapter);
+		IDXGIAdapter1_Release(Adapter1);
+
+		if (SUCCEEDED(hr))
+		{
+			break;
+		}
 	}
 }

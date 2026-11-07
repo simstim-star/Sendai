@@ -135,5 +135,8 @@ LogCategoryToNkColor(ELogCategory Category)
 		return nk_rgb(LOG_WARNING_RGB);
 	case ELC_Error:
 		return nk_rgb(LOG_ERROR_RGB);
+	case ELC_Invalid:
+		return nk_rgb(LOG_INVALID_RGB);
 	}
+	return nk_rgb(LOG_INVALID_RGB);
 }

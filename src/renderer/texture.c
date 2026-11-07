@@ -17,14 +17,18 @@
 #include "assets/dds_loader.h"
 
 
-static const UINT8 WHITE_PIXEL[] = {255, 255, 255, 255};
+static UINT8 __WHITE_PIXEL[] = {255, 255, 255, 255};
 
-#define WHITE_TEXTURE                                                                                                            \
-	(R_Texture)                                                                                                                  \
-	{                                                                                                                            \
-		.Name = "fallback_white", .Width = 1, .Height = 1, .MipLevels = 1, .MipPixels[0] = WHITE_PIXEL,                          \
-		.Format = DXGI_FORMAT_R8G8B8A8_UNORM                                                                                     \
-	}
+static const R_Texture WHITE_TEXTURE = {
+  .Name = "fallback_white",
+  .Width = 1,
+  .Height = 1,
+  .Channels = 4,
+  .Size = sizeof(__WHITE_PIXEL),
+  .MipPixels = {__WHITE_PIXEL},
+  .MipLevels = 1,
+  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+};
 
 VOID
 R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
@@ -69,19 +73,22 @@ R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source)
 	}
 
 	ID3D12Resource *UploadedTexture = NULL;
-	R_Texture *TextureToUpload = NULL;
+	DXGI_FORMAT TextureFormat;
+	UINT TextureMipLevels;
 	R_Texture Compressed;
 	UINT8 *CompressedBlob = NULL;
 	if (R_TryBlockCompressRGBA8(Source, &Compressed, &CompressedBlob))
 	{
-		TextureToUpload = &Compressed;
-		UploadedTexture = R_CommandCreateTextureGPU(Renderer, TextureToUpload);
+		UploadedTexture = R_CommandCreateTextureGPU(Renderer, &Compressed);
+		TextureFormat = Compressed.Format;
+		TextureMipLevels = Compressed.MipLevels;
 		free(CompressedBlob);
 	}
 	else
 	{
-		TextureToUpload = Source;
-		UploadedTexture = R_CommandCreateTextureGPU(Renderer, TextureToUpload);
+		UploadedTexture = R_CommandCreateTextureGPU(Renderer, Source);
+		TextureFormat = Source->Format;
+		TextureMipLevels = Source->MipLevels;
 	}
 
 	UINT32 SlotIndex = Renderer->TexturesCount++;
@@ -95,10 +102,10 @@ R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source)
 		(SIZE_T)SlotIndex * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC SrvDesc = {
-	  .Format = TextureToUpload->Format,
+	  .Format = TextureFormat,
 	  .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
 	  .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-	  .Texture2D.MipLevels = TextureToUpload->MipLevels,
+	  .Texture2D.MipLevels = TextureMipLevels,
 	};
 
 	ID3D12Device_CreateShaderResourceView(Renderer->Device, NewGPUTexture.GpuTexture, &SrvDesc, CpuDescHandle);
@@ -226,17 +233,9 @@ R_SuballocateTextureUpload(R_Core *const Renderer, UINT64 Size)
 UINT32
 R_GetTextureIndex(R_Core *const Renderer, const R_Texture *const Texture)
 {
-	R_Texture Target;
-	if (Texture && Texture->Name)
-	{
-		Target = *Texture;
-	}
-	else
-	{
-		Target = WHITE_TEXTURE;
-	}
-
-	GPUTexture Tex = R_UploadTexture(Renderer, &Target);
+	const BOOL HasTexture = Texture && Texture->Name;
+	const R_Texture *const Source = HasTexture ? Texture : &WHITE_TEXTURE;
+	GPUTexture Tex = R_UploadTexture(Renderer, Source);
 	return Tex.HeapIndex;
 }
 

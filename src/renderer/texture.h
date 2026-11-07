@@ -11,7 +11,7 @@ typedef struct GPUTexture {
 } GPUTexture;
 
 typedef struct TextureLookup {
-	char *key;
+	PCSTR key;
 	GPUTexture Texture;
 } TextureLookup;
 

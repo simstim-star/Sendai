@@ -1,7 +1,5 @@
 #pragma once
 
-#include "sendai_nk.h"
-
 typedef struct UI_Renderer UI_Renderer;
 typedef struct S_Scene S_Scene;
 typedef struct IDXGIAdapter3 IDXGIAdapter3;

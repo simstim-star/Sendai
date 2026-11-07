@@ -2,6 +2,7 @@
 
 #include "ui.h"
 #include "ui_top_bar.h"
+#include "win32/str_helper.h"
 
 static const INT LAYOUT_ROW_COLS = 10;
 static const FLOAT BAR_HEIGHT_PERCENTAGE = 0.05f;
@@ -14,7 +15,7 @@ UI_DrawTopBar(UI_Renderer *UI, UI_TopBarState *State)
 {
 	const FLOAT BarHeight = UI->Height * BAR_HEIGHT_PERCENTAGE;
 	UI_EAction Action = UI_ACTION_NONE;
-	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, UI->Width, BarHeight), NK_WINDOW_NO_SCROLLBAR))
+	if (nk_begin(UI->Context, "TopBar", nk_rect(0, 0, (FLOAT)UI->Width, BarHeight), NK_WINDOW_NO_SCROLLBAR))
 	{
 		nk_layout_row_dynamic(UI->Context, BarHeight * BUTTON_LAOYUT_PERCENTAGE, LAYOUT_ROW_COLS);
 		if (nk_button_label_styled(UI->Context, &UI->Context->style.contextual_button, "File"))
@@ -66,7 +67,9 @@ InfoPopup(UI_Renderer *UI, UI_TopBarState *State)
 					   : (Desc.VendorId == 0x1002) ? "AMD"
 					   : (Desc.VendorId == 0x8086) ? "Intel"
 												   : "Unknown";
-		nk_labelf(UI->Context, NK_TEXT_LEFT, "  GPU: %ls (%s)", Desc.Description, Vendor);
+		CHAR GpuName[128];
+		W_TO_UTF8(Desc.Description, GpuName, UTF8_SIZE(Desc.Description));
+		nk_labelf(UI->Context, NK_TEXT_LEFT, "  GPU: %s (%s)", GpuName, Vendor);
 		nk_labelf(UI->Context, NK_TEXT_LEFT, "  Device ID: 0x%X", Desc.DeviceId);
 
 		nk_layout_row_dynamic(UI->Context, 2, 1);
@@ -83,11 +86,11 @@ InfoPopup(UI_Renderer *UI, UI_TopBarState *State)
 		nk_progress(UI->Context, &UsageMB, BudgetMB, NK_FIXED);
 
 		nk_layout_row_dynamic(UI->Context, 20, 1);
-		nk_labelf(UI->Context, NK_TEXT_LEFT, "  Used: %llu MB / OS Budget: %llu MB", UsageMB, BudgetMB);
-		nk_labelf(UI->Context, NK_TEXT_LEFT, "  Physical VRAM: %llu MB", TotalMB);
+		nk_labelf(UI->Context, NK_TEXT_LEFT, "  Used: %d MB / OS Budget: %d MB", (INT)UsageMB, (INT)BudgetMB);
+		nk_labelf(UI->Context, NK_TEXT_LEFT, "  Physical VRAM: %d MB", (INT)TotalMB);
 
 		const nk_size SharedMB = Desc.SharedSystemMemory / (1024 * 1024);
-		nk_labelf(UI->Context, NK_TEXT_LEFT, "  Shared System Memory: %llu MB", SharedMB);
+		nk_labelf(UI->Context, NK_TEXT_LEFT, "  Shared System Memory: %d MB", (INT)SharedMB);
 
 		nk_layout_row_dynamic(UI->Context, 30, 1);
 		if (nk_button_label(UI->Context, "Close"))

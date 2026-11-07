@@ -5,12 +5,14 @@
 #define LOG_WARNING_RGB 255, 255, 0
 #define LOG_ERROR_RGB 255, 0, 0
 #define LOG_INFO_RGB 255, 255, 255
+#define LOG_INVALID_RGB 255, 100, 100
 
 typedef enum ELogCategory
 {
 	ELC_Info,
 	ELC_Warning,
 	ELC_Error,
+	ELC_Invalid,
 } ELogCategory;
 
 typedef struct S_LogEntry

@@ -71,7 +71,7 @@ S_GetLogEntry(INT Index)
 {
 	if (Index >= SENDAI_LOG.LastIndex)
 	{
-		return;
+		return (S_LogEntry){.UTF8Buffer = "Log index out of bounds", .Category = ELC_Invalid};
 	}
 
 	return SENDAI_LOG.Entry[Index];

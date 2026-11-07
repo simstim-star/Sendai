@@ -84,6 +84,7 @@ S_Run(VOID)
 VOID
 S_DoNothing(Sendai *const Engine)
 {
+	UNREFERENCED_PARAMETER(Engine);
 }
 
 VOID

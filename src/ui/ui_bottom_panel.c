@@ -8,6 +8,7 @@
 #include "renderer/render_types.h"
 #include "shaders/sendai/shader_defs.h"
 
+
 static const FLOAT HANDLE_HEIGHT = 10.0f;
 static const FLOAT INFO_BAR_HEIGHT = 22.0f;
 static const FLOAT TAB_BAR_HEIGHT = 30.0f;
@@ -46,7 +47,7 @@ UI_DrawBottomPanel(UI_Renderer *UI, UI_BottomPanelState *State)
 	State->BottomPanelHeight = fminf(State->BottomPanelHeight, UI->Height * MAX_PANEL_HEIGHT_PERCENTAGE);
 
 	FLOAT MaxAvailableHeight = UI->Height - INFO_BAR_HEIGHT;
-	struct nk_rect BarRect = nk_rect(0.0f, MaxAvailableHeight - State->BottomPanelHeight, UI->Width, State->BottomPanelHeight);
+	struct nk_rect BarRect = nk_rect(0.0f, MaxAvailableHeight - State->BottomPanelHeight, (FLOAT)UI->Width, State->BottomPanelHeight);
 
 	if (nk_begin(Ctx, "BottomBar", BarRect, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND))
 	{
@@ -148,7 +149,7 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 		break;
 	}
 	case EBBS_SCENE_TAB: {
-		FLOAT SafeHeight = fmax(50.0f, ContentAreaHeight);
+		FLOAT SafeHeight = fmaxf(50.0f, ContentAreaHeight);
 
 		nk_layout_row_template_begin(Ctx, SafeHeight);
 		nk_layout_row_template_push_variable(Ctx, 200);
@@ -220,7 +221,7 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 	}
 
 	case EBBS_LIGHT_TAB: {
-		FLOAT SafeHeight = fmax(50.0f, ContentAreaHeight);
+		FLOAT SafeHeight = fmaxf(50.0f, ContentAreaHeight);
 
 		nk_layout_row_template_begin(Ctx, SafeHeight);
 		nk_layout_row_template_push_variable(Ctx, 200);
@@ -234,7 +235,7 @@ BottomPanelContentArea(struct nk_context *Ctx, UI_BottomPanelState *State, const
 			nk_label(Ctx, "Name", NK_TEXT_LEFT);
 			nk_label(Ctx, "Active", NK_TEXT_LEFT);
 
-			for (INT i = 0; i < PBR_MAX_LIGHT_NUMBER; i++)
+			for (UINT i = 0; i < PBR_MAX_LIGHT_NUMBER; i++)
 			{
 				BOOL IsSelected = (State->SelectedLightIndex == i);
 				CHAR AsStr[12];
@@ -314,7 +315,7 @@ BottomBarInfoArea(struct nk_context *Ctx, UI_Renderer *UI, const FLOAT InfoBarHe
 	nk_style_push_style_item(Ctx, &Ctx->style.window.fixed_background, nk_style_item_color(INFO_BAR_BACKGROUND_COLOR));
 	nk_style_push_vec2(Ctx, &Ctx->style.window.padding, INFO_BAR_PADDING);
 	nk_style_push_color(Ctx, &Ctx->style.text.color, INFO_BAR_TEXT_COLOR);
-	struct nk_rect InfoRect = nk_rect(0, UI->Height - InfoBarHeight, UI->Width, InfoBarHeight);
+	struct nk_rect InfoRect = nk_rect(0, UI->Height - InfoBarHeight, (FLOAT)UI->Width, InfoBarHeight);
 
 	if (nk_begin(Ctx, "InfoBar", InfoRect, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND))
 	{

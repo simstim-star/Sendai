@@ -76,10 +76,10 @@ typedef struct R_Texture
 	INT Width;
 	INT Height;
 	INT Channels;
-	PSTR Name;
+	PCSTR Name;
 	size_t Size;
 
-	void *MipPixels[D3D12_REQ_MIP_LEVELS];
+	VOID *MipPixels[D3D12_REQ_MIP_LEVELS];
 	UINT MipLevels;
 
 	DXGI_FORMAT Format;

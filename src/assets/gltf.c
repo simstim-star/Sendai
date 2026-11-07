@@ -22,6 +22,8 @@
 #include "win32/str_helper.h"
 #include "win32/win_path.h"
 
+static const UINT MAX_INDEX_COUNT = UINT_MAX / sizeof(UINT32);
+
 /****************************************************
 	Helper structs and enums
 *****************************************************/
@@ -119,7 +121,10 @@ cgltf_arena_alloc(VOID *user, cgltf_size size)
 
 static VOID
 cgltf_arena_free(VOID *user, VOID *ptr)
-{ /* arena handles lifetime */
+{
+	/* arena handles lifetime */
+	UNREFERENCED_PARAMETER(user);
+	UNREFERENCED_PARAMETER(ptr);
 }
 
 /****************************************************
@@ -163,7 +168,6 @@ SendaiGLTF_LoadModel(R_Core *Renderer, PCWSTR Path, S_Scene *Scene)
 													   .StateAfter = D3D12_RESOURCE_STATE_INDEX_BUFFER,
 													   .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES}};
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &IBBarrier);
-
 	Scene->ModelsCount++;
 	S_Logf(ELC_Info, L"Successfully loaded %s", Path);
 	return TRUE;
@@ -231,8 +235,6 @@ LoadNodes(R_Core *Renderer, R_Model *Model, cgltf_data *Data, M_Arena *SceneAren
 											  PrimitiveData->indices, UVAccessorsData, UploadArena);
 			LoadPBRData(Renderer, Model->Images, Data->images, PrimitiveData->material, &Primitive->ConstantBuffer);
 		}
-
-		MeshLookup Lookup = {.key = MeshData, .value = CurrentMesh};
 		hmput(MeshMap, MeshData, CurrentMesh);
 	}
 
@@ -357,8 +359,13 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 		return;
 	}
 
-	UINT VertexCount = PositionAccessor->count;
-	UINT VertexBufferSize = sizeof(R_Vertex) * VertexCount;
+	SIZE_T VertexCount = PositionAccessor->count;
+	SIZE_T VertexBufferSize = sizeof(R_Vertex) * VertexCount;
+	if (VertexBufferSize > UINT_MAX)
+	{
+		S_Log(ELC_Warning, L"Mesh too large");
+		return;
+	}
 	R_Vertex *Vertices = M_ArenaAlloc(Arena, VertexBufferSize);
 	XMFLOAT4 *Tangents = NULL;
 	if (PositionAccessor && NormalAccessor && UVAccessorsData[0] && IndicesAccessor)
@@ -415,11 +422,17 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 		}
 	}
 
-	size_t IndexCount = IndicesAccessor ? IndicesAccessor->count : 0;
+
+	SIZE_T IndexCount = IndicesAccessor ? IndicesAccessor->count : 0;
+	if (IndexCount > MAX_INDEX_COUNT)
+	{
+		S_Log(ELC_Warning, L"Mesh too large");
+		return;
+	}
 	VOID *Indices = NULL;
 	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
-	UINT IndexBufferSize = IndexCount * sizeof(UINT16);
-	UINT IndexStride = sizeof(uint16_t);
+	SIZE_T IndexBufferSize = IndexCount * sizeof(UINT16);
+	SIZE_T IndexStride = sizeof(uint16_t);
 
 	if (IndexCount > 0)
 	{
@@ -462,7 +475,7 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	memcpy(Renderer->UploadBufferCpuAddress + Renderer->CurrentUploadBufferOffset, Vertices, VertexBufferSize);
 	D3D12_VERTEX_BUFFER_VIEW VertexBufferView = {
 	  .BufferLocation = M_GpuAddress(Renderer->VertexBufferDefault, Renderer->CurrentVertexBufferOffset),
-	  .SizeInBytes = VertexBufferSize,
+	  .SizeInBytes = (UINT)VertexBufferSize,
 	  .StrideInBytes = sizeof(R_Vertex),
 	};
 	ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->VertexBufferDefault,
@@ -480,7 +493,7 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 		D3D12_INDEX_BUFFER_VIEW IndexBufferView = {
 		  .BufferLocation = M_GpuAddress(Renderer->IndexBufferDefault, Renderer->CurrentIndexBufferOffset),
 		  .Format = IndexFormat,
-		  .SizeInBytes = IndexBufferSize};
+		  .SizeInBytes = (UINT)IndexBufferSize};
 		ID3D12GraphicsCommandList_CopyBufferRegion(Renderer->CommandList, Renderer->IndexBufferDefault,
 												   Renderer->CurrentIndexBufferOffset, Renderer->UploadBuffer,
 												   Renderer->CurrentUploadBufferOffset, IndexBufferSize);
@@ -490,7 +503,7 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 	}
 
 	Primitive->VertexBufferView = VertexBufferView;
-	Primitive->IndexCount = IndexCount;
+	Primitive->IndexCount = (UINT)IndexCount;
 }
 
 VOID
@@ -548,18 +561,18 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_
 		return FALSE;
 	}
 
-	unsigned char *StbiData = NULL;
+	UCHAR *StbiData = NULL;
 
 	if (Img->uri)
 	{
 		if (IsDataEmbedded(Img))
 		{
-			const char *FirstCommaPtr = strchr(Img->uri, ',');
+			const CHAR *FirstCommaPtr = strchr(Img->uri, ',');
 			if (FirstCommaPtr == NULL)
 			{
 				return FALSE;
 			}
-			const char *EncodedB64 = FirstCommaPtr + 1;
+			const CHAR *EncodedB64 = FirstCommaPtr + 1;
 			size_t EncLen = strlen(EncodedB64);
 			size_t DecodedMaxCap = (EncLen / 4) * 3 + 4;
 			stbi_uc *Decoded = M_ArenaAlloc(UploadArena, DecodedMaxCap);
@@ -567,7 +580,7 @@ ExtractImageData(_In_z_ WCHAR BasePath[MAX_PATH], _In_ cgltf_image *Img, _In_ M_
 			{
 				return FALSE;
 			}
-			b64_decode(EncodedB64, Decoded);
+			b64_decode((const UCHAR *)EncodedB64, Decoded);
 			StbiData =
 				stbi_load_from_memory(Decoded, (int)DecodedMaxCap, &Texture->Width, &Texture->Height, &Texture->Channels, 4);
 			if (StbiData == NULL)
@@ -663,7 +676,7 @@ LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ 
 		{
 			return cgltf_result_data_too_short;
 		}
-		Data->buffers[0].vertex_data = Data->bin;
+		Data->buffers[0].vertex_data = (VOID*)Data->bin;
 		Data->buffers[0].data_free_method = cgltf_data_free_method_none;
 	}
 
@@ -868,7 +881,7 @@ LoadPBRData(R_Core *Renderer, R_Texture *const Images, cgltf_image *ImagesData, 
 	{
 		// When the shader does sample * 2.0 - 1.0, this color becomes (0, 0, 1).
 		// In getNormalFromMap, multiplying by the TBN matrix with (0, 0, 1) returns the original vertex
-		const UINT8 NoEffectNormal[] = {128, 128, 255, 255};
+		UINT8 NoEffectNormal[] = {128, 128, 255, 255};
 		CB->NormalTextureIndex = R_GetTextureIndex(Renderer, &(R_Texture){.Name = "fallback_normal",
 																		  .Width = 1,
 																		  .Height = 1,
