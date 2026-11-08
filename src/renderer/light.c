@@ -9,7 +9,7 @@
 #include "core/scene.h"
 #include "shaders/sendai/shader_defs.h"
 
-static VOID RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint);
+static VOID CmdList_RegisterDrawLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint);
 
 VOID
 R_LightsInit(S_Scene *const Scene, const R_Camera *const Camera)
@@ -29,7 +29,7 @@ R_LightsInit(S_Scene *const Scene, const R_Camera *const Camera)
 }
 
 VOID
-R_DrawLightBillboards(R_Core *const Renderer,
+CmdList_RegisterDrawLightBillboards(R_Core *const Renderer,
 					  const R_Light *const Lights,
 					  BYTE ActiveLightMask,
 					  R_MeshConstants *const MeshConstants)
@@ -50,13 +50,13 @@ R_DrawLightBillboards(R_Core *const Renderer,
 		{
 			XMVECTOR LightPos = XMLoadFloat3(&Lights[i].LightPosition);
 			MeshConstants->MVP.Model = XM_MAT_TRANSLATION_FROM_VEC(LightPos);
-			RenderLightBillboard(MeshConstants, Renderer, Lights[i].LightColor);
+			CmdList_RegisterDrawLightBillboard(MeshConstants, Renderer, Lights[i].LightColor);
 		}
 	}
 }
 
 VOID
-RenderLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint)
+CmdList_RegisterDrawLightBillboard(const R_MeshConstants *const MeshConstants, R_Core *const Renderer, XMFLOAT3 Tint)
 {
 	const R_LightBillboardConstants CB = {.MVP = MeshConstants->MVP, .Tint = Tint};
 	memcpy(Renderer->MeshDataUploadBufferCpuAddress + Renderer->MeshDataOffset, &CB, sizeof(R_LightBillboardConstants));

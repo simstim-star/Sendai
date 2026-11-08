@@ -32,7 +32,9 @@ static const FLOAT CUBEMAP_CLEAR_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
 static VOID SetRtvBuffers(R_Core *const Renderer, UINT NumBuffers);
 static VOID GetAdapter(IDXGIFactory2 *Factory, R_Core *Renderer);
+
 static VOID SignalAndWait(R_Core *const Renderer);
+static VOID WaitForFenceValue(R_Core *const Renderer, UINT64 Value);
 
 static VOID CreateSceneResources(R_Core *const Renderer);
 static VOID CreateBaseEngineTextures(R_Core *const Renderer);
@@ -41,12 +43,16 @@ static VOID CreateShaders(R_Core *const Renderer);
 
 static R_SceneData PreprocessSceneData(const S_Scene *const Scene);
 
-static VOID RenderScenePass(const S_Scene *Scene,
-							R_Core *const Renderer,
-							R_MeshConstants *const MeshConstants,
-							const ERenderPassType Pass);
-static VOID DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
-static VOID DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
+static VOID AdvanceFrame(R_Core *const Renderer);
+
+static VOID CmdList_RegisterSetupCommands(R_Core *const Renderer);
+static VOID CmdList_RegisterDrawCommands(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene);
+static VOID CmdList_RegisterDrawPBR(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants);
+static VOID CmdList_RegisterRenderPassPBR(const S_Scene *Scene,
+										  R_Core *const Renderer,
+										  R_MeshConstants *const MeshConstants,
+										  const ERenderPassType Pass);
+static VOID CmdList_Submit(const R_Core *const Renderer);
 
 /****************************************************
 Public functions
@@ -106,13 +112,17 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 								  &Renderer->Fence);
 	ExitIfFailed(hr);
 
-	hr = ID3D12Device_CreateCommandAllocator(Renderer->Device, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator,
-											 &Renderer->CommandAllocator);
-	ExitIfFailed(hr);
+	for (UINT Frame = 0; Frame < FRAME_COUNT; ++Frame)
+	{
+		hr = ID3D12Device_CreateCommandAllocator(Renderer->Device, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator,
+												 &Renderer->CommandAllocators[Frame]);
+		ExitIfFailed(hr);
+	}
 
-	hr = ID3D12Device_CreateCommandList(Renderer->Device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, Renderer->CommandAllocator,
-										Renderer->PipelineState[Renderer->State], &IID_ID3D12GraphicsCommandList1,
-										&Renderer->CommandList);
+	Renderer->FrameIndex = 0;
+	hr = ID3D12Device_CreateCommandList(
+		Renderer->Device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, Renderer->CommandAllocators[Renderer->FrameIndex],
+		Renderer->PipelineState[Renderer->State], &IID_ID3D12GraphicsCommandList1, &Renderer->CommandList);
 	ExitIfFailed(hr);
 
 	hr = ID3D12Device_CreateCommandAllocator(Renderer->Device, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator,
@@ -162,15 +172,20 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 	  .SampleDesc.Count = 1,
 	  .SampleDesc.Quality = 0,
 	  .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-	  .BufferCount = 2,
+	  .BufferCount = FRAME_COUNT,
 	  .Scaling = DXGI_SCALING_STRETCH,
 	  .SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL,
 	  .AlphaMode = DXGI_ALPHA_MODE_IGNORE,
 	  .Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH,
 	};
+	IDXGISwapChain1 *SwapChain1 = NULL;
 	hr = IDXGIFactory2_CreateSwapChainForHwnd(Factory, (IUnknown *)Renderer->CommandQueue, Renderer->hWnd, &SwapChainDesc, NULL,
-											  NULL, &Renderer->SwapChain);
+											  NULL, &SwapChain1);
 	ExitIfFailed(hr);
+
+	hr = IDXGISwapChain1_QueryInterface(SwapChain1, &IID_IDXGISwapChain3, &Renderer->SwapChain);
+	ExitIfFailed(hr);
+	IDXGISwapChain1_Release(SwapChain1);
 
 	SetRtvBuffers(Renderer, FRAME_COUNT);
 	CreateSceneResources(Renderer);
@@ -183,10 +198,25 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 VOID
 R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const Camera)
 {
+	CmdList_RegisterSetupCommands(Renderer);
+	CmdList_RegisterDrawCommands(Renderer, Camera, Scene);
+	CmdList_Submit(Renderer);
+
+	HRESULT hr = IDXGISwapChain3_Present(Renderer->SwapChain, 1, 0);
+	ExitIfFailed(hr);
+
+	AdvanceFrame(Renderer);
+}
+
+VOID
+CmdList_RegisterSetupCommands(R_Core *const Renderer)
+{
+	Renderer->RtvIndex = IDXGISwapChain3_GetCurrentBackBufferIndex(Renderer->SwapChain);
+
 	ID3D12GraphicsCommandList_RSSetViewports(Renderer->CommandList, 1, &Renderer->Viewport);
 	ID3D12GraphicsCommandList_RSSetScissorRects(Renderer->CommandList, 1, &Renderer->ScissorRect);
 
-	D3D12_RESOURCE_BARRIER ResourceBarrier = {
+	D3D12_RESOURCE_BARRIER TransitionRenderTargetToRenderState = {
 	  .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
 	  .Transition.pResource = Renderer->RtvBuffers[Renderer->RtvIndex],
 	  .Transition.Subresource = 0,
@@ -194,12 +224,13 @@ R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const
 	  .Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET,
 	  .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
 	};
+	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &TransitionRenderTargetToRenderState);
 
-	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &ResourceBarrier);
 	D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilCPUHandle;
 	ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(Renderer->DepthStencilHeap, &DepthStencilCPUHandle);
 	ID3D12GraphicsCommandList_OMSetRenderTargets(Renderer->CommandList, 1, &Renderer->RtvHandles[Renderer->RtvIndex], FALSE,
 												 &DepthStencilCPUHandle);
+
 	ID3D12GraphicsCommandList_ClearRenderTargetView(Renderer->CommandList, Renderer->RtvHandles[Renderer->RtvIndex],
 													CUBEMAP_CLEAR_COLOR, 0, NULL);
 	ID3D12GraphicsCommandList_ClearDepthStencilView(Renderer->CommandList, DepthStencilCPUHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0,
@@ -208,25 +239,32 @@ R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const
 	ID3D12DescriptorHeap *Heaps[] = {Renderer->TexturesHeap};
 	ID3D12GraphicsCommandList_SetDescriptorHeaps(Renderer->CommandList, 1, Heaps);
 
-	DoDraw(Renderer, Camera, Scene);
-
-	ResourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	ResourceBarrier.Transition.pResource = Renderer->RtvBuffers[Renderer->RtvIndex];
-	ResourceBarrier.Transition.Subresource = 0;
-	ResourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	ResourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-	ResourceBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &ResourceBarrier);
-
-	R_ExecuteCommands(Renderer, Renderer->CommandList, Renderer->CommandAllocator);
-
-	HRESULT hr = IDXGISwapChain2_Present(Renderer->SwapChain, 1, 0);
-	ExitIfFailed(hr);
-	Renderer->RtvIndex = (Renderer->RtvIndex + 1) % FRAME_COUNT;
+	Renderer->MeshDataOffset = Renderer->FrameIndex * MESH_DATA_FRAME_SIZE;
+	Renderer->SceneDataOffset = SCENE_DATA_STATIC_SIZE + Renderer->FrameIndex * SCENE_DATA_FRAME_SIZE;
 }
 
 VOID
-R_ExecuteCommands(R_Core *const Renderer, ID3D12GraphicsCommandList *CommandList, ID3D12CommandAllocator *CommandAllocator)
+CmdList_Submit(const R_Core *const Renderer)
+{
+	D3D12_RESOURCE_BARRIER TransitionRenderTargetToPresentState = {
+	  .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+	  .Transition.pResource = Renderer->RtvBuffers[Renderer->RtvIndex],
+	  .Transition.Subresource = 0,
+	  .Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET,
+	  .Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT,
+	  .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+	};
+	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->CommandList, 1, &TransitionRenderTargetToPresentState);
+
+	HRESULT hr = ID3D12GraphicsCommandList_Close(Renderer->CommandList);
+	ExitIfFailed(hr);
+
+	ID3D12CommandList *CmdLists[] = {(ID3D12CommandList *)Renderer->CommandList};
+	ID3D12CommandQueue_ExecuteCommandLists(Renderer->CommandQueue, 1, CmdLists);
+}
+
+VOID
+CmdList_SubmitAndWait(R_Core *const Renderer, ID3D12GraphicsCommandList *CommandList, ID3D12CommandAllocator *CommandAllocator)
 {
 	HRESULT hr = ID3D12GraphicsCommandList_Close(CommandList);
 	ExitIfFailed(hr);
@@ -240,29 +278,17 @@ R_ExecuteCommands(R_Core *const Renderer, ID3D12GraphicsCommandList *CommandList
 VOID
 R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height)
 {
+	SignalAndWait(Renderer);
+
 	for (UINT i = 0; i < FRAME_COUNT; ++i)
 	{
-		SignalAndWait(Renderer);
 		ID3D12Resource_Release(Renderer->RtvBuffers[i]);
 	}
 
-	HRESULT hr = IDXGISwapChain1_ResizeBuffers(Renderer->SwapChain, 2, Width, Height, DXGI_FORMAT_UNKNOWN,
+	HRESULT hr = IDXGISwapChain3_ResizeBuffers(Renderer->SwapChain, FRAME_COUNT, Width, Height, DXGI_FORMAT_UNKNOWN,
 											   DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
 	ExitIfFailed(hr);
-	hr = IDXGISwapChain1_GetBuffer(Renderer->SwapChain, 0, &IID_ID3D12Resource, &Renderer->RtvBuffers[0]);
-	ExitIfFailed(hr);
-	hr = IDXGISwapChain1_GetBuffer(Renderer->SwapChain, 1, &IID_ID3D12Resource, &Renderer->RtvBuffers[1]);
-	ExitIfFailed(hr);
-
-	for (UINT i = 0; i < FRAME_COUNT; ++i)
-	{
-		D3D12_CPU_DESCRIPTOR_HANDLE RtvDescriptorHandle = M_CpuDescriptorHandle(
-			Renderer->RtvDescriptorHeap, (SIZE_T)i * Renderer->DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]);
-		ID3D12Device_CreateRenderTargetView(Renderer->Device, Renderer->RtvBuffers[i], NULL, RtvDescriptorHandle);
-		Renderer->RtvHandles[i] = RtvDescriptorHandle;
-	}
-
-	Renderer->RtvIndex = 0;
+	SetRtvBuffers(Renderer, FRAME_COUNT);
 
 	Renderer->Width = Width;
 	Renderer->Height = Height;
@@ -283,6 +309,8 @@ R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height)
 VOID
 R_Destroy(R_Core *Renderer)
 {
+	SignalAndWait(Renderer);
+
 	UI_Destroy();
 
 	for (ERenderState State = ERS_GLTF; State < ERS_N_RENDER_STATES; ++State)
@@ -304,7 +332,6 @@ R_Destroy(R_Core *Renderer)
 
 	for (INT i = 0; i < FRAME_COUNT; ++i)
 	{
-		SignalAndWait(Renderer);
 		ID3D12Resource_Release(Renderer->RtvBuffers[i]);
 	}
 	CloseHandle(Renderer->FenceEvent);
@@ -326,13 +353,16 @@ R_Destroy(R_Core *Renderer)
 	ID3D12RootSignature_Release(Renderer->RootSignSkybox);
 	ID3D12RootSignature_Release(Renderer->RootSignGrid);
 
-	ID3D12CommandAllocator_Release(Renderer->CommandAllocator);
+	for (UINT Frame = 0; Frame < FRAME_COUNT; ++Frame)
+	{
+		ID3D12CommandAllocator_Release(Renderer->CommandAllocators[Frame]);
+	}
 	ID3D12GraphicsCommandList_Release(Renderer->CommandList);
 	ID3D12CommandAllocator_Release(Renderer->UploadCommandAllocator);
 	ID3D12GraphicsCommandList_Release(Renderer->UploadCommandList);
 	ID3D12CommandQueue_Release(Renderer->CommandQueue);
 	ID3D12Fence_Release(Renderer->Fence);
-	IDXGISwapChain1_Release(Renderer->SwapChain);
+	IDXGISwapChain3_Release(Renderer->SwapChain);
 	ID3D12Device_Release(Renderer->Device);
 
 	shfree(Renderer->Textures);
@@ -347,27 +377,67 @@ SignalAndWait(R_Core *const Renderer)
 {
 	HRESULT hr = ID3D12CommandQueue_Signal(Renderer->CommandQueue, Renderer->Fence, ++Renderer->FenceValue);
 	ExitIfFailed(hr);
-	ID3D12Fence_SetEventOnCompletion(Renderer->Fence, Renderer->FenceValue, Renderer->FenceEvent);
-	WaitForSingleObject(Renderer->FenceEvent, INFINITE);
+	WaitForFenceValue(Renderer, Renderer->FenceValue);
 }
 
 VOID
-RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants, const ERenderPassType Pass)
+WaitForFenceValue(R_Core *const Renderer, UINT64 Value)
 {
-	const ERenderState PSO = (Pass == ERPT_PASS_OPAQUE) ? ERS_GLTF : ERS_GLTF_BLEND;
-	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[PSO]);
+	if (ID3D12Fence_GetCompletedValue(Renderer->Fence) < Value)
+	{
+		HRESULT hr = ID3D12Fence_SetEventOnCompletion(Renderer->Fence, Value, Renderer->FenceEvent);
+		ExitIfFailed(hr);
+		WaitForSingleObject(Renderer->FenceEvent, INFINITE);
+	}
+}
 
+VOID
+AdvanceFrame(R_Core *const Renderer)
+{
+	const UINT64 SignalValue = ++Renderer->FenceValue;
+	HRESULT hr = ID3D12CommandQueue_Signal(Renderer->CommandQueue, Renderer->Fence, SignalValue);
+	ExitIfFailed(hr);
+
+	Renderer->FrameFenceValues[Renderer->FrameIndex] = SignalValue;
+	Renderer->FrameIndex = (Renderer->FrameIndex + 1) % FRAME_COUNT;
+	WaitForFenceValue(Renderer, Renderer->FrameFenceValues[Renderer->FrameIndex]);
+
+	ID3D12CommandAllocator *NextFrameAllocator = Renderer->CommandAllocators[Renderer->FrameIndex];
+	hr = ID3D12CommandAllocator_Reset(NextFrameAllocator);
+	ExitIfFailed(hr);
+	hr = ID3D12GraphicsCommandList_Reset(Renderer->CommandList, NextFrameAllocator, Renderer->PipelineState[Renderer->State]);
+	ExitIfFailed(hr);
+}
+
+VOID
+CmdList_RegisterRenderPassPBR(const S_Scene *Scene,
+							  R_Core *const Renderer,
+							  R_MeshConstants *const MeshConstants,
+							  const ERenderPassType Pass)
+{
+	ERenderState PSO;
+	switch (Renderer->State)
+	{
+	case ERS_WIREFRAME:
+		PSO = ERS_WIREFRAME;
+		break;
+	default:
+		PSO = (Pass == ERPT_PASS_OPAQUE) ? ERS_GLTF : ERS_GLTF_BLEND;
+		break;
+	}
+
+	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[PSO]);
 	for (size_t ModelIndex = 0; ModelIndex < Scene->ModelsCount; ++ModelIndex)
 	{
-		R_Model *Model = &Scene->Models[ModelIndex];
+		const R_Model *const Model = &Scene->Models[ModelIndex];
 		if (!Model->Visible)
 		{
 			continue;
 		}
 
-		XMMATRIX T = XMMatrixTranslation(Model->Position.x, Model->Position.y, Model->Position.z);
-		XMMATRIX R = XMMatrixRotationRollPitchYaw(Model->Rotation.x, Model->Rotation.y, Model->Rotation.z);
-		XMMATRIX S = XMMatrixScaling(Model->Scale.x, Model->Scale.y, Model->Scale.z);
+		const XMMATRIX T = XMMatrixTranslation(Model->Position.x, Model->Position.y, Model->Position.z);
+		const XMMATRIX R = XMMatrixRotationRollPitchYaw(Model->Rotation.x, Model->Rotation.y, Model->Rotation.z);
+		const XMMATRIX S = XMMatrixScaling(Model->Scale.x, Model->Scale.y, Model->Scale.z);
 		XMMATRIX M = XM_MAT_MULT(S, R);
 		M = XM_MAT_MULT(M, T);
 
@@ -413,7 +483,7 @@ RenderScenePass(const S_Scene *Scene, R_Core *const Renderer, R_MeshConstants *c
 }
 
 VOID
-DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants)
+CmdList_RegisterDrawPBR(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstants *const MeshConstants)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignPBR);
 
@@ -429,9 +499,9 @@ DrawPrimitives(const S_Scene *const Scene, R_Core *const Renderer, R_MeshConstan
 	ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(Renderer->CommandList, 4, Renderer->IrradianceMap.GpuSrvHandle);
 
 	UINT64 PassStartOffset = Renderer->MeshDataOffset;
-	RenderScenePass(Scene, Renderer, MeshConstants, ERPT_PASS_OPAQUE);
+	CmdList_RegisterRenderPassPBR(Scene, Renderer, MeshConstants, ERPT_PASS_OPAQUE);
 	Renderer->MeshDataOffset = PassStartOffset;
-	RenderScenePass(Scene, Renderer, MeshConstants, ERPT_PASS_BLEND);
+	CmdList_RegisterRenderPassPBR(Scene, Renderer, MeshConstants, ERPT_PASS_BLEND);
 }
 
 VOID
@@ -491,13 +561,13 @@ CreateSceneResources(R_Core *const Renderer)
 											  &Renderer->IndexBufferDefault);
 	ExitIfFailed(hr);
 
-	BufferDesc.Width = MEGABYTES(8);
+	BufferDesc.Width = MESH_DATA_FRAME_SIZE * FRAME_COUNT;
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc,
 											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
 											  &Renderer->MeshDataUploadBuffer);
 	ExitIfFailed(hr);
 
-	BufferDesc.Width = MEGABYTES(1);
+	BufferDesc.Width = SCENE_DATA_STATIC_SIZE + SCENE_DATA_FRAME_SIZE * FRAME_COUNT;
 	hr = ID3D12Device_CreateCommittedResource(Renderer->Device, &UploadHeapProps, D3D12_HEAP_FLAG_NONE, &BufferDesc,
 											  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
 											  &Renderer->SceneDataUploadBuffer);
@@ -522,7 +592,6 @@ CreateSceneResources(R_Core *const Renderer)
 
 	CreateBaseEngineTextures(Renderer);
 	R_CreateGrid(Renderer, 100.f);
-
 	R_SetupCubemapResources(Renderer, &Renderer->Cubemap, 2048, 2048);
 	R_SetupCubemapResources(Renderer, &Renderer->IrradianceMap, 32, 32);
 }
@@ -570,26 +639,23 @@ PreprocessSceneData(const S_Scene *const Scene)
 }
 
 VOID
-DoDraw(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene)
+CmdList_RegisterDrawCommands(R_Core *const Renderer, const R_Camera *const Camera, const S_Scene *const Scene)
 {
-	UINT64 StartMeshDataOffset = Renderer->MeshDataOffset;
-	UINT64 StartSceneDataOffset = Renderer->SceneDataOffset;
-
 	R_MeshConstants MeshConstants = {.MVP = {
 									   .View = R_CameraViewMatrix(Camera->Position, Camera->LookDirection, Camera->UpDirection),
 									   .Proj = R_CameraProjectionMatrix(XM_PIDIV4, Renderer->AspectRatio, 0.1f, 1000.0f),
 									 }};
-	DrawPrimitives(Scene, Renderer, &MeshConstants);
-	R_DrawSkybox(Renderer, MeshConstants.MVP.View, MeshConstants.MVP.Proj);
+	CmdList_RegisterDrawPBR(Scene, Renderer, &MeshConstants);
+	CmdList_RegisterDrawSkybox(Renderer, MeshConstants.MVP.View, MeshConstants.MVP.Proj);
 	if (Renderer->bDrawGrid)
 	{
-		R_DrawGrid(Renderer, &MeshConstants);
+		CmdList_RegisterDrawGrid(Renderer, &MeshConstants);
 	}
-	R_DrawLightBillboards(Renderer, Scene->Data.Lights, Scene->ActiveLightMask, &MeshConstants);
-	UI_Draw(Renderer->CommandList);
+	CmdList_RegisterDrawLightBillboards(Renderer, Scene->Data.Lights, Scene->ActiveLightMask, &MeshConstants);
 
-	Renderer->MeshDataOffset = StartMeshDataOffset;
-	Renderer->SceneDataOffset = StartSceneDataOffset;
+	/* Nuklear rewrites a single upload buffer inside UI_Draw, so the GPU must be done with the previous frame's copy first */
+	WaitForFenceValue(Renderer, Renderer->FenceValue);
+	UI_Draw(Renderer->CommandList);
 }
 
 VOID

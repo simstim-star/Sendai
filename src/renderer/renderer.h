@@ -7,6 +7,10 @@
 
 #define FRAME_COUNT 2
 
+#define MESH_DATA_FRAME_SIZE (8ull * 1024 * 1024)
+#define SCENE_DATA_STATIC_SIZE (1ull * 1024 * 1024)
+#define SCENE_DATA_FRAME_SIZE (1ull * 1024 * 1024)
+
 typedef struct R_Camera R_Camera;
 typedef struct R_Primitive R_Primitive;
 typedef struct R_Texture R_Texture;
@@ -52,7 +56,7 @@ typedef struct R_Core
 	D3D12_RECT ScissorRect;
 
 	ID3D12Device *Device;
-	IDXGISwapChain1 *SwapChain;
+	IDXGISwapChain3 *SwapChain;
 	ID3D12DescriptorHeap *RtvDescriptorHeap;
 
 	ID3D12Resource *RtvBuffers[FRAME_COUNT];
@@ -75,7 +79,7 @@ typedef struct R_Core
 	ID3D12DescriptorHeap *DepthStencilHeap;
 
 	ID3D12CommandQueue *CommandQueue;
-	ID3D12CommandAllocator *CommandAllocator;
+	ID3D12CommandAllocator *CommandAllocators[FRAME_COUNT];
 	ID3D12GraphicsCommandList *CommandList;
 	ID3D12CommandAllocator *UploadCommandAllocator;
 	ID3D12GraphicsCommandList *UploadCommandList;
@@ -92,6 +96,7 @@ typedef struct R_Core
 
 	UINT FrameIndex;
 	UINT64 FenceValue;
+	UINT64 FrameFenceValues[FRAME_COUNT];
 	HANDLE FenceEvent;
 	ID3D12Fence *Fence;
 
@@ -126,5 +131,8 @@ typedef struct R_Core
 VOID R_Init(R_Core *const Renderer, HWND hWnd);
 VOID R_Destroy(R_Core *Renderer);
 VOID R_Draw(R_Core *const Renderer, const S_Scene *const Scene, const R_Camera *const Camera);
-VOID R_ExecuteCommands(R_Core *const Renderer, ID3D12GraphicsCommandList *CommandList, ID3D12CommandAllocator *CommandAllocator);
 VOID R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height);
+
+VOID CmdList_SubmitAndWait(R_Core *const Renderer,
+						   ID3D12GraphicsCommandList *CommandList,
+						   ID3D12CommandAllocator *CommandAllocator);

@@ -34,13 +34,11 @@ typedef struct R_Cubemap
 } R_Cubemap;
 
 VOID R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, UINT Height);
-
-VOID R_DrawToCubemapFaces(R_Core *Renderer,
-						  R_Cubemap *Target,
-						  ID3D12PipelineState *PSO,
-						  ID3D12RootSignature *RootSign,
-						  D3D12_GPU_DESCRIPTOR_HANDLE SourceSRV);
-
-VOID R_DrawSkybox(R_Core *Renderer, XMMATRIX View, XMMATRIX Proj);
-
 VOID R_CubemapRelease(R_Cubemap *Cubemap);
+
+VOID CmdList_RegisterDrawSkybox(R_Core *Renderer, XMMATRIX View, XMMATRIX Proj);
+VOID CmdList_RegisterDrawCubemapFaces(R_Core *Renderer,
+									  R_Cubemap *Target,
+									  ID3D12PipelineState *PSO,
+									  ID3D12RootSignature *RootSign,
+									  D3D12_GPU_DESCRIPTOR_HANDLE SourceSRV);

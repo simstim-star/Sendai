@@ -60,7 +60,7 @@ R_CreateUITexture(PCWSTR Path, R_Core *Renderer, UINT nkSlotIndex)
 	shputs(Renderer->Textures, Lookup);
 
 	stbi_image_free(Pixels);
-	R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
+	CmdList_SubmitAndWait(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
 }
 
 GPUTexture
@@ -113,7 +113,7 @@ R_UploadTexture(R_Core *const Renderer, const R_Texture *const Source)
 	TextureLookup Lookup = {.key = Source->Name, .Texture = NewGPUTexture};
 	shputs(Renderer->Textures, Lookup);
 
-	R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
+	CmdList_SubmitAndWait(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
 	return NewGPUTexture;
 }
 
@@ -128,7 +128,7 @@ R_CreateCustomTexture(PCWSTR Path, R_Core *Renderer)
 	  .Height = H, .Width = W, .Name = PathUTF8, .MipLevels = 1, .MipPixels[0] = Pixels, .Format = DXGI_FORMAT_R8G8B8A8_UNORM};
 	R_UploadTexture(Renderer, &Source);
 	stbi_image_free(Pixels);
-	R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
+	CmdList_SubmitAndWait(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
 }
 
 GPUTexture
@@ -146,7 +146,7 @@ R_CreateHDRTexture(PCWSTR Path, R_Core *Renderer)
 								   .Format = DXGI_FORMAT_R32G32B32A32_FLOAT};
 	GPUTexture HDRTexture = R_UploadTexture(Renderer, &Source);
 	stbi_image_free(Pixels);
-	R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
+	CmdList_SubmitAndWait(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
 	return HDRTexture;
 }
 
@@ -221,7 +221,7 @@ R_SuballocateTextureUpload(R_Core *const Renderer, UINT64 Size)
 	if (AlignedOffset + Size > Renderer->TextureUploadBuffer.Size)
 	{
 		assert(Size <= Renderer->TextureUploadBuffer.Size);
-		R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
+		CmdList_SubmitAndWait(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
 		Renderer->TextureUploadBuffer.CurrentOffset = Size;
 		return 0;
 	}
@@ -369,7 +369,7 @@ R_UploadTextureFromDDSFile(R_Core *const Renderer, const PWSTR FileName, const P
 	TextureLookup Lookup = {.key = NameKey, .Texture = NewTex};
 	shputs(Renderer->Textures, Lookup);
 
-	R_ExecuteCommands(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
+	CmdList_SubmitAndWait(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
 	arrfree(Subresources);
 	free(DdsData);
 

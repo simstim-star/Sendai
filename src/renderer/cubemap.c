@@ -160,11 +160,11 @@ R_SetupCubemapResources(R_Core *Renderer, R_Cubemap *const Cubemap, UINT Width, 
 }
 
 VOID
-R_DrawToCubemapFaces(R_Core *Renderer,
-					 R_Cubemap *Target,
-					 ID3D12PipelineState *PSO,
-					 ID3D12RootSignature *RootSign,
-					 D3D12_GPU_DESCRIPTOR_HANDLE SourceSRV)
+CmdList_RegisterDrawCubemapFaces(R_Core *Renderer,
+								 R_Cubemap *Target,
+								 ID3D12PipelineState *PSO,
+								 ID3D12RootSignature *RootSign,
+								 D3D12_GPU_DESCRIPTOR_HANDLE SourceSRV)
 {
 	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
 									  .Transition = {
@@ -217,7 +217,7 @@ R_DrawToCubemapFaces(R_Core *Renderer,
 }
 
 VOID
-R_DrawSkybox(R_Core *Renderer, XMMATRIX View, XMMATRIX Proj)
+CmdList_RegisterDrawSkybox(R_Core *Renderer, XMMATRIX View, XMMATRIX Proj)
 {
 	struct
 	{

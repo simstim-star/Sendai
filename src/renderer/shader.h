@@ -4,7 +4,8 @@ typedef struct R_Core R_Core;
 typedef struct ID3D12Device ID3D12Device;
 typedef struct ID3D12RootSignature ID3D12RootSignature;
 
-typedef enum EShaderType {
+typedef enum EShaderType
+{
 	EST_VERTEX_SHADER,
 	EST_PIXEL_SHADER,
 } EShaderType;

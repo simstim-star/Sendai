@@ -123,9 +123,9 @@ S_CubemapOpen(Sendai *const Engine)
 		(SIZE_T)HDRTexture.HeapIndex * Engine->RendererCore.DescriptorHandleIncrementSize[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
 	ID3D12DescriptorHeap *Heaps[] = {Engine->RendererCore.TexturesHeap};
 	ID3D12GraphicsCommandList_SetDescriptorHeaps(Engine->RendererCore.CommandList, _countof(Heaps), Heaps);
-	R_DrawToCubemapFaces(&Engine->RendererCore, &Engine->RendererCore.Cubemap, Engine->RendererCore.PipelineState[ERS_CUBEMAP],
+	CmdList_RegisterDrawCubemapFaces(&Engine->RendererCore, &Engine->RendererCore.Cubemap, Engine->RendererCore.PipelineState[ERS_CUBEMAP],
 						 Engine->RendererCore.RootSignCubemap, HdrSrvHandle);
-	R_DrawToCubemapFaces(&Engine->RendererCore, &Engine->RendererCore.IrradianceMap,
+	CmdList_RegisterDrawCubemapFaces(&Engine->RendererCore, &Engine->RendererCore.IrradianceMap,
 						 Engine->RendererCore.PipelineState[ERS_IRRADIANCE], Engine->RendererCore.RootSignIrradiance,
 						 Engine->RendererCore.Cubemap.GpuSrvHandle);
 }

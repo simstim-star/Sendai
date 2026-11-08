@@ -422,7 +422,6 @@ LoadVerticesAndIndicesIntoBuffers(R_Core *Renderer,
 		}
 	}
 
-
 	SIZE_T IndexCount = IndicesAccessor ? IndicesAccessor->count : 0;
 	if (IndexCount > MAX_INDEX_COUNT)
 	{
@@ -676,7 +675,7 @@ LoadGLTFBuffers(_In_ const cgltf_options *Options, _In_ M_Arena *Arena, _Inout_ 
 		{
 			return cgltf_result_data_too_short;
 		}
-		Data->buffers[0].vertex_data = (VOID*)Data->bin;
+		Data->buffers[0].vertex_data = (VOID *)Data->bin;
 		Data->buffers[0].data_free_method = cgltf_data_free_method_none;
 	}
 

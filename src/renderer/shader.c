@@ -117,7 +117,7 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	{
 		if (Error)
 		{
-			S_Log(ELC_Error, (PWSTR) ID3D10Blob_GetBufferPointer(Error));
+			S_Log(ELC_Error, (PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}
@@ -251,7 +251,7 @@ R_CreateBillboardPipelineState(R_Core *Renderer)
 	{
 		if (Error)
 		{
-			S_Log(ELC_Error, (PWSTR) ID3D10Blob_GetBufferPointer(Error));
+			S_Log(ELC_Error, (PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}
@@ -345,7 +345,7 @@ R_CreateGridPipelineState(R_Core *Renderer)
 	{
 		if (Error)
 		{
-			S_Log(ELC_Error, (PWSTR) ID3D10Blob_GetBufferPointer(Error));
+			S_Log(ELC_Error, (PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}
@@ -447,7 +447,7 @@ R_CreateCubemapPipelineState(R_Core *Renderer)
 	{
 		if (Error)
 		{
-			S_Log(ELC_Error, (PWSTR) ID3D10Blob_GetBufferPointer(Error));
+			S_Log(ELC_Error, (PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}
@@ -538,7 +538,7 @@ R_CreateIrradiancePipelineState(R_Core *Renderer)
 	{
 		if (Error)
 		{
-			S_Log(ELC_Error, (PWSTR) ID3D10Blob_GetBufferPointer(Error));
+			S_Log(ELC_Error, (PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}
@@ -629,7 +629,7 @@ R_CreateSkyboxPipelineState(R_Core *Renderer)
 	{
 		if (Error)
 		{
-			S_Log(ELC_Error, (PWSTR) ID3D10Blob_GetBufferPointer(Error));
+			S_Log(ELC_Error, (PWSTR)ID3D10Blob_GetBufferPointer(Error));
 		}
 		ExitIfFailed(hr);
 	}
