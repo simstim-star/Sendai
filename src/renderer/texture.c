@@ -1,9 +1,9 @@
 #include "core/pch.h"
 
+#include "block_compression.h"
 #include "error/error.h"
 #include "renderer.h"
 #include "texture.h"
-#include "block_compression.h"
 #include "ui/ui.h"
 #include "win32/str_helper.h"
 
@@ -15,7 +15,6 @@
 #include "stb_image_resize2.h"
 
 #include "assets/dds_loader.h"
-
 
 static UINT8 __WHITE_PIXEL[] = {255, 255, 255, 255};
 
@@ -125,7 +124,13 @@ R_CreateCustomTexture(PCWSTR Path, R_Core *Renderer)
 	INT W, H;
 	UINT8 *Pixels = stbi_load(PathUTF8, &W, &H, NULL, 4);
 	R_Texture Source = (R_Texture){
-	  .Height = H, .Width = W, .Name = PathUTF8, .MipLevels = 1, .MipPixels[0] = Pixels, .Format = DXGI_FORMAT_R8G8B8A8_UNORM};
+	  .Height = H,
+	  .Width = W,
+	  .Name = PathUTF8,
+	  .MipLevels = 1,
+	  .MipPixels[0] = Pixels,
+	  .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+	};
 	R_UploadTexture(Renderer, &Source);
 	stbi_image_free(Pixels);
 	CmdList_SubmitAndWait(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
@@ -138,12 +143,14 @@ R_CreateHDRTexture(PCWSTR Path, R_Core *Renderer)
 	W_TO_UTF8(Path, PathUTF8, UTF8_SIZE(Path));
 	INT W, H, NumberOfComponents;
 	FLOAT *Pixels = stbi_loadf(PathUTF8, &W, &H, &NumberOfComponents, 4);
-	R_Texture Source = (R_Texture){.Height = H,
-								   .Width = W,
-								   .Name = PathUTF8,
-								   .MipLevels = 1,
-								   .MipPixels[0] = Pixels,
-								   .Format = DXGI_FORMAT_R32G32B32A32_FLOAT};
+	R_Texture Source = (R_Texture){
+	  .Height = H,
+	  .Width = W,
+	  .Name = PathUTF8,
+	  .MipLevels = 1,
+	  .MipPixels[0] = Pixels,
+	  .Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+	};
 	GPUTexture HDRTexture = R_UploadTexture(Renderer, &Source);
 	stbi_image_free(Pixels);
 	CmdList_SubmitAndWait(Renderer, Renderer->UploadCommandList, Renderer->UploadCommandAllocator);
@@ -191,22 +198,30 @@ R_CommandCreateTextureGPU(R_Core *const Renderer, const R_Texture *const SourceT
 				   RowSizeInBytes[MipLevel]);
 		}
 		D3D12_TEXTURE_COPY_LOCATION DestinationLocation = {
-		  .pResource = Texture, .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = MipLevel};
-		D3D12_TEXTURE_COPY_LOCATION SourceLocation = {.pResource = Renderer->TextureUploadBuffer.Buffer,
-													  .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
-													  .PlacedFootprint = Layouts[MipLevel]};
+		  .pResource = Texture,
+		  .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+		  .SubresourceIndex = MipLevel,
+		};
+		D3D12_TEXTURE_COPY_LOCATION SourceLocation = {
+		  .pResource = Renderer->TextureUploadBuffer.Buffer,
+		  .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+		  .PlacedFootprint = Layouts[MipLevel],
+		};
 		SourceLocation.PlacedFootprint.Offset += Offset;
 		ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->UploadCommandList, &DestinationLocation, 0, 0, 0, &SourceLocation,
 													NULL);
 	}
 
-	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-									  .Transition = {
-										.pResource = Texture,
-										.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-										.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
-										.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-									  }};
+	D3D12_RESOURCE_BARRIER Barrier = {
+	  .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+	  .Transition =
+		  {
+			.pResource = Texture,
+			.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+			.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+			.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+		  },
+	};
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->UploadCommandList, 1, &Barrier);
 
 	return Texture;
@@ -267,8 +282,8 @@ R_GenerateMips(R_Model *Model, M_Arena *UploadArena)
 
 			Texture->MipPixels[MipLevel] = M_ArenaAlloc(UploadArena, NextWidth * NextHeight * 4);
 
-			stbir_resize_uint8_linear((unsigned char *)Texture->MipPixels[MipLevel - 1], CurrentWidth, CurrentHeight, 0,
-									  (unsigned char *)Texture->MipPixels[MipLevel], NextWidth, NextHeight, 0, STBIR_RGBA);
+			stbir_resize_uint8_linear((PUCHAR)Texture->MipPixels[MipLevel - 1], CurrentWidth, CurrentHeight, 0,
+									  (PUCHAR)Texture->MipPixels[MipLevel], NextWidth, NextHeight, 0, STBIR_RGBA);
 
 			CurrentWidth = NextWidth;
 			CurrentHeight = NextHeight;
@@ -314,13 +329,16 @@ R_UploadDDSResource(R_Core *const Renderer, ID3D12Resource *Texture, D3D12_SUBRE
 		ID3D12GraphicsCommandList_CopyTextureRegion(Renderer->UploadCommandList, &DestLoc, 0, 0, 0, &SrcLoc, NULL);
 	}
 
-	D3D12_RESOURCE_BARRIER Barrier = {.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-									  .Transition = {
-										.pResource = Texture,
-										.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-										.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
-										.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-									  }};
+	D3D12_RESOURCE_BARRIER Barrier = {
+	  .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+	  .Transition =
+		  {
+			.pResource = Texture,
+			.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+			.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+			.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+		  },
+	};
 	ID3D12GraphicsCommandList_ResourceBarrier(Renderer->UploadCommandList, 1, &Barrier);
 }
 
@@ -338,7 +356,7 @@ R_UploadTextureFromDDSFile(R_Core *const Renderer, const PWSTR FileName, const P
 	D3D12_SUBRESOURCE_DATA *Subresources = NULL;
 	arrsetlen(Subresources, D3D12_REQ_MIP_LEVELS);
 
-	const int POTATO_COMPUTER = 1024;
+	const INT POTATO_COMPUTER = 1024;
 	HRESULT hr =
 		LoadDDSTextureFromFile(Renderer->Device, FileName, &Texture, &DdsData, Subresources, POTATO_COMPUTER, NULL, NULL);
 	ExitIfFailed(hr);

@@ -18,7 +18,7 @@ R_LightsInit(S_Scene *const Scene, const R_Camera *const Camera)
 	Scene->ActiveLightMask |= (1 << 0);
 	Scene->Data = (R_SceneData){.CameraPosition = Camera->Position,
 								.Lights = {
-								  {.LightPosition = {0.0f, 10.0f, 0.0f},.LightColor = {300.0f, 100.0f, 100.0f}},
+								  {.LightPosition = {0.0f, 10.0f, 0.0f}, .LightColor = {300.0f, 100.0f, 100.0f}},
 								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
 								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
 								  {.LightPosition = {0.0f, 0.0f, 0.0f}, .LightColor = {100.0f, 100.0f, 100.0f}},
@@ -30,9 +30,9 @@ R_LightsInit(S_Scene *const Scene, const R_Camera *const Camera)
 
 VOID
 CmdList_RegisterDrawLightBillboards(R_Core *const Renderer,
-					  const R_Light *const Lights,
-					  BYTE ActiveLightMask,
-					  R_MeshConstants *const MeshConstants)
+									const R_Light *const Lights,
+									BYTE ActiveLightMask,
+									R_MeshConstants *const MeshConstants)
 {
 	ID3D12GraphicsCommandList_SetGraphicsRootSignature(Renderer->CommandList, Renderer->RootSignBillboard);
 	ID3D12GraphicsCommandList_SetPipelineState(Renderer->CommandList, Renderer->PipelineState[ERS_BILLBOARD]);

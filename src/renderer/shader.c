@@ -142,12 +142,16 @@ R_CreatePBRPipelineState(R_Core *Renderer)
 	  {"TANGENT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
 	   0},
 	  {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-	  {"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+	  {"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
 	  .pRootSignature = Renderer->RootSignPBR,
 	  .InputLayout =
-		  (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
+		  (D3D12_INPUT_LAYOUT_DESC){
+			.pInputElementDescs = InputElementDescs,
+			.NumElements = _countof(InputElementDescs),
+		  },
 	  .VS =
 		  (D3D12_SHADER_BYTECODE){
 			.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS),
@@ -264,16 +268,26 @@ R_CreateBillboardPipelineState(R_Core *Renderer)
 	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
 	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
 	   0},
-	  {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+	  {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
 	  .pRootSignature = Renderer->RootSignBillboard,
 	  .InputLayout =
-		  (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
-	  .VS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS),
-									.BytecodeLength = ID3D10Blob_GetBufferSize(VS)},
-	  .PS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(PS),
-									.BytecodeLength = ID3D10Blob_GetBufferSize(PS)},
+		  (D3D12_INPUT_LAYOUT_DESC){
+			.pInputElementDescs = InputElementDescs,
+			.NumElements = _countof(InputElementDescs),
+		  },
+	  .VS =
+		  (D3D12_SHADER_BYTECODE){
+			.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS),
+			.BytecodeLength = ID3D10Blob_GetBufferSize(VS),
+		  },
+	  .PS =
+		  (D3D12_SHADER_BYTECODE){
+			.pShaderBytecode = ID3D10Blob_GetBufferPointer(PS),
+			.BytecodeLength = ID3D10Blob_GetBufferSize(PS),
+		  },
 	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
 	  .DSVFormat = DXGI_FORMAT_D32_FLOAT,
 	  .SampleMask = UINT_MAX,
@@ -354,18 +368,28 @@ R_CreateGridPipelineState(R_Core *Renderer)
 										  ID3D10Blob_GetBufferSize(Signature), &IID_ID3D12RootSignature, &Renderer->RootSignGrid);
 	ExitIfFailed(hr);
 
-	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
-														   D3D12_APPEND_ALIGNED_ELEMENT,
-														   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+	const D3D12_INPUT_ELEMENT_DESC InputElementDescs[] = {
+	  {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+	   0},
+	};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
 	  .pRootSignature = Renderer->RootSignGrid,
 	  .InputLayout =
-		  (D3D12_INPUT_LAYOUT_DESC){.pInputElementDescs = InputElementDescs, .NumElements = _countof(InputElementDescs)},
-	  .VS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS),
-									.BytecodeLength = ID3D10Blob_GetBufferSize(VS)},
-	  .PS = (D3D12_SHADER_BYTECODE){.pShaderBytecode = ID3D10Blob_GetBufferPointer(PS),
-									.BytecodeLength = ID3D10Blob_GetBufferSize(PS)},
+		  (D3D12_INPUT_LAYOUT_DESC){
+			.pInputElementDescs = InputElementDescs,
+			.NumElements = _countof(InputElementDescs),
+		  },
+	  .VS =
+		  (D3D12_SHADER_BYTECODE){
+			.pShaderBytecode = ID3D10Blob_GetBufferPointer(VS),
+			.BytecodeLength = ID3D10Blob_GetBufferSize(VS),
+		  },
+	  .PS =
+		  (D3D12_SHADER_BYTECODE){
+			.pShaderBytecode = ID3D10Blob_GetBufferPointer(PS),
+			.BytecodeLength = ID3D10Blob_GetBufferSize(PS),
+		  },
 	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
 	  .DSVFormat = DXGI_FORMAT_D32_FLOAT,
 	  .SampleMask = UINT_MAX,
@@ -565,8 +589,16 @@ R_CreateIrradiancePipelineState(R_Core *Renderer)
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
 	  .pRootSignature = Renderer->RootSignIrradiance,
 	  .InputLayout = {InputElementDescs, _countof(InputElementDescs)},
-	  .VS = {(PVOID)ID3D10Blob_GetBufferPointer(VS), ID3D10Blob_GetBufferSize(VS)},
-	  .PS = {(PVOID)ID3D10Blob_GetBufferPointer(PS), ID3D10Blob_GetBufferSize(PS)},
+	  .VS =
+		  {
+			(PVOID)ID3D10Blob_GetBufferPointer(VS),
+			ID3D10Blob_GetBufferSize(VS),
+		  },
+	  .PS =
+		  {
+			(PVOID)ID3D10Blob_GetBufferPointer(PS),
+			ID3D10Blob_GetBufferSize(PS),
+		  },
 	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
 	  .BlendState = CD3DX12_DEFAULT_BLEND_DESC(),
 	  .DepthStencilState = {.DepthEnable = FALSE, .StencilEnable = FALSE},
@@ -574,7 +606,11 @@ R_CreateIrradiancePipelineState(R_Core *Renderer)
 	  .PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
 	  .NumRenderTargets = 1,
 	  .RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT,
-	  .SampleDesc = {1, 0},
+	  .SampleDesc =
+		  {
+			.Count = 1,
+			.Quality = 0,
+		  },
 	};
 
 	PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
@@ -656,8 +692,16 @@ R_CreateSkyboxPipelineState(R_Core *Renderer)
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {
 	  .pRootSignature = Renderer->RootSignSkybox,
 	  .InputLayout = {InputElementDescs, _countof(InputElementDescs)},
-	  .VS = {(PVOID)ID3D10Blob_GetBufferPointer(VS), ID3D10Blob_GetBufferSize(VS)},
-	  .PS = {(PVOID)ID3D10Blob_GetBufferPointer(PS), ID3D10Blob_GetBufferSize(PS)},
+	  .VS =
+		  {
+			(PVOID)ID3D10Blob_GetBufferPointer(VS),
+			ID3D10Blob_GetBufferSize(VS),
+		  },
+	  .PS =
+		  {
+			(PVOID)ID3D10Blob_GetBufferPointer(PS),
+			ID3D10Blob_GetBufferSize(PS),
+		  },
 	  .RasterizerState = CD3DX12_DEFAULT_RASTERIZER_DESC(),
 	  .BlendState = CD3DX12_DEFAULT_BLEND_DESC(),
 	  .DepthStencilState = CD3DX12_DEFAULT_DEPTH_STENCIL_DESC(),

@@ -54,3 +54,19 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_SOURCE_DIR}/assets $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets
     COMMENT "Copying assets" VERBATIM
 )
+
+
+find_program(CLANG_FORMAT_EXE NAMES clang-format)
+
+if(CLANG_FORMAT_EXE)
+    message(STATUS "Found clang-format: ${CLANG_FORMAT_EXE}")
+
+    file(GLOB_RECURSE ALL_SOURCE_FILES *.c *.h)
+
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT_EXE} -i --style=file ${ALL_SOURCE_FILES}
+        COMMENT "Formatting C source files with clang-format..."
+    )
+else()
+    message(WARNING "clang-format not found. The 'format' target will not be available.")
+endif()

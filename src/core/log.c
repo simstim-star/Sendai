@@ -52,7 +52,7 @@ S_Logf(ELogCategory Category, PCWSTR Format, ...)
 	va_start(Args, Format);
 	StringCchVPrintfExW(Entry->Buffer, LOG_ENTRY_MAX_CHARACTERS, NULL, &UnusedCharsInBufferRemaining, 0, Format, Args);
 	va_end(Args);
-	
+
 	Entry->Len = (INT)(LOG_ENTRY_MAX_CHARACTERS - UnusedCharsInBufferRemaining);
 
 	INT RequiredBytes =

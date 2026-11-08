@@ -39,7 +39,8 @@ CD3DX12_DEFAULT_BLEND_DESC(void)
 	D3D12_BLEND_DESC BlendDesc = {0};
 	BlendDesc.AlphaToCoverageEnable = FALSE;
 	BlendDesc.IndependentBlendEnable = FALSE;
-	for (int i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i) {
+	for (int i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
+	{
 		BlendDesc.RenderTarget[i] = (D3D12_RENDER_TARGET_BLEND_DESC){
 		  .BlendEnable = FALSE,
 		  .LogicOpEnable = FALSE,
@@ -128,6 +129,6 @@ CD3DX12_TEX2D(DXGI_FORMAT format,
 			  D3D12_TEXTURE_LAYOUT layout,
 			  UINT64 alignment)
 {
-	return CD3DX12_RESOURCE_DESC(D3D12_RESOURCE_DIMENSION_TEXTURE2D, alignment, width, height, arraySize, mipLevels, format, sampleCount,
-								 sampleQuality, layout, flags);
+	return CD3DX12_RESOURCE_DESC(D3D12_RESOURCE_DIMENSION_TEXTURE2D, alignment, width, height, arraySize, mipLevels, format,
+								 sampleCount, sampleQuality, layout, flags);
 }

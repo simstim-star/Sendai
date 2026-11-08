@@ -63,12 +63,14 @@ R_Init(R_Core *const Renderer, HWND hWnd)
 {
 	Renderer->hWnd = hWnd;
 	Renderer->AspectRatio = (FLOAT)(Renderer->Width) / (Renderer->Height);
-	Renderer->Viewport = (D3D12_VIEWPORT){.TopLeftX = 0.0f,
-										  .TopLeftY = 0.0f,
-										  .Width = (FLOAT)(Renderer->Width),
-										  .Height = (FLOAT)(Renderer->Height),
-										  .MinDepth = 0.0f,
-										  .MaxDepth = 1.0f};
+	Renderer->Viewport = (D3D12_VIEWPORT){
+	  .TopLeftX = 0.0f,
+	  .TopLeftY = 0.0f,
+	  .Width = (FLOAT)(Renderer->Width),
+	  .Height = (FLOAT)(Renderer->Height),
+	  .MinDepth = 0.0f,
+	  .MaxDepth = 1.0f,
+	};
 	Renderer->ScissorRect = (D3D12_RECT){0, 0, (LONG)(Renderer->Width), (LONG)(Renderer->Height)};
 	Renderer->State = ERS_GLTF;
 	Renderer->bDrawGrid = TRUE;
@@ -294,7 +296,13 @@ R_SwapchainResize(R_Core *const Renderer, INT Width, INT Height)
 	Renderer->Height = Height;
 	Renderer->AspectRatio = (FLOAT)Width / (FLOAT)Height;
 	Renderer->Viewport = (D3D12_VIEWPORT){
-	  .TopLeftX = 0.0f, .TopLeftY = 0.0f, .Width = (FLOAT)Width, .Height = (FLOAT)Height, .MinDepth = 0.0f, .MaxDepth = 1.0f};
+	  .TopLeftX = 0.0f,
+	  .TopLeftY = 0.0f,
+	  .Width = (FLOAT)Width,
+	  .Height = (FLOAT)Height,
+	  .MinDepth = 0.0f,
+	  .MaxDepth = 1.0f,
+	};
 	Renderer->ScissorRect = (D3D12_RECT){0, 0, (LONG)Width, (LONG)Height};
 
 	if (Renderer->DepthStencil)
@@ -584,7 +592,7 @@ CreateSceneResources(R_Core *const Renderer)
 	ExitIfFailed(hr);
 
 	/* Not sure if ideal, but I decided to maintain my buffers mapped during the whole lifetime of the engine */
-	D3D12_RANGE Range = {0, 0};
+	D3D12_RANGE Range = {0};
 	ID3D12Resource_Map(Renderer->TextureUploadBuffer.Buffer, 0, &Range, &Renderer->TextureUploadBuffer.BaseMappedPtr);
 	ID3D12Resource_Map(Renderer->MeshDataUploadBuffer, 0, &Range, &Renderer->MeshDataUploadBufferCpuAddress);
 	ID3D12Resource_Map(Renderer->SceneDataUploadBuffer, 0, &Range, &Renderer->SceneDataUploadBufferCpuAddress);

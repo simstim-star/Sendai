@@ -20,34 +20,41 @@
 
 /*
  * USAGE:
- *    - This function will initialize a new nuklear rendering context. The context will be bound to a GLOBAL DirectX 12 rendering state.
+ *    - This function will initialize a new nuklear rendering context. The context will be bound to a GLOBAL DirectX 12 rendering
+ * state.
  */
-NK_API struct nk_context *nk_d3d12_init(
-	ID3D12Device *device, int width, int height, unsigned int max_vertex_buffer, unsigned int max_index_buffer, unsigned int max_user_textures);
+NK_API struct nk_context *nk_d3d12_init(ID3D12Device *device,
+										int width,
+										int height,
+										unsigned int max_vertex_buffer,
+										unsigned int max_index_buffer,
+										unsigned int max_user_textures);
 /*
  * USAGE:
- *    - A call to this function prepares the global nuklear d3d12 backend for receiving font information’s. Use the obtained atlas pointer to load all
- * required fonts and do all required font setup.
+ *    - A call to this function prepares the global nuklear d3d12 backend for receiving font information’s. Use the obtained atlas
+ * pointer to load all required fonts and do all required font setup.
  */
 NK_API void nk_d3d12_font_stash_begin(struct nk_font_atlas **atlas);
 /*
  * USAGE:
  *    - Call this function after a call to nk_d3d12_font_stash_begin(...) when all fonts have been loaded and configured.
  *    - This function will place commands on the supplied ID3D12GraphicsCommandList.
- *    - This function will allocate temporary data that is required until the command list has finish executing. The temporary data can be free by
- * calling nk_d3d12_font_stash_cleanup(...)
+ *    - This function will allocate temporary data that is required until the command list has finish executing. The temporary
+ * data can be free by calling nk_d3d12_font_stash_cleanup(...)
  */
 NK_API void nk_d3d12_font_stash_end(ID3D12GraphicsCommandList *command_list);
 /*
  * USAGE:
  *    - This function will free temporary data that was allocated by nk_d3d12_font_stash_begin(...)
- *    - Only call this function after the command list used in the nk_d3d12_font_stash_begin(...) function call has finished executing.
+ *    - Only call this function after the command list used in the nk_d3d12_font_stash_begin(...) function call has finished
+ * executing.
  *    - It is NOT required to call this function but highly recommended.
  */
 NK_API void nk_d3d12_font_stash_cleanup();
 /*
  * USAGE:
- *    - This function will setup the supplied texture (ID3D12Resource) for rendering custom images using the supplied D3D12_SHADER_RESOURCE_VIEW_DESC.
+ *    - This function will setup the supplied texture (ID3D12Resource) for rendering custom images using the supplied
+ * D3D12_SHADER_RESOURCE_VIEW_DESC.
  *    - This function may override any previous calls to nk_d3d12_set_user_texture(...) while using the same index.
  *    - The returned handle can be used as texture handle to render custom images.
  *    - The caller must keep track of the state of the texture when it comes to rendering with nk_d3d12_render(...).
@@ -63,10 +70,11 @@ NK_API nk_bool nk_d3d12_set_user_texture(unsigned int index,
 NK_API int nk_d3d12_handle_event(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 /*
  * USAGE:
- *    - A call to this function renders any previous placed nuklear draw calls and will flush all nuklear buffers for the next frame
+ *    - A call to this function renders any previous placed nuklear draw calls and will flush all nuklear buffers for the next
+ * frame
  *    - This function will place commands on the supplied ID3D12GraphicsCommandList.
- *    - When using custom images for rendering make sure they are in the correct resource state (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) when
- * calling this function.
+ *    - When using custom images for rendering make sure they are in the correct resource state
+ * (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) when calling this function.
  *    - This function will upload data to the gpu (64 + max_vertex_buffer + max_index_buffer BYTES).
  */
 NK_API void nk_d3d12_render(ID3D12GraphicsCommandList *command_list, enum nk_anti_aliasing AA);
@@ -104,13 +112,15 @@ NK_API void nk_d3d12_shutdown(void);
 #include "nuklear_d3d12_pixel_shader.h"
 #include "nuklear_d3d12_vertex_shader.h"
 
-struct nk_d3d12_vertex {
+struct nk_d3d12_vertex
+{
 	float position[2];
 	float uv[2];
 	nk_byte col[4];
 };
 
-static struct {
+static struct
+{
 	struct nk_context ctx;
 	struct nk_font_atlas atlas;
 	struct nk_buffer cmds;
@@ -236,7 +246,8 @@ nk_d3d12_render(ID3D12GraphicsCommandList *command_list, enum nk_anti_aliasing A
 	ID3D12GraphicsCommandList_ResourceBarrier(command_list, 3, resource_barriers);
 
 	/* Copy from upload buffer to gpu buffers */
-	ID3D12GraphicsCommandList_CopyBufferRegion(command_list, d3d12.const_buffer, 0, d3d12.upload_buffer, 0, sizeof(float) * 4 * 4);
+	ID3D12GraphicsCommandList_CopyBufferRegion(command_list, d3d12.const_buffer, 0, d3d12.upload_buffer, 0,
+											   sizeof(float) * 4 * 4);
 	ID3D12GraphicsCommandList_CopyBufferRegion(command_list, d3d12.vertex_buffer, 0, d3d12.upload_buffer, sizeof(float) * 4 * 4,
 											   d3d12.max_vertex_buffer);
 	ID3D12GraphicsCommandList_CopyBufferRegion(command_list, d3d12.index_buffer, 0, d3d12.upload_buffer,
@@ -270,7 +281,8 @@ nk_d3d12_render(ID3D12GraphicsCommandList *command_list, enum nk_anti_aliasing A
 		UINT32 texture_id;
 
 		/* Only place a drawcall in case the command contains drawable data */
-		if (cmd->elem_count) {
+		if (cmd->elem_count)
+		{
 			/* Setup scissor rect */
 			scissor.left = (LONG)cmd->clip_rect.x;
 			scissor.right = (LONG)(cmd->clip_rect.x + cmd->clip_rect.w);
@@ -324,7 +336,8 @@ nk_d3d12_resize(int width, int height)
 	map_range.End = sizeof(float) * 4 * 4;
 
 	/* Map area to cpu accassible pointer (from upload buffer) */
-	if (SUCCEEDED(ID3D12Resource_Map(d3d12.upload_buffer, 0, &map_range, &ptr_data))) {
+	if (SUCCEEDED(ID3D12Resource_Map(d3d12.upload_buffer, 0, &map_range, &ptr_data)))
+	{
 		/* Compute projection matrix into upload buffer */
 		nk_d3d12_get_projection_matrix(width, height, (float *)ptr_data);
 		ID3D12Resource_Unmap(d3d12.upload_buffer, 0, &map_range);
@@ -345,7 +358,8 @@ NK_API int
 nk_d3d12_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
 	static int insert_toggle = 0;
-	switch (msg) {
+	switch (msg)
+	{
 	case WM_KEYDOWN:
 	case WM_KEYUP:
 	case WM_SYSKEYDOWN:
@@ -353,7 +367,8 @@ nk_d3d12_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		int down = !((lparam >> 31) & 1);
 		int ctrl = GetKeyState(VK_CONTROL) & (1 << 15);
 
-		switch (wparam) {
+		switch (wparam)
+		{
 		case VK_SHIFT:
 		case VK_LSHIFT:
 		case VK_RSHIFT:
@@ -418,12 +433,16 @@ nk_d3d12_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			 * kind of confusing since we have to negate it but we're already
 			 * hacking it since Nuklear treats them as two separate keys rather
 			 * than a single toggle state */
-			if (!down) {
+			if (!down)
+			{
 				insert_toggle = !insert_toggle;
-				if (insert_toggle) {
+				if (insert_toggle)
+				{
 					nk_input_key(&d3d12.ctx, NK_KEY_TEXT_INSERT_MODE, !down);
 					/* nk_input_key(&d3d12.ctx, NK_KEY_TEXT_REPLACE_MODE, down); */
-				} else {
+				}
+				else
+				{
 					nk_input_key(&d3d12.ctx, NK_KEY_TEXT_REPLACE_MODE, !down);
 					/* nk_input_key(&d3d12.ctx, NK_KEY_TEXT_INSERT_MODE, down); */
 				}
@@ -431,56 +450,64 @@ nk_d3d12_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			return 1;
 
 		case 'A':
-			if (ctrl) {
+			if (ctrl)
+			{
 				nk_input_key(&d3d12.ctx, NK_KEY_TEXT_SELECT_ALL, down);
 				return 1;
 			}
 			break;
 
 		case 'B':
-			if (ctrl) {
+			if (ctrl)
+			{
 				nk_input_key(&d3d12.ctx, NK_KEY_TEXT_LINE_START, down);
 				return 1;
 			}
 			break;
 
 		case 'E':
-			if (ctrl) {
+			if (ctrl)
+			{
 				nk_input_key(&d3d12.ctx, NK_KEY_TEXT_LINE_END, down);
 				return 1;
 			}
 			break;
 
 		case 'C':
-			if (ctrl) {
+			if (ctrl)
+			{
 				nk_input_key(&d3d12.ctx, NK_KEY_COPY, down);
 				return 1;
 			}
 			break;
 
 		case 'V':
-			if (ctrl) {
+			if (ctrl)
+			{
 				nk_input_key(&d3d12.ctx, NK_KEY_PASTE, down);
 				return 1;
 			}
 			break;
 
 		case 'X':
-			if (ctrl) {
+			if (ctrl)
+			{
 				nk_input_key(&d3d12.ctx, NK_KEY_CUT, down);
 				return 1;
 			}
 			break;
 
 		case 'Z':
-			if (ctrl) {
+			if (ctrl)
+			{
 				nk_input_key(&d3d12.ctx, NK_KEY_TEXT_UNDO, down);
 				return 1;
 			}
 			break;
 
 		case 'R':
-			if (ctrl) {
+			if (ctrl)
+			{
 				nk_input_key(&d3d12.ctx, NK_KEY_TEXT_REDO, down);
 				return 1;
 			}
@@ -490,7 +517,8 @@ nk_d3d12_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	}
 
 	case WM_CHAR:
-		if (wparam >= 32) {
+		if (wparam >= 32)
+		{
 			nk_input_unicode(&d3d12.ctx, (nk_rune)wparam);
 			return 1;
 		}
@@ -547,17 +575,23 @@ static void
 nk_d3d12_clipboard_paste(nk_handle usr, struct nk_text_edit *edit)
 {
 	(void)usr;
-	if (IsClipboardFormatAvailable(CF_UNICODETEXT) && OpenClipboard(NULL)) {
+	if (IsClipboardFormatAvailable(CF_UNICODETEXT) && OpenClipboard(NULL))
+	{
 		HGLOBAL mem = GetClipboardData(CF_UNICODETEXT);
-		if (mem) {
+		if (mem)
+		{
 			SIZE_T size = GlobalSize(mem) - 1;
-			if (size) {
+			if (size)
+			{
 				LPCWSTR wstr = (LPCWSTR)GlobalLock(mem);
-				if (wstr) {
+				if (wstr)
+				{
 					int utf8size = WideCharToMultiByte(CP_UTF8, 0, wstr, size / sizeof(wchar_t), NULL, 0, NULL, NULL);
-					if (utf8size) {
+					if (utf8size)
+					{
 						char *utf8 = (char *)malloc(utf8size);
-						if (utf8) {
+						if (utf8)
+						{
 							WideCharToMultiByte(CP_UTF8, 0, wstr, size / sizeof(wchar_t), utf8, utf8size, NULL, NULL);
 							nk_textedit_paste(edit, utf8, utf8size);
 							free(utf8);
@@ -575,13 +609,17 @@ static void
 nk_d3d12_clipboard_copy(nk_handle usr, const char *text, int len)
 {
 	(void)usr;
-	if (OpenClipboard(NULL)) {
+	if (OpenClipboard(NULL))
+	{
 		int wsize = MultiByteToWideChar(CP_UTF8, 0, text, len, NULL, 0);
-		if (wsize) {
+		if (wsize)
+		{
 			HGLOBAL mem = GlobalAlloc(GMEM_MOVEABLE, (wsize + 1) * sizeof(wchar_t));
-			if (mem) {
+			if (mem)
+			{
 				wchar_t *wstr = (wchar_t *)GlobalLock(mem);
-				if (wstr) {
+				if (wstr)
+				{
 					MultiByteToWideChar(CP_UTF8, 0, text, len, wstr, wsize);
 					wstr[wsize] = 0;
 					GlobalUnlock(mem);
@@ -594,8 +632,12 @@ nk_d3d12_clipboard_copy(nk_handle usr, const char *text, int len)
 }
 
 NK_API struct nk_context *
-nk_d3d12_init(
-	ID3D12Device *device, int width, int height, unsigned int max_vertex_buffer, unsigned int max_index_buffer, unsigned int max_user_textures)
+nk_d3d12_init(ID3D12Device *device,
+			  int width,
+			  int height,
+			  unsigned int max_vertex_buffer,
+			  unsigned int max_index_buffer,
+			  unsigned int max_user_textures)
 {
 	HRESULT hr;
 	D3D12_CONSTANT_BUFFER_VIEW_DESC cbv;
@@ -637,7 +679,8 @@ nk_d3d12_init(
 		D3D12_RESOURCE_DESC desc;
 		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 		desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-		desc.Width = (sizeof(float) * 4 * 4) + max_vertex_buffer + max_index_buffer; /* Needs to hold matrix + vertices + indicies */
+		desc.Width =
+			(sizeof(float) * 4 * 4) + max_vertex_buffer + max_index_buffer; /* Needs to hold matrix + vertices + indicies */
 		desc.Height = 1;
 		desc.DepthOrArraySize = 1;
 		desc.MipLevels = 1;
@@ -646,8 +689,9 @@ nk_d3d12_init(
 		desc.SampleDesc.Quality = 0;
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		hr = ID3D12Device_CreateCommittedResource(device, &d3d12.heap_prop_upload, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ,
-												  NULL, &IID_ID3D12Resource, &d3d12.upload_buffer);
+		hr = ID3D12Device_CreateCommittedResource(device, &d3d12.heap_prop_upload, D3D12_HEAP_FLAG_NONE, &desc,
+												  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
+												  &d3d12.upload_buffer);
 		NK_ASSERT(SUCCEEDED(hr));
 	}
 	/* Create constant buffer */
@@ -664,8 +708,8 @@ nk_d3d12_init(
 		desc.SampleDesc.Quality = 0;
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		hr = ID3D12Device_CreateCommittedResource(device, &d3d12.heap_prop_default, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COMMON, NULL,
-												  &IID_ID3D12Resource, &d3d12.const_buffer);
+		hr = ID3D12Device_CreateCommittedResource(device, &d3d12.heap_prop_default, D3D12_HEAP_FLAG_NONE, &desc,
+												  D3D12_RESOURCE_STATE_COMMON, NULL, &IID_ID3D12Resource, &d3d12.const_buffer);
 		NK_ASSERT(SUCCEEDED(hr));
 	}
 	/* Create vertex buffer */
@@ -682,8 +726,8 @@ nk_d3d12_init(
 		desc.SampleDesc.Quality = 0;
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		hr = ID3D12Device_CreateCommittedResource(device, &d3d12.heap_prop_default, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COMMON, NULL,
-												  &IID_ID3D12Resource, &d3d12.vertex_buffer);
+		hr = ID3D12Device_CreateCommittedResource(device, &d3d12.heap_prop_default, D3D12_HEAP_FLAG_NONE, &desc,
+												  D3D12_RESOURCE_STATE_COMMON, NULL, &IID_ID3D12Resource, &d3d12.vertex_buffer);
 		NK_ASSERT(SUCCEEDED(hr));
 	}
 	/* Create index buffer */
@@ -700,8 +744,8 @@ nk_d3d12_init(
 		desc.SampleDesc.Quality = 0;
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		hr = ID3D12Device_CreateCommittedResource(device, &d3d12.heap_prop_default, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COMMON, NULL,
-												  &IID_ID3D12Resource, &d3d12.index_buffer);
+		hr = ID3D12Device_CreateCommittedResource(device, &d3d12.heap_prop_default, D3D12_HEAP_FLAG_NONE, &desc,
+												  D3D12_RESOURCE_STATE_COMMON, NULL, &IID_ID3D12Resource, &d3d12.index_buffer);
 		NK_ASSERT(SUCCEEDED(hr));
 	}
 
@@ -724,7 +768,8 @@ nk_d3d12_init(
 	d3d12.gpu_index_buffer_address = ID3D12Resource_GetGPUVirtualAddress(d3d12.index_buffer);
 
 	/* Get handle increment */
-	d3d12.cbv_srv_uav_desc_increment = ID3D12Device_GetDescriptorHandleIncrementSize(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	d3d12.cbv_srv_uav_desc_increment =
+		ID3D12Device_GetDescriptorHandleIncrementSize(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	/* Create view to constant buffer */
 	cbv.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(d3d12.const_buffer);
@@ -733,8 +778,8 @@ nk_d3d12_init(
 	ID3D12Device_CreateConstantBufferView(device, &cbv, cbv_handle);
 
 	/* Create root signature */
-	hr = ID3D12Device_CreateRootSignature(device, 0, nk_d3d12_vertex_shader, sizeof(nk_d3d12_vertex_shader), &IID_ID3D12RootSignature,
-										  &d3d12.root_signature);
+	hr = ID3D12Device_CreateRootSignature(device, 0, nk_d3d12_vertex_shader, sizeof(nk_d3d12_vertex_shader),
+										  &IID_ID3D12RootSignature, &d3d12.root_signature);
 	NK_ASSERT(SUCCEEDED(hr));
 
 	/* Create pipeline state */
@@ -743,8 +788,10 @@ nk_d3d12_init(
 		const D3D12_INPUT_ELEMENT_DESC layout[] = {
 		  {"POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, NK_OFFSETOF(struct nk_d3d12_vertex, position),
 		   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		  {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, NK_OFFSETOF(struct nk_d3d12_vertex, uv), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		  {"COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, NK_OFFSETOF(struct nk_d3d12_vertex, col), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		  {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, NK_OFFSETOF(struct nk_d3d12_vertex, uv),
+		   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		  {"COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, NK_OFFSETOF(struct nk_d3d12_vertex, col),
+		   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 		};
 
 		/* Describe pipeline state */
@@ -771,7 +818,8 @@ nk_d3d12_init(
 		desc.InputLayout.pInputElementDescs = layout;
 		desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		desc.NumRenderTargets = 1;
-		desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM; /* NOTE: When using HDR rendering you might have a different framebuffer format */
+		desc.RTVFormats[0] =
+			DXGI_FORMAT_R8G8B8A8_UNORM; /* NOTE: When using HDR rendering you might have a different framebuffer format */
 		desc.SampleDesc.Count = 1;
 		desc.SampleDesc.Quality = 0;
 		desc.NodeMask = 0;
@@ -835,8 +883,8 @@ nk_d3d12_font_stash_end(ID3D12GraphicsCommandList *command_list)
 		desc.SampleDesc.Quality = 0;
 		desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		hr = ID3D12Device_CreateCommittedResource(d3d12.device, &d3d12.heap_prop_default, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COPY_DEST,
-												  NULL, &IID_ID3D12Resource, &d3d12.font_texture);
+		hr = ID3D12Device_CreateCommittedResource(d3d12.device, &d3d12.heap_prop_default, D3D12_HEAP_FLAG_NONE, &desc,
+												  D3D12_RESOURCE_STATE_COPY_DEST, NULL, &IID_ID3D12Resource, &d3d12.font_texture);
 		NK_ASSERT(SUCCEEDED(hr));
 	}
 
@@ -855,7 +903,8 @@ nk_d3d12_font_stash_end(ID3D12GraphicsCommandList *command_list)
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
 		hr = ID3D12Device_CreateCommittedResource(d3d12.device, &d3d12.heap_prop_upload, D3D12_HEAP_FLAG_NONE, &desc,
-												  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &d3d12.font_upload_buffer);
+												  D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource,
+												  &d3d12.font_upload_buffer);
 		NK_ASSERT(SUCCEEDED(hr));
 	}
 
@@ -917,7 +966,8 @@ NK_API
 void
 nk_d3d12_font_stash_cleanup()
 {
-	if (d3d12.font_upload_buffer) {
+	if (d3d12.font_upload_buffer)
+	{
 		ID3D12Resource_Release(d3d12.font_upload_buffer);
 		d3d12.font_upload_buffer = NULL;
 	}
@@ -925,10 +975,14 @@ nk_d3d12_font_stash_cleanup()
 
 NK_API
 nk_bool
-nk_d3d12_set_user_texture(unsigned int index, ID3D12Resource *texture, const D3D12_SHADER_RESOURCE_VIEW_DESC *description, nk_handle *handle_out)
+nk_d3d12_set_user_texture(unsigned int index,
+						  ID3D12Resource *texture,
+						  const D3D12_SHADER_RESOURCE_VIEW_DESC *description,
+						  nk_handle *handle_out)
 {
 	nk_bool result = nk_false;
-	if (index < d3d12.max_user_textures) {
+	if (index < d3d12.max_user_textures)
+	{
 		D3D12_CPU_DESCRIPTOR_HANDLE srv_handle;
 
 		/* Get handle to texture (0 - Const Buffer; 1 - Font Texture; 2 - First user texture) */

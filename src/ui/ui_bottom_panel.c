@@ -8,7 +8,6 @@
 #include "renderer/render_types.h"
 #include "shaders/sendai/shader_defs.h"
 
-
 static const FLOAT HANDLE_HEIGHT = 10.0f;
 static const FLOAT INFO_BAR_HEIGHT = 22.0f;
 static const FLOAT TAB_BAR_HEIGHT = 30.0f;
@@ -47,7 +46,8 @@ UI_DrawBottomPanel(UI_Renderer *UI, UI_BottomPanelState *State)
 	State->BottomPanelHeight = fminf(State->BottomPanelHeight, UI->Height * MAX_PANEL_HEIGHT_PERCENTAGE);
 
 	FLOAT MaxAvailableHeight = UI->Height - INFO_BAR_HEIGHT;
-	struct nk_rect BarRect = nk_rect(0.0f, MaxAvailableHeight - State->BottomPanelHeight, (FLOAT)UI->Width, State->BottomPanelHeight);
+	struct nk_rect BarRect =
+		nk_rect(0.0f, MaxAvailableHeight - State->BottomPanelHeight, (FLOAT)UI->Width, State->BottomPanelHeight);
 
 	if (nk_begin(Ctx, "BottomBar", BarRect, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND))
 	{

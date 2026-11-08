@@ -5,12 +5,14 @@ typedef struct R_Texture R_Texture;
 typedef struct R_Primitive R_Primitive;
 typedef struct S_Scene S_Scene;
 
-typedef struct GPUTexture {
+typedef struct GPUTexture
+{
 	ID3D12Resource *GpuTexture;
 	UINT HeapIndex;
 } GPUTexture;
 
-typedef struct TextureLookup {
+typedef struct TextureLookup
+{
 	PCSTR key;
 	GPUTexture Texture;
 } TextureLookup;
